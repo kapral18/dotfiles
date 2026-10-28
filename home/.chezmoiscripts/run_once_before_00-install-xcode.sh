@@ -16,7 +16,6 @@ echo "--------------------------------------"
 echo "xcodebuild license accept: applying..."
 echo "--------------------------------------"
 
-# Accept T&Cs
 sudo xcodebuild -license accept
 echo "-------------------------------"
 echo "xcodebuild license accept: done"

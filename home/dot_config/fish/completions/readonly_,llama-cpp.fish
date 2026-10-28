@@ -1,5 +1,3 @@
-# Completions for ,llama-cpp.
-
 function __llama_cpp_cp_host
     set -q LLAMA_CPP_HOST; and echo $LLAMA_CPP_HOST; and return
     echo 127.0.0.1

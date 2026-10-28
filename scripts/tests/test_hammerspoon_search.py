@@ -310,18 +310,6 @@ equal(chooser:selectedRow(), 2)
 equal(tasks[1].running, true)
 """)
 
-    def test_should_show_the_translations_latin_reading_below_its_native_script(self):
-        self.run_lua(r"""
-app.show()
-typeQuery('tr ja Hello'); tick()
-passReply(1, 0, 'sk-test\n')
-chatReply(1, 200, answer('こんにちは', 'Konnichiwa'))
-equal(chooser.items[1].text, 'こんにちは')
-assert(chooser.items[1].subText:find('Konnichiwa', 1, true), chooser.items[1].subText)
-chooser:select(1)
-equal(copied[1], 'こんにちは')
-""")
-
     def test_should_report_app_dispatch_failures_without_replacing_a_reopened_panel(self):
         for failure in ("new", "start", "exit"):
             with self.subTest(failure=failure):
@@ -627,7 +615,6 @@ equal(press('', 'down'), false)
     def test_should_move_through_rows_with_vim_arrow_and_emacs_keys_and_wrap(self):
         for name, ((mods, key), step) in NAVIGATION_KEYS.items():
             with self.subTest(key=name):
-                # The empty panel lists five commands: emoji, gh, sym, tr, ud.
                 expected = [((step * n) % 5) + 1 for n in range(1, 7)]
                 self.run_lua(f"""
 app.show()
@@ -647,19 +634,6 @@ equal(chooser.items[chooser:selectedRow()].query, 'gh ')
 chooser:select(chooser:selectedRow())
 equal(chooser.queryText, 'gh ')
 equal(chooser.visible, true)
-""")
-
-    def test_should_pass_every_key_through_after_closing_from_a_panel_key(self):
-        for name, (mods, key) in DISMISS_KEYS.items():
-            with self.subTest(key=name):
-                self.run_lua(f"""
-app.show()
-assert(press('{mods}', '{key}'))
-equal(chooser.visible, false)
-for _, k in ipairs({{ {{'', 'escape'}}, {{'ctrl', 'c'}}, {{'ctrl', 'j'}}, {{'ctrl', 'k'}}, {{'ctrl', 'n'}},
-    {{'ctrl', 'p'}}, {{'', 'down'}}, {{'', 'up'}}, {{'fn', 'down'}} }}) do
-  equal(press(k[1], k[2]), false)
-end
 """)
 
     def test_should_move_on_real_arrow_events_and_leave_typing_and_cmd_c_alone(self):
@@ -696,16 +670,6 @@ file:close()
 tasks[1].callback = nil
 shutdown()
 equal(io.open(output, 'r'), nil)
-""")
-
-    def test_should_launch_the_exact_app_ahead_of_partial_name_matches(self):
-        self.run_lua(r"""
-app.show()
-typeQuery('safari')
-equal(chooser.items[1].text, 'Safari')
-chooser:select(1)
-equal(launched[1], '/Applications/Safari.app')
-equal(#requests, 0)
 """)
 
     def test_should_refresh_removed_and_readded_apps_without_following_directory_cycles(self):

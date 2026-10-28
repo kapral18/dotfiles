@@ -34,7 +34,6 @@ def is_trivial_ctx(ctx: dict[str, Any]) -> bool:
 
 
 def ctx_is_failing(ctx: dict[str, Any]) -> bool:
-    """True if a single rollup context is in a failing terminal state."""
     if ctx.get("__typename") == "StatusContext":
         return (ctx.get("state") or "").upper() in ("FAILURE", "ERROR")
     if ctx.get("__typename") == "CheckRun":

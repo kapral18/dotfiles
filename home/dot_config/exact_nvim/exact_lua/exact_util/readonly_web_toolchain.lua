@@ -1,5 +1,3 @@
---- Web toolchain detection helpers (Oxfmt/Biome/Prettier + OXlint detection)
-
 local root = require("util.root")
 local format = require("util.format")
 

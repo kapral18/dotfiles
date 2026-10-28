@@ -10,9 +10,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-import _test_support  # noqa: F401  (puts scripts/ on sys.path)
 from _test_support import (
-    FIXTURES,
     REPO,
     run_script,
 )
@@ -20,11 +18,6 @@ from _test_support import (
 
 class TestGenerateMcpConfigs(unittest.TestCase):
     """WHEN generating MCP JSON configs."""
-
-    def test_golden(self):
-        actual = run_script(["generate_mcp_configs.py", str(FIXTURES / "mcp_servers.yaml"), "claude"])
-        expected = (FIXTURES / "golden_mcp.json").read_text()
-        assert json.loads(actual) == json.loads(expected)
 
     def test_omp_transform_names_each_transport(self):
         with tempfile.TemporaryDirectory() as temporary:

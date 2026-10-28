@@ -13,7 +13,6 @@ return {
       local augroup = vim.api.nvim_create_augroup("nvim-lint", { clear = true })
       local lint = require("lint")
 
-      -- reset default linters
       lint.linters_by_ft = {}
 
       for name, linter in pairs(opts.linters or {}) do

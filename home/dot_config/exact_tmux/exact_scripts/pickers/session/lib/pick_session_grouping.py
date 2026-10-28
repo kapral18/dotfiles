@@ -11,7 +11,6 @@ DEFAULT_BRANCHES = {"main", "master", "trunk", "develop", "dev"}
 
 
 def simple_resolve(p):
-    """Minimal path resolution without caching."""
     from pathlib import Path
 
     try:
@@ -21,7 +20,6 @@ def simple_resolve(p):
 
 
 def cached_resolve(cache):
-    """Return a resolve function that caches results and handles ~ expansion."""
     from pathlib import Path
 
     def _resolve(p):

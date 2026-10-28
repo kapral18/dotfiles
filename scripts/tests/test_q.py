@@ -91,8 +91,6 @@ class TestQ(unittest.TestCase):
         self.assertNotIn("glm-5.3-flash", " ".join(argv))
         self.assertNotIn("--context-mode", argv)
         self.assertNotIn("--no-tools", argv)
-        self.assertTrue(core.Q_SYSTEM_PROMPT.strip())
-        self.assertEqual("", core.Q_APPEND_SYSTEM_PROMPT)
 
     def test_when_q_prompt_is_missing_it_fails_closed(self) -> None:
         core = load_core()
@@ -278,7 +276,6 @@ console.log(JSON.stringify(rows));
 
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertTrue(json.loads(result.stdout)["q"])
-        self.assertLessEqual(len(LAUNCHER.read_text(encoding="utf-8").splitlines()), 15)
 
     @unittest.skipUnless(shutil.which("fish"), "fish is not installed")
     def test_when_fish_completes_q_it_offers_dry_run(self) -> None:

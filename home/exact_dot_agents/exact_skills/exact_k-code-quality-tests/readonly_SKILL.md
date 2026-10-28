@@ -7,6 +7,23 @@ description: "Use when adding, editing, reviewing, or debugging tests or test pl
 
 Use this for test and verification code. Writing tests does not expand implementation scope.
 
+## Minimum sufficient test protection
+
+New or changed material implementation behavior MUST have durable behavioral test coverage.
+Reuse or extend existing tests; add the smallest missing behavioral cases alongside the implementation.
+A known bug is not required: new intended behavior needs protection too.
+Zero new tests is justified only when existing behavioral coverage is sufficient or there is no material runtime change.
+Source inspection, types/static checks and disposable probes help verification but do not replace missing durable behavioral coverage.
+Uncovered material behavior is a completion gap.
+This floor concerns retained implementation, not prose-only edits or disposable exploration;
+apply it before prototype behavior is absorbed into maintained code.
+Name the protected outcome or reachable failure, consequence and independent oracle;
+branches, fields and coverage percentages are not case quotas.
+Do not add tests merely to pin prose/comment wording, trivial wiring, incidental implementation structure or self-authored mock behavior.
+Never add a test to justify a helper created only for tests.
+In the changed scope, consolidate or remove redundant, superseded or implementation-pinning tests and unused fixtures.
+Preserve unique material protection; never remove a failing test to conceal a defect.
+
 ## References
 
 - Before choosing which cases to write or judging a suite's coverage, load `~/.agents/skills/k-code-quality-tests/references/case-selection.md`.
@@ -18,13 +35,13 @@ Use this for test and verification code. Writing tests does not expand implement
 - Search for an existing test file for the unit and read it in full; add cases there instead of creating a parallel file.
 - Without one, read two or three neighboring test files.
 - Reuse the project's assertion library, test-data factories, base fixtures, and setup style.
-- Add only behaviors the existing tests do not cover.
+- Add only missing material protection; no automatic case per branch, boundary, field or error variant.
 - Read the types the unit takes, returns, and constructs, so test data uses the real constructors or factories, required fields, and allowed values.
 
 ## Test Shape
 
 - Write BDD-style tests when adding tests: `describe('WHEN ...')`, `it('SHOULD ...')`.
-- Write regression cases for the reported bug and preserved behavior; run them with the other checks on the finished change.
+- Extend an existing public-behavior test before creating another test or fixture when that supplies the missing protection.
 - Keep tests focused on observable behavior, not implementation trivia.
 - Cover the boundary or regression that would fail without the change.
 - Prefer small fixtures that make the behavior obvious.
@@ -42,8 +59,8 @@ Use this for test and verification code. Writing tests does not expand implement
   Asserting a suggestion/definition list equals itself proves nothing about whether the suggested values are valid.
 - For artifact-producing changes (suggestion lists, codegen output, definitions, config), verify acceptance against the real consumer's source or contract:
   cite the code or spec that accepts each emitted form (`~/AGENTS.md` §3 step 4).
-- For stateful behavior, list the transitions explicitly (intended, preserved, malformed input, terminal) and test each through an existing seam;
-  a pure input-to-output rule can be checked against an independent table in a disposable harness.
+- For stateful behavior, select transitions that distinguish the concrete material failure and necessary preserved behavior.
+  A sequence may share one test; do not enumerate every possible transition.
 
 ## Validation
 

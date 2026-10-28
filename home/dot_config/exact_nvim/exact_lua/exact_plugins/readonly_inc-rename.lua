@@ -12,7 +12,6 @@ return {
     end,
   },
 
-  -- LSP Keymaps
   {
     "neovim/nvim-lspconfig",
     opts = function(_, opts)

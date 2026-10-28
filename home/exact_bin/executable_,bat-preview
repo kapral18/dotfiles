@@ -15,9 +15,9 @@ def is_image(file_path: str) -> bool:
 
 def is_binary(filepath: str) -> bool:
     with open(filepath, "rb") as f:
-        data = f.read(512)  # read 512 bytes
+        data = f.read(512)
         null_bytes = data.count(b"\0")
-        return null_bytes > 0.1 * len(data)  # if more than 10% of the data is null bytes, it's likely binary
+        return null_bytes > 0.1 * len(data)
 
 
 @dataclass
@@ -34,8 +34,6 @@ def main() -> None:
     args: BatArgs
     unknown_args: list[str]
     args, unknown_args = parser.parse_known_args(namespace=BatArgs("", []))
-
-    # if it's a '.' or '..' or a directory, use ls -la instead of bat
 
     if args.file in (".", "..") or os.path.isdir(args.file):
         cmd = ["ls", "-la", "--color=always", args.file]

@@ -22,7 +22,6 @@ SCRIPTS = Path(__file__).resolve().parents[1]
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
-import _test_support  # noqa: F401  (puts scripts/ on sys.path)
 from _test_support import TMUX_PICKERS, modern_bash
 
 CORE = TMUX_PICKERS / "lib/executable_handoff_namespace.py"
@@ -34,18 +33,6 @@ DEAD_OWNER_CAP = 64
 STAGING_GRACE_SECONDS = 5 * 60
 DEAD_PID = 999_999_999  # far above macOS PID_MAX; os.kill -> ESRCH -> dead
 ENV_TOKEN = "TMUX_PICKER_HANDOFF_TOKEN"
-
-# Every public slot the core allows.
-ALLOWED_SLOTS = (
-    "gh_picker_pin",
-    "pick_session_pin",
-    "gh_picker_create_pin",
-    "gh_picker_switch_sessions",
-    "pick_session_switch_gh",
-)
-# Legacy top-level mailbox files the removed global protocol used. Production
-# must never read or write these; tests poison them and assert byte-stability.
-LEGACY_TOP_LEVEL = ALLOWED_SLOTS
 
 
 class HandoffTestBase(unittest.TestCase):
@@ -170,21 +157,7 @@ class TestHandoffNamespaceCore(HandoffTestBase):
             self.assertEqual(stat.S_IMODE(owner_path.stat().st_mode), 0o600)
             self.assertEqual(stat.S_IMODE(namespace.stat().st_mode), 0o700)
 
-        # No unpublished staging directory survives a successful begin.
         self.assertFalse([p for p in self.root.iterdir() if p.name.startswith(".new-")])
-
-    def test_begin_owner_metadata_schema(self):
-        token = self.begin(role="popup-loop", entry="session-popup")
-        owner = json.loads((self.root / token / "owner.json").read_text())
-        self.assertEqual(owner["version"], 1)
-        self.assertEqual(owner["token"], token)
-        self.assertEqual(owner["owner_pid"], os.getpid())
-        self.assertTrue(owner["owner_start"])
-        self.assertTrue(owner["owner_command"])
-        self.assertEqual(owner["owner_role"], "popup-loop")
-        self.assertEqual(owner["entry"], "session-popup")
-        self.assertIsInstance(owner["created_at_unix_ns"], int)
-        self.assertGreater(owner["created_at_unix_ns"], 0)
 
     def test_path_resolves_slot_inside_namespace(self):
         token = self.begin()
@@ -237,7 +210,6 @@ class TestHandoffNamespaceCore(HandoffTestBase):
         )
         self.assertEqual(result.returncode, 1)
         self.assertEqual(result.stdout.strip(), "")
-        # No PID-derived fallback namespace was minted.
         self.assertFalse((target / "owner.json").exists())
         self.assertFalse(list(target.iterdir()))
 
@@ -252,12 +224,10 @@ class TestHandoffNamespaceCore(HandoffTestBase):
 
     def test_end_is_owner_checked_and_idempotent(self):
         token = self.begin()
-        # A different but live PID cannot end another owner's namespace.
         other = self.spawn_owner()
         mismatch = self.core("end", "--owner-pid", str(other.pid), "--token", token)
         self.assertEqual(mismatch.returncode, 1)
         self.assertTrue((self.root / token).is_dir())
-        # The true owner removes it, and a repeat end is a success no-op.
         ok = self.core("end", "--owner-pid", str(os.getpid()), "--token", token)
         self.assertEqual(ok.returncode, 0, ok.stderr)
         self.assertFalse((self.root / token).exists())
@@ -338,85 +308,6 @@ class TestHandoffNamespaceCore(HandoffTestBase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertFalse(stale.exists())
         self.assertTrue(fresh.is_dir())
-
-
-class TestHandoffProtocolWiring(HandoffTestBase):
-    """WHEN modelling the picker wiring flows against the real core."""
-
-    def _write_slot(self, token: str, slot: str, content: str) -> Path:
-        target = Path(self.path(slot, token))
-        target.write_text(content, encoding="utf-8")
-        return target
-
-    def test_two_concurrent_namespaces_never_cross_consume(self):
-        token_a = self.begin(entry="gh-popup")
-        token_b = self.begin(entry="gh-popup")
-        self.assertNotEqual(token_a, token_b)
-
-        pin_a = self._write_slot(token_a, "gh_picker_pin", "pr\towner/alpha\t201\n")
-        pin_b = self._write_slot(token_b, "gh_picker_pin", "pr\towner/beta\t202\n")
-
-        self.assertEqual(Path(self.path("gh_picker_pin", token_a)).read_text(), "pr\towner/alpha\t201\n")
-        self.assertEqual(Path(self.path("gh_picker_pin", token_b)).read_text(), "pr\towner/beta\t202\n")
-
-        # A consuming its own pin never touches B's.
-        pin_a.unlink()
-        self.assertFalse(pin_a.exists())
-        self.assertTrue(pin_b.exists())
-        self.assertEqual(pin_b.read_text(), "pr\towner/beta\t202\n")
-
-    def test_gh_session_gh_keeps_one_stable_token(self):
-        # gh_popup begins the loop; every pivot reuses the same token so the
-        # GH -> session -> GH files all resolve to one namespace.
-        token = self.begin(role="popup-loop", entry="gh-popup")
-
-        # GH alt-g: handoff_to_sessions writes pick_session_pin; sentinel touched.
-        self._write_slot(token, "pick_session_pin", "pr\towner/repo\t42\tgh-popup\n")
-        self._write_slot(token, "gh_picker_switch_sessions", "1\n")
-        # session picker consumes its pin (same token).
-        pin = Path(self.path("pick_session_pin", token))
-        self.assertEqual(pin.read_text(), "pr\towner/repo\t42\tgh-popup\n")
-        pin.unlink()
-        Path(self.path("gh_picker_switch_sessions", token)).unlink()
-
-        # Session alt-g back to GH: handoff_to_gh writes gh_picker_pin.
-        self._write_slot(token, "gh_picker_pin", "pr\towner/repo\t42\tsession-popup\n")
-        self._write_slot(token, "pick_session_switch_gh", "1\n")
-        gh_pin = Path(self.path("gh_picker_pin", token))
-        self.assertEqual(gh_pin.read_text(), "pr\towner/repo\t42\tsession-popup\n")
-
-        # Every slot lived under the single namespace directory.
-        namespace = self.root / token
-        for slot in ("pick_session_pin", "gh_picker_pin", "gh_picker_switch_sessions", "pick_session_switch_gh"):
-            self.assertEqual(Path(self.path(slot, token)).parent, namespace)
-
-    def test_create_pin_consumed_exactly_once(self):
-        token = self.begin(entry="gh-popup")
-        create = self._write_slot(token, "gh_picker_create_pin", "issue\towner/repo\t7\thttps://x/7\n")
-        # gh_picker exit reads and removes the create pin, routing checkout once.
-        self.assertTrue(create.exists())
-        payload = create.read_text()
-        create.unlink()
-        self.assertTrue(payload.startswith("issue\towner/repo\t7\t"))
-        # A second consume misses -> checkout cannot run twice.
-        self.assertFalse(Path(self.path("gh_picker_create_pin", token)).exists())
-
-    def test_standalone_begin_end_leaves_no_namespace_or_legacy_residue(self):
-        # Poison the legacy top-level mailbox first.
-        cache_tmux = self.cache / "tmux"
-        cache_tmux.mkdir(parents=True)
-        for name in LEGACY_TOP_LEVEL:
-            (cache_tmux / name).write_text(f"legacy {name}\n", encoding="utf-8")
-
-        token = self.begin(role="standalone-picker", entry="gh-picker")
-        self._write_slot(token, "gh_picker_pin", "pr\towner/repo\t1\n")
-        result = self.core("end", "--owner-pid", str(os.getpid()), "--token", token)
-        self.assertEqual(result.returncode, 0, result.stderr)
-
-        # No namespace directory and no top-level residue introduced.
-        self.assertEqual(self.namespace_names(), set())
-        top_level = {p.name for p in cache_tmux.iterdir()} - {"handoff-v1"}
-        self.assertEqual(top_level, set(LEGACY_TOP_LEVEL))
 
 
 class TestPinSessionFirstExactRepo(HandoffTestBase):

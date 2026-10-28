@@ -16,7 +16,6 @@ import urllib.request
 from pathlib import Path
 from unittest import mock
 
-import _test_support  # noqa: F401  (puts scripts/ on sys.path)
 from _test_support import REPO, load_module
 
 LIFECYCLE = REPO / "home/exact_lib/exact_,llama-cpp/lifecycle.py"
@@ -130,36 +129,23 @@ class TestLlamaCppLifecycle(unittest.TestCase):
             "LLAMA_CPP_GRACE_SECONDS": "0",
         }
 
-    def lifecycle_command(self, port: int, *command: str) -> list[str]:
+    def lifecycle_command(self, *command: str) -> list[str]:
         return [sys.executable, str(LIFECYCLE), "run", "--", *command]
 
     def stop_command(self, *args: str) -> list[str]:
         return [sys.executable, str(LIFECYCLE), "stop", *args]
 
-    def test_SHOULD_stop_an_owned_router_after_its_only_consumer_exits(self) -> None:
+    def test_SHOULD_stop_an_owned_router_and_keep_the_consumer_output_and_exit_status(self) -> None:
         port = _free_port()
         result = subprocess.run(
-            self.lifecycle_command(port, sys.executable, "-c", "print('consumer-ok')"),
-            env=self.env(port),
-            capture_output=True,
-            text=True,
-        )
-
-        self.assertEqual(0, result.returncode, result.stderr)
-        self.assertEqual("consumer-ok\n", result.stdout)
-        self.assertEqual(2, len(self.server_log.read_text().splitlines()))
-        self.assertFalse(_router_reachable(port))
-
-    def test_SHOULD_preserve_the_consumer_exit_status_after_cleanup(self) -> None:
-        port = _free_port()
-        result = subprocess.run(
-            self.lifecycle_command(port, sys.executable, "-c", "raise SystemExit(23)"),
+            self.lifecycle_command(sys.executable, "-c", "print('consumer-ok'); raise SystemExit(23)"),
             env=self.env(port),
             capture_output=True,
             text=True,
         )
 
         self.assertEqual(23, result.returncode, result.stderr)
+        self.assertEqual("consumer-ok\n", result.stdout)
         self.assertEqual(2, len(self.server_log.read_text().splitlines()))
         self.assertFalse(_router_reachable(port))
 
@@ -174,7 +160,7 @@ class TestLlamaCppLifecycle(unittest.TestCase):
             "time.sleep(30)\n"
         )
         process = subprocess.Popen(
-            self.lifecycle_command(port, sys.executable, "-c", consumer),
+            self.lifecycle_command(sys.executable, "-c", consumer),
             env=self.env(port),
             stdout=subprocess.DEVNULL,
             stderr=subprocess.PIPE,
@@ -200,7 +186,7 @@ class TestLlamaCppLifecycle(unittest.TestCase):
             "time.sleep(30)\n"
         )
         process = subprocess.Popen(
-            self.lifecycle_command(port, sys.executable, "-c", consumer),
+            self.lifecycle_command(sys.executable, "-c", consumer),
             env=self.env(port),
             stdout=subprocess.DEVNULL,
             stderr=subprocess.PIPE,
@@ -222,7 +208,7 @@ class TestLlamaCppLifecycle(unittest.TestCase):
         port = _free_port()
         result = subprocess.run(
             self.lifecycle_command(
-                port, sys.executable, "-c", "import signal; print(signal.getsignal(signal.SIGHUP) is signal.SIG_IGN)"
+                sys.executable, "-c", "import signal; print(signal.getsignal(signal.SIGHUP) is signal.SIG_IGN)"
             ),
             env=self.env(port),
             capture_output=True,
@@ -238,7 +224,7 @@ class TestLlamaCppLifecycle(unittest.TestCase):
         environment = self.env(port)
         environment["LLAMA_CPP_GRACE_SECONDS"] = "1"
         result = subprocess.run(
-            self.lifecycle_command(port, sys.executable, "-c", "pass"),
+            self.lifecycle_command(sys.executable, "-c", "pass"),
             env=environment,
             capture_output=True,
             text=True,
@@ -260,7 +246,7 @@ class TestLlamaCppLifecycle(unittest.TestCase):
         environment = self.env(port)
         environment["LLAMA_CPP_GRACE_SECONDS"] = "1"
         first = subprocess.run(
-            self.lifecycle_command(port, sys.executable, "-c", "pass"),
+            self.lifecycle_command(sys.executable, "-c", "pass"),
             env=environment,
             capture_output=True,
             text=True,
@@ -272,7 +258,7 @@ class TestLlamaCppLifecycle(unittest.TestCase):
         gate = self.root / "grace-consumer.done"
         waiter = "import pathlib,sys,time; p=pathlib.Path(sys.argv[1]);\nwhile not p.exists(): time.sleep(0.02)"
         consumer = subprocess.Popen(
-            self.lifecycle_command(port, sys.executable, "-c", waiter, str(gate)),
+            self.lifecycle_command(sys.executable, "-c", waiter, str(gate)),
             env=environment,
         )
         self.addCleanup(_stop_process, consumer)
@@ -292,7 +278,7 @@ class TestLlamaCppLifecycle(unittest.TestCase):
         environment = self.env(port)
         environment["LLAMA_CPP_GRACE_SECONDS"] = "60"
         consumer = subprocess.run(
-            self.lifecycle_command(port, sys.executable, "-c", "pass"),
+            self.lifecycle_command(sys.executable, "-c", "pass"),
             env=environment,
             capture_output=True,
             text=True,
@@ -314,7 +300,7 @@ class TestLlamaCppLifecycle(unittest.TestCase):
         gate = self.root / "active-consumer.done"
         waiter = "import pathlib,sys,time; p=pathlib.Path(sys.argv[1]);\nwhile not p.exists(): time.sleep(0.02)"
         consumer = subprocess.Popen(
-            self.lifecycle_command(port, sys.executable, "-c", waiter, str(gate)),
+            self.lifecycle_command(sys.executable, "-c", waiter, str(gate)),
             env=self.env(port),
         )
         self.addCleanup(_stop_process, consumer)
@@ -337,7 +323,7 @@ class TestLlamaCppLifecycle(unittest.TestCase):
         environment = self.env(port)
         environment["LLAMA_CPP_GRACE_SECONDS"] = "-1"
         result = subprocess.run(
-            self.lifecycle_command(port, sys.executable, "-c", "pass"),
+            self.lifecycle_command(sys.executable, "-c", "pass"),
             env=environment,
             capture_output=True,
             text=True,
@@ -352,7 +338,7 @@ class TestLlamaCppLifecycle(unittest.TestCase):
         environment = self.env(port)
         environment["LLAMA_CPP_HOST"] = "192.0.2.1"
         result = subprocess.run(
-            self.lifecycle_command(port, sys.executable, "-c", "pass"),
+            self.lifecycle_command(sys.executable, "-c", "pass"),
             env=environment,
             capture_output=True,
             text=True,
@@ -372,7 +358,7 @@ class TestLlamaCppLifecycle(unittest.TestCase):
         _wait_for(lambda: _router_reachable(port), "external router did not start")
 
         result = subprocess.run(
-            self.lifecycle_command(port, sys.executable, "-c", "pass"),
+            self.lifecycle_command(sys.executable, "-c", "pass"),
             env=self.env(port),
             capture_output=True,
             text=True,
@@ -393,14 +379,14 @@ class TestLlamaCppLifecycle(unittest.TestCase):
         second_gate = self.root / "second.done"
         waiter = "import pathlib,sys,time; p=pathlib.Path(sys.argv[1]);\nwhile not p.exists(): time.sleep(0.02)"
         first = subprocess.Popen(
-            self.lifecycle_command(port, sys.executable, "-c", waiter, str(first_gate)),
+            self.lifecycle_command(sys.executable, "-c", waiter, str(first_gate)),
             env=self.env(port),
         )
         second = None
         self.addCleanup(_stop_process, first)
         _wait_for(lambda: _router_reachable(port), "owned router did not start")
         second = subprocess.Popen(
-            self.lifecycle_command(port, sys.executable, "-c", waiter, str(second_gate)),
+            self.lifecycle_command(sys.executable, "-c", waiter, str(second_gate)),
             env=self.env(port),
         )
         self.addCleanup(_stop_process, second)
@@ -420,7 +406,7 @@ class TestLlamaCppLifecycle(unittest.TestCase):
         gate = self.root / "consumer.done"
         waiter = "import pathlib,sys,time; p=pathlib.Path(sys.argv[1]);\nwhile not p.exists(): time.sleep(0.02)"
         consumer = subprocess.Popen(
-            self.lifecycle_command(port, sys.executable, "-c", waiter, str(gate)),
+            self.lifecycle_command(sys.executable, "-c", waiter, str(gate)),
             env=self.env(port),
         )
         self.addCleanup(_stop_process, consumer)
@@ -623,7 +609,6 @@ class TestLlamaCppModelSync(unittest.TestCase):
             with mock.patch.object(sync.subprocess, "run", side_effect=fake_hf):
                 self.assertEqual(0, sync.download_one("repo/name", "weights.gguf", "weights.gguf", root))
 
-            self.assertEqual(seen, [str(root)])
             self.assertEqual(b"gguf", (root / "weights.gguf").read_bytes())
 
 

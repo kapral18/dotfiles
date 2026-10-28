@@ -295,7 +295,6 @@ for wt in "${worktrees[@]}"; do
   case "$wt" in
     "$nuke_dir" | "$nuke_dir"/*) ;;
     *)
-      # Worktrees outside the wrapper/root still need cleanup.
       safe_rm_rf "$wt" || true
       ;;
   esac

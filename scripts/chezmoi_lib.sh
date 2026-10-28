@@ -4,11 +4,6 @@
 # Source this at the top of any run_onchange_after_07-merge-*.sh.tmpl:
 #   source "$source_dir/../scripts/chezmoi_lib.sh"
 #
-# Provides:
-#   chezmoi_write_if_changed – string write, enforce mode without rewriting current bytes
-#   chezmoi_install_if_changed – file copy via install(1), enforce mode without recopying current bytes
-#   chezmoi_record_checksum – record a file's sha256 in the managed-configs manifest
-#   chezmoi_record_artifact – record one ownership-aware generated AI artifact
 
 set -euo pipefail
 
@@ -18,10 +13,7 @@ _CHEZMOI_LIB_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 _CHEZMOI_MANIFEST_HELPER="$_CHEZMOI_LIB_DIR/managed_config_manifest.py"
 _CHEZMOI_ARTIFACT_HELPER="$_CHEZMOI_LIB_DIR/generated_artifact_ledger.py"
 
-# ── Manifest recording ───────────────────────────────────────────────────────
-
 # Record a target file's sha256 in the managed-configs manifest.
-# Called automatically by the write helpers after a successful write.
 #   chezmoi_record_checksum <target_path>
 chezmoi_record_checksum() {
   local target="${1:-}"
@@ -29,12 +21,9 @@ chezmoi_record_checksum() {
 }
 
 # Record one generated AI artifact after its target write succeeds.
-# Metadata is passed through to the stdlib Python implementation.
 chezmoi_record_artifact() {
   python3 "$_CHEZMOI_ARTIFACT_HELPER" --ledger "$_CHEZMOI_ARTIFACT_LEDGER" record "$@"
 }
-
-# ── Idempotent write helpers ─────────────────────────────────────────────────
 
 # Write a string to a target file only if content differs.
 #   chezmoi_write_if_changed <desired_content> <target_path> [mode]

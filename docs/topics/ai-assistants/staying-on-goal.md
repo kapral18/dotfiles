@@ -73,6 +73,12 @@ The judge receives the card, claims and provenance results, stance history, stor
 
 Matching proves a quote or line exists, not that it supports the claim; the judge still decides that. The Stop hook still fails open and sends a turn back at most once per stretch, so the ledger is a provenance check and review aid, not a guarantee against pandering. Only Claude enforces answer citations; the CLI works in every harness.
 
+## Pi context checkpoints
+
+`,task hook checkpoint --harness pi --input '{"session":"<id>","cwd":"<repo>"}'` returns a current task/evidence projection without duplicating raw source bodies. It returns an empty context when that session has no card, so clearing a card cannot select another session's task.
+
+Pi refreshes this checkpoint before provider calls and saves it at completed tool-turn boundaries. It includes saved preferences, review acceptance, decisions, finding resolutions and claim provenance results. A provenance match still does not prove a claim. Older bulky tool output may become retrievable references; the [Pi retention policy](tool-configs/pi.md#task-checkpoints-and-output-retention) documents its limits. Existing independent review discovery and the fix loop remain unchanged.
+
 ## When the user is wrong
 
 The user can misword an ask, miss context, or pick a weaker option, so the card holds the goal behind the words, not the words.

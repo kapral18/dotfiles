@@ -72,7 +72,6 @@ return {
       return opts
     end,
   },
-  -- Lightweight Test Runners using Snacks
   {
     "folke/snacks.nvim",
     opts = function(_, opts)
@@ -86,7 +85,6 @@ return {
           local is_test = string.match(file, "test")
           local cmd = ""
 
-          -- Try to find focused test
           local func_name, class_name
           local node = vim.treesitter.get_node()
           while node do
@@ -96,7 +94,6 @@ return {
                 local name = vim.treesitter.get_node_text(name_node, 0)
                 if name:match("^test") then
                   func_name = name
-                  -- Look for parent class
                   local p = node:parent()
                   while p do
                     if p:type() == "class_definition" then
@@ -135,7 +132,6 @@ return {
             end
             cmd = cmd .. " -v"
 
-            -- Add basic coloring for unittest output
             cmd = cmd .. " 2>&1 | sed -e 's/OK/" .. [[\x1b[32mOK\x1b[0m]] .. "/' "
             cmd = cmd .. "-e 's/ok$/" .. [[\x1b[32mok\x1b[0m]] .. "/' "
             cmd = cmd .. "-e 's/FAILED/" .. [[\x1b[31mFAILED\x1b[0m]] .. "/' "
@@ -146,7 +142,6 @@ return {
             cmd = "python3 " .. file
           end
 
-          -- Run in split using our utility
           require("util.terminal").run_in_split(cmd, { focus_original = true })
         end,
         desc = "Run Python File",

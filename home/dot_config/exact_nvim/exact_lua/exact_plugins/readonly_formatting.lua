@@ -31,7 +31,6 @@ return {
     config = function(_, opts)
       require("conform").setup(opts)
 
-      -- Register conform as a formatter with higher priority than LSP
       require("util.format").register({
         name = "conform.nvim",
         priority = 100, -- Higher than LSP (10), lower than eslint (200)
@@ -54,7 +53,6 @@ return {
         end,
       })
 
-      -- Format on save via autocmd (not in opts)
       vim.api.nvim_create_autocmd("BufWritePre", {
         pattern = "*",
         callback = function(args)

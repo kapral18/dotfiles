@@ -1,27 +1,16 @@
 --- Redirect LSP location jumps to chezmoi *source* files.
----
---- When this neovim config is edited from its chezmoi source tree
---- (`~/.local/share/chezmoi/home/...`), language servers still resolve symbols
---- against the *deployed* copies under `$HOME` (e.g. lua_ls resolves
---- `require("plugins_local_src.qf")` to `~/.config/nvim/lua/plugins_local_src/qf.lua`).
---- So `gd`/`gr` from inside a source file jump to the rendered target — the very
---- file `chezmoi apply` silently overwrites (AGENTS.md C1: edit `home/**`, never
---- the `$HOME` targets).
----
 --- This rewrites LSP location results so that, *only when the originating buffer
 --- is itself a chezmoi source file*, any destination that is a chezmoi-managed
 --- target is swapped for its source path (`chezmoi source-path <target>`). The
 --- line/column are preserved; for non-template sources the content is byte
 --- identical so the cursor lands exactly. For `.tmpl` sources the rows may drift
 --- but you still land in the correct source file.
----
 --- The single chokepoint is `vim.lsp.buf_request{,_sync}`: fzf-lua (this config's
 --- jump engine) calls these directly and bypasses `vim.lsp.handlers`, and its
 --- `jump1` fast path jumps via `show_document` on the raw location URI — so the
 --- URIs must be rewritten at the request boundary, not at item-formatting time.
 local M = {}
 
---- LSP methods whose results carry navigable file locations.
 local LOCATION_METHODS = {
   ["textDocument/definition"] = true,
   ["textDocument/declaration"] = true,
@@ -38,7 +27,6 @@ local function home_dir()
   return vim.uv.os_homedir() or os.getenv("HOME") or ""
 end
 
---- True when `path` is `dir` or lives beneath it (both should be realpaths).
 ---@param path string|nil
 ---@param dir string|nil
 ---@return boolean
@@ -51,7 +39,6 @@ local function is_under(path, dir)
   return path == dir or path:sub(1, #dir + 1) == (dir .. "/")
 end
 
---- Resolved root of the chezmoi source tree (set by `plugins/chezmoi.lua`).
 ---@return string
 local function chezmoi_root()
   local root = vim.g["chezmoi#source_dir_path"]
@@ -61,7 +48,6 @@ local function chezmoi_root()
   return vim.uv.fs_realpath(root) or root
 end
 
---- Is the buffer that issued the request a chezmoi source file?
 ---@param bufnr integer|nil
 ---@return boolean
 local function is_source_buf(bufnr)
@@ -95,7 +81,6 @@ local function is_resolvable_target(fname)
   return true
 end
 
---- Resolve a deployed target to its chezmoi source, cached (incl. negatives).
 ---@param fname string
 ---@return string|nil
 local function source_for_target(fname)
@@ -121,7 +106,6 @@ local function source_for_target(fname)
   return resolved or nil
 end
 
---- Swap a single location's URI field (`uri` or `targetUri`) to its source.
 ---@param loc table
 ---@param key "uri"|"targetUri"
 local function rewrite_uri_field(loc, key)
@@ -162,7 +146,6 @@ end
 
 M.rewrite_locations = rewrite_locations
 
---- Install the request wrappers once. Idempotent.
 function M.setup()
   if M._installed then
     return

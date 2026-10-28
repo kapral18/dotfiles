@@ -30,7 +30,7 @@ First actions:
 
 Selection rules:
 
-- Prefer changes that strengthen the targeted part: sharper interfaces/contracts, better encapsulation, stronger targeted tests, clearer invariants, safer error handling, or improved docs specific to it.
+- Prefer changes that strengthen the targeted part, including simpler interfaces and fewer comments/tests with material protection preserved; additions must earn their cost.
 - Choose a small or broad change according to its benefit within the requested scope.
 - Recommend unrelated cleanup, package churn, or speculative abstractions only when the targeted part's evidence makes the payoff unusually clear.
 - Treat "suggest" literally: present the recommendation first. Edit files only after the user explicitly approves implementation.

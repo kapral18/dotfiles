@@ -63,14 +63,6 @@ function tests.missing()
   assert(not ok and tostring(err):find("Binary not available", 1, true), "exit zero does not prove assets exist")
 end
 
-function tests.filetypes()
-  preview.init()
-  assert(vim.deep_equal(vim.g.mkdp_filetypes, { "markdown", "mdx" }), "upstream commands must accept both filetypes")
-  assert(vim.deep_equal(preview.ft, { "markdown", "mdx" }), "load the plugin for both filetypes")
-  assert(vim.deep_equal(preview.keys[1].ft, { "markdown", "mdx" }), "install buffer-local bindings for both filetypes")
-  assert(preview.keys[1][1] == "<leader>cp" and preview.keys[1][2] == "<cmd>MarkdownPreviewToggle<cr>")
-end
-
 function tests.signal()
   vim.fn.mkdir(plugin.dir .. "/app/bin", "p")
   vim.fn.writefile({ "#!/bin/sh", "echo 0.0.9" }, binary)

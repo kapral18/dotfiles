@@ -7,7 +7,6 @@ function M.unwrap()
     return
   end
 
-  -- Save before running so the script sees current content
   vim.cmd("silent write")
 
   vim.system({ ",format-md", bufname }, { text = true }, function(result)
@@ -16,7 +15,6 @@ function M.unwrap()
         vim.notify(",format-md failed: " .. (result.stderr or ""), vim.log.levels.ERROR)
         return
       end
-      -- Reload the buffer to pick up changes
       vim.cmd("silent edit")
       vim.notify(",format-md: finished " .. vim.fn.fnamemodify(bufname, ":t"))
     end)

@@ -1,4 +1,3 @@
---- Markdown / MDX window options (wrap + linebreak) for core autocmds.
 local M = {}
 
 ---@param ft string

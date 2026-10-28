@@ -29,8 +29,7 @@ function load() {
   const turn = () => handlers.get("turn_start")!({}, ctx())
   const send = (message: object) => handlers.get("message_end")!({ message }, ctx())
   const prompt = () => send({ role: "user" })
-  const skill = () => send({ role: "custom", customType: "skill-prompt", attribution: "user" })
-  return { sent, state, labels, answer, note, end, turn, prompt, skill, send }
+  return { sent, state, labels, answer, note, end, turn, prompt, send }
 }
 
 describe("advisor follow-up", () => {
@@ -69,17 +68,15 @@ describe("advisor follow-up", () => {
     expect(host.sent).toHaveLength(1)
   })
 
-  it("drops a carried note once the user sends a prompt or a skill command", () => {
-    for (const input of ["prompt", "skill"] as const) {
-      const host = load()
-      host.answer()
-      host.note()
-      host.end(true)
-      host[input]()
-      host.answer()
-      host.end()
-      expect(host.sent).toEqual([])
-    }
+  it("drops a carried note once the user sends a prompt", () => {
+    const host = load()
+    host.answer()
+    host.note()
+    host.end(true)
+    host.prompt()
+    host.answer()
+    host.end()
+    expect(host.sent).toEqual([])
   })
 
   it("drops a carried note whose continuation was interrupted, so a later run gets no stale follow-up", () => {

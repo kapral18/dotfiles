@@ -6,15 +6,12 @@ Apply matching gates in full; loading this group does not activate an unrelated 
 
 ## State-Machine Verification Gate
 
-For pure input-to-output behavior (parsers, formatters, predicates, matrices), when production tests cannot express the cases, the oracle is
-a disposable harness under `/tmp`: it loads the implementation (or a faithful extraction of the predicate) and compares its outputs against a
-table the harness computes on its own. One harness serves the whole task.
-A script that runs the existing tests, or checks that test names appear in a test file, is not a harness.
-
-For stateful behavior (lifecycles, retries, ordered/flag-dependent state, permissions over time), enumerate the states and transitions the
-change touches, and check each intended transition, each preserved transition, malformed input, and terminal actions against tests or a
-disposable probe. Report a transition you could not exercise as unverified, never as cleared.
-Surface missing or inadequate state-machine coverage as a test gap when risk remains.
+Identify the reachable material failure and necessary preserved behavior in the changed states, ordering or input rules.
+Use source/contracts and existing checks first.
+If they cannot settle that risk, choose the smallest bounded local probe with an independent oracle;
+no automatic harness or case per transition.
+Separately ensure minimum sufficient test protection under `~/AGENTS.md` §3; source evidence or a disposable probe does not replace missing durable coverage for new/changed material behavior.
+Report the specific unresolved behavior and missing evidence, not a generic coverage gap.
 
 ## Async-Derived State Gate (Run On Values Resolved Over Time)
 
@@ -24,10 +21,8 @@ A settled-value-only analysis is incomplete: such values pass through intermedia
    and name every consumer keyed on it: conditionals, dependency arrays, effect re-runs, callback/memo identity, persisted defaults.
    Verify each consumer tolerates each transition, not just each settled state.
    An identity-sensitive consumer (a callback listed in a dependency array) treats a value flip as a new input even when the boolean meaning looks stable.
-2. **Transition probe:** a static read cannot clear behavior that depends on such a value _changing_.
-   Before a clean verdict on an affected surface, verify the transition in a local run that ends on its own (a disposable test or a mocked probe;
-   `~/AGENTS.md` §3 step 4), or report the surface as unverified instead of cleared.
-   Green suites do not substitute: tests that set the source to its settled value synchronously never exercise the transition.
+2. **Transition evidence:** if source/contracts and existing checks cannot settle a concrete material failure caused by the value changing, use the smallest bounded local probe (`~/AGENTS.md` §3 step 4) or report that behavior as unverified.
+   A settled-value-only test does not prove a transition; no new probe is required when existing evidence settles it.
 3. **Failure vs empty:** for gates fed by fetched collections or remote state, discovery failure and confirmed-empty are distinct inputs;
    a gate mapping both to one outcome silently converts an outage into a valid-empty result.
    Verify the failure path settles differently, or that accepting the merge is explicit.

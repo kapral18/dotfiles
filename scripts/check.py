@@ -317,11 +317,22 @@ EXTRA_TESTS: tuple[ExtraTest, ...] = (
         ),
     ),
     ExtraTest(
+        name="task-context",
+        argv=("bun", "test", "scripts/tests/task_context.test.ts"),
+        prefixes=(
+            "scripts/tests/task_context.test.ts",
+            "home/exact_lib/exact_shared/task_context.ts",
+            "home/exact_lib/exact_shared/intent_guard.ts",
+            "home/dot_pi/agent/exact_extensions/intent-guard.ts.tmpl",
+        ),
+    ),
+    ExtraTest(
         name="intent-guard",
         argv=("bun", "test", "scripts/tests/intent_guard.test.ts"),
         prefixes=(
             "scripts/tests/intent_guard.test.ts",
             "home/exact_lib/exact_shared/intent_guard.ts",
+            "home/exact_lib/exact_shared/task_context.ts",
             "home/dot_pi/agent/exact_extensions/intent-guard.ts.tmpl",
             "home/dot_omp/private_agent/extensions/intent-guard.ts.tmpl",
             "home/dot_config/opencode/plugins/readonly_intent-guard.ts.tmpl",
@@ -370,7 +381,6 @@ def _matches(path: str, prefixes: tuple[str, ...], suffixes: tuple[str, ...] = (
 
 
 def collect_changed(repo: Path, *, staged: bool) -> tuple[str, ...]:
-    """Return changed relative paths."""
     if staged:
         return _git(repo, ["diff", "--cached", "--name-only", "--diff-filter=ACMRD"])
     names = _git(repo, ["diff", "--name-only", "HEAD"])

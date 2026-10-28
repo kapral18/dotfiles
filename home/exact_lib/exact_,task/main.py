@@ -67,9 +67,6 @@ CORRECTION = re.compile(
 PREFERENCE = re.compile(r"\b(?:we (?:don'?t|never|always|do not)|in general|from now on|always|never)\b", re.IGNORECASE)
 
 
-# --- storage -----------------------------------------------------------------
-
-
 def root_dir() -> Path:
     override = os.environ.get("AGENT_TASK_DIR")
     return Path(override) if override else Path.home() / ".local/share/agent-tasks"
@@ -237,9 +234,6 @@ class Task:
         return paths
 
 
-# --- card --------------------------------------------------------------------
-
-
 def parse_card(text: str) -> dict:
     card: dict = {"goal": "", "reading": "", "done": [], "scope": [], "not_doing": []}
     current: str | None = None
@@ -317,9 +311,6 @@ def render(card: dict, *, full: bool = True, notes: bool = True, all_changes: bo
 
 def open_items(card: dict) -> list[dict]:
     return [item for item in card["done"] if item["status"] == "open"]
-
-
-# --- scope -------------------------------------------------------------------
 
 
 def file_state(path: Path) -> str:
@@ -414,9 +405,6 @@ def patch_paths(text: str) -> list[str]:
     return paths
 
 
-# --- preferences and steering ------------------------------------------------
-
-
 def repo_name(task: Task) -> str:
     common = git(task.cwd, "rev-parse", "--path-format=absolute", "--git-common-dir")
     path = Path(common.strip()).resolve() if common else task.cwd.resolve()
@@ -456,8 +444,6 @@ def log_steering(task: Task, harness: str, text: str, answer: str = "") -> None:
     )
 
 
-# --- hooks -------------------------------------------------------------------
-
 CARD_RULE = (
     "Write the intent card before your first edit (~/AGENTS.md §3 step 0): "
     "`,task card set <<'CARD'` with `Goal:`, `Reading:`, `Done when:` (checkable items), `Scope:` (paths or globs), `Not doing:`, then `CARD`."
@@ -487,6 +473,8 @@ def hook_prompt(task: Task, data: dict, harness: str) -> dict:
     # Shell snapshots belong to individual calls; a prompt starts a new turn's attribution.
     turn.update(continues=0, last_unmet=None, steps=0, pending={}, until_stop={}, touched=[], originals={}, wrote=False)
     parts: list[str] = []
+    # Notes are what a projected checkpoint (Pi) does not already carry: the card and preferences ride in it.
+    notes: list[str] = []
     unowned = task.cards.get("unknown")
     if unowned and not task.card and session != "unknown":
         created = time.mktime(time.strptime(unowned["created"][:19], "%Y-%m-%dT%H:%M:%S"))
@@ -494,13 +482,12 @@ def hook_prompt(task: Task, data: dict, harness: str) -> dict:
             task.card = task.cards.pop("unknown")
             task.card["session"] = session
             task.save_card()
-    if first or compacted:
-        prefs = preferences(task)
-        if prefs:
-            parts.append(
-                "User preferences (saved earlier; follow them):\n" + "\n".join(f"- {p['text']}" for p in prefs)
-            )
+    prefs = preferences(task) if first or compacted else []
+    if prefs:
+        parts.append("User preferences (saved earlier; follow them):\n" + "\n".join(f"- {p['text']}" for p in prefs))
     card = task.card_for(session)
+    if prefs and not card:
+        notes.append(parts[-1])
     if card:
         parts.append(
             f"Intent card for this task (keep to it; update it with `,task card set --session {session}` "
@@ -519,14 +506,16 @@ def hook_prompt(task: Task, data: dict, harness: str) -> dict:
             if PREFERENCE.search(text):
                 note += ' It states a lasting preference: save it with `,task pref add "<rule in the user\'s words>"`.'
             parts.append(note)
+            notes.append(note)
     elif CORRECTION.search(text) and not first:
         log_steering(task, harness, text, turn.get("last_answer", ""))
     if not card and len(task.recent_sessions()) > 1:
         parts.append(
             f"intent-guard: other sessions share this worktree; write this task's card with `,task card set --session {session}`."
         )
+        notes.append(parts[-1])
     task.save_state()
-    return {"context": "\n\n".join(parts)} if parts else {}
+    return {"context": "\n\n".join(parts), "notes": "\n\n".join(notes)} if parts else {}
 
 
 def capture(task: Task, turn: dict, files: dict[str, str], *, shell: bool) -> dict:
@@ -748,6 +737,49 @@ def hook_evidence(task: Task, data: dict, harness: str) -> dict:
     }
 
 
+def hook_checkpoint(task: Task, data: dict, harness: str) -> dict:
+    """Project current task state without copying source bodies into model context."""
+    card = task.card_for(task.session(data.get("session")))
+    if not card:
+        return {"context": ""}
+    current = evidence.context(card, evidence_records(task))
+    stances = {entry["key"]: entry for entry in card.get("stances", [])}
+    claims = []
+    for claim in current["claims"]:
+        source = claim["source"]
+        pointer = {key: value for key, value in source.items() if key in ("kind", "path", "line", "id", "reason")}
+        claims.append(
+            {
+                "id": claim["id"],
+                "claim": claim["text"],
+                "source": pointer,
+                "provenance_matches": claim["verified"],
+                **({"reason": claim["reason"]} if not claim["verified"] else {}),
+            }
+        )
+    checkpoint = {
+        "task": {
+            key: card.get(key, [])
+            for key in ("session", "goal", "reading", "done", "scope", "scope_changes", "not_doing", "corrections")
+        },
+        "preferences": [entry["text"] for entry in preferences(task)],
+        "latest_review": card.get("reviews", [])[-1:] or [],
+        "decisions": list(stances.values()),
+        # Resolutions stay visible so a reviewer can reconcile a repeated finding.
+        "findings": card.get("findings", []),
+        "claims": claims,
+    }
+    return {
+        "context": (
+            "Current task checkpoint. Follow the goal; update the card when the user changes it. "
+            "Save lasting user preferences with ,task pref add. Provenance matching is not proof of a claim. "
+            "Review findings remain eligible throughout the existing review/fix loop. "
+            f"Full ledger and review history: ,task card show --json --session {card['session']}.\n"
+            + json.dumps(checkpoint, ensure_ascii=False, separators=(",", ":"))
+        )
+    }
+
+
 def hook_user(task: Task, data: dict, harness: str) -> dict:
     """The user's own words from Pi's and OMP's `input` event, the one that tells typed text from an extension's."""
     text = data.get("text") or ""
@@ -763,6 +795,7 @@ HOOKS = {
     "compact": hook_compact,
     "stop": hook_stop,
     "evidence": hook_evidence,
+    "checkpoint": hook_checkpoint,
     "user": hook_user,
 }
 
@@ -850,9 +883,6 @@ def cmd_hook(args: argparse.Namespace) -> int:
         out = HOOKS[args.event](task, data, args.harness)
     sys.stdout.write(json.dumps(out, ensure_ascii=False) + "\n")
     return 0
-
-
-# --- commands ----------------------------------------------------------------
 
 
 def cmd_card_set(args: argparse.Namespace) -> int:

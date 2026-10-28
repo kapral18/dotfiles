@@ -3,9 +3,7 @@ return {
     "alker0/chezmoi.vim",
     version = false,
     init = function()
-      -- This option is required.
       vim.g["chezmoi#use_tmp_buffer"] = true
-      -- add other options here if needed.
       vim.g["chezmoi#use_tmp_buffer"] = 1
       vim.g["chezmoi#source_dir_path"] = os.getenv("HOME") .. "/.local/share/chezmoi"
 
@@ -15,17 +13,6 @@ return {
       require("util.chezmoi_lsp").setup()
 
       -- Defensive filetype reclaim for chezmoi `.tmpl` source files.
-      --
-      -- Other plugins ship blanket `au *.tmpl set filetype=<X>` rules in
-      -- their `ftdetect/` (notably `ray-x/go.nvim` -> `gotexttmpl`). Lazy
-      -- sources every plugin's `ftdetect/` eagerly at startup, so those
-      -- autocmds are registered before any buffer is read. When both the
-      -- blanket rule and `alker0/chezmoi.vim`'s per-source-dir rule fire
-      -- on the same BufRead, the later-registered one wins; if that's the
-      -- blanket rule, a chezmoi template ends up with the wrong filetype
-      -- (and thus the wrong syntax, e.g. `goCharacter` matching stray `'`
-      -- in gitconfig comments/values).
-      --
       -- Instead of deleting the global `*.tmpl` rule, only reclaim buffers
       -- under the chezmoi source tree. chezmoi.vim has already recorded the
       -- target filetype in `b:chezmoi_original_filetype`; restore that
@@ -181,7 +168,6 @@ return {
       })
     end,
   },
-  -- Filetype icons
   {
     "nvim-mini/mini.icons",
     version = "*",

@@ -50,7 +50,6 @@ from pathlib import Path
 # (search degrades to BM25-only). Each method that needs the embedder
 # imports lazily so a missing dep doesn't break read-only paths.
 
-# --- Constants -------------------------------------------------------------
 
 CAPSULE_KINDS = (
     "fact",
@@ -62,15 +61,10 @@ CAPSULE_KINDS = (
     "doc",
 )
 CAPSULE_SCOPES = ("workspace", "project", "domain", "universal")
-SCHEMA_VERSION = 4  # bumped any time the table shape changes
+SCHEMA_VERSION = 4
 
-# RRF constant used by hybrid retrieval; 60 is the canonical value from
-# the original RRF paper and works well for top-K in [5, 50] without
-# tuning per-corpus.
 RRF_K = 60
 
-# MMR diversification weight. 0.7 = strong relevance bias; lower values
-# diversify more aggressively at the cost of relevance.
 MMR_LAMBDA = 0.7
 
 # Soft penalty applied to the RRF score for dormant capsules. `curate
@@ -103,8 +97,6 @@ NEAR_DUPLICATE_RECENCY_COSINE = 0.85
 # collision.
 DUPLICATE_COSINE_THRESHOLD = 0.95
 
-# --- Helpers ---------------------------------------------------------------
-
 
 class _Unset:
     """Sentinel for "the caller did not supply this field".
@@ -136,7 +128,6 @@ UNSET = _Unset()
 
 
 def _supplied(value):
-    """True when the caller passed the field (even as None or "")."""
     return not isinstance(value, _Unset)
 
 
@@ -171,9 +162,6 @@ def to_fts_query(query: str) -> str:
 
 
 def csv_join(values: list[str]) -> str:
-    """Pack a list of tags/refs into the canonical comma-separated form
-    used by the schema. Whitespace and empties are stripped, order is
-    preserved, duplicates are removed."""
     seen: list[str] = []
     for v in values:
         s = (v or "").strip()
@@ -183,13 +171,9 @@ def csv_join(values: list[str]) -> str:
 
 
 def csv_split(value: str | None) -> list[str]:
-    """Inverse of `csv_join`. Empty/None → []."""
     if not value:
         return []
     return [v.strip() for v in value.split(",") if v.strip()]
-
-
-# --- Capsule dataclass -----------------------------------------------------
 
 
 @dataclass
@@ -223,9 +207,6 @@ class Capsule:
     updated_at: str
 
 
-# Fields persisted in the SQL schema in column order. Used to detect
-# stale schemas and to project SELECT * row dicts down to Capsule
-# arguments.
 CAPSULE_COLUMNS: tuple[str, ...] = (
     "id",
     "kind",
@@ -266,15 +247,8 @@ def row_to_capsule(row: sqlite3.Row | dict) -> Capsule:
     return Capsule(**d)
 
 
-# --- Hit / search payload types --------------------------------------------
-
-
 @dataclass
 class Hit:
-    """One retrieval result. Carries everything callers need to show
-    or inject the capsule into a prompt: identity, scoring breakdown,
-    structured metadata, body, and snippet for highlights."""
-
     id: str
     title: str
     body: str
@@ -294,9 +268,6 @@ class Hit:
     mmr_selected: bool
 
 
-# --- Knowledge base --------------------------------------------------------
-
-
 class KnowledgeBase:
     """SQLite + FTS5 + dense-embedding capsule store.
 
@@ -314,13 +285,8 @@ class KnowledgeBase:
         self.home = home or default_home()
         self.capsules_dir = self.home / "capsules"
         self.db_path = self.home / "kb.sqlite3"
-        # Lazy import to keep this module importable even if embed.py
-        # has issues. The embedder is constructed on first use unless
-        # one is injected (tests inject stubs).
         self._embedder = embedder
         self._embedder_resolved = embedder is not None
-
-    # --- schema ------------------------------------------------------------
 
     def init(self) -> None:
         """Ensure the schema exists and repair stale indexed state.
@@ -394,14 +360,6 @@ class KnowledgeBase:
         )
 
     def init_doc_ingest_table(self) -> None:
-        """Idempotent table for tracking ingested documents.
-
-        Stores the file path, sha256 of its content, when it was last
-        ingested, and the list of capsule IDs created for that file so
-        re-ingestion can replace stale chunks atomically. Created on
-        first ingest call; init() doesn't pre-create it because most
-        KBs never need it.
-        """
         with self.connect() as db:
             db.execute(
                 """
@@ -587,7 +545,7 @@ class KnowledgeBase:
                 state["embedding_dim"] = 0
             elif state["embedding_dim"] <= 0:
                 try:
-                    from embed import unpack_vector  # local import
+                    from embed import unpack_vector
 
                     state["embedding_dim"] = len(unpack_vector(state["embedding"]))
                 except Exception:
@@ -852,10 +810,7 @@ class KnowledgeBase:
         db.execute("PRAGMA busy_timeout=5000")
         return db
 
-    # --- vec_runner subprocess --------------------------------------------
-
     def _vec_runner_path(self) -> Path:
-        """Sibling vec_runner.py colocated with this module."""
         return Path(__file__).resolve().parent / "vec_runner.py"
 
     def _call_vec_runner(self, payload: dict, *, timeout: int = 60) -> dict:
@@ -906,18 +861,7 @@ class KnowledgeBase:
             raise RuntimeError(f"vec_runner error: {response['error']}")
         return response
 
-    # --- embedder lookup ---------------------------------------------------
-
     def embedder(self):
-        """Return the lazy-resolved Embedder, or None if unavailable.
-
-        We resolve once per KB instance and cache the result; subsequent
-        calls don't re-import or re-probe `uv`. Tests bypass this by
-        passing an embedder into the constructor or by setting the
-        `AI_KB_DISABLE_EMBED=1` env var (default in test fixtures
-        so subprocess-based tests don't pay fastembed cold start each
-        run; tests that need embedding round-trips clear it).
-        """
         if self._embedder_resolved:
             return self._embedder
         if os.environ.get("AI_KB_DISABLE_EMBED") in ("1", "true", "yes"):
@@ -935,8 +879,6 @@ class KnowledgeBase:
             self._embedder = None
         self._embedder_resolved = True
         return self._embedder
-
-    # --- write paths -------------------------------------------------------
 
     def remember(
         self,
@@ -1027,12 +969,9 @@ class KnowledgeBase:
         if embed_now:
             embedder = self.embedder()
             if embedder is not None:
-                # We embed `title + "\n" + body` so capsules with a
-                # short body still get a meaningful vector and titles
-                # contribute to lexical-vs-semantic divergence handling.
                 vec = embedder.embed_one(self._embed_text(title, body_clean))
                 if vec:
-                    from embed import pack_vector  # local import — see embedder()
+                    from embed import pack_vector
 
                     embedding_blob = pack_vector(vec)
                     embedding_model = embedder.model
@@ -1203,9 +1142,6 @@ class KnowledgeBase:
 
     @staticmethod
     def _embed_text(title: str, body: str) -> str:
-        """The text we embed is title + body so capsules that are mostly
-        title (e.g. doc-chunks with empty body fallback) still get a
-        useful vector."""
         return f"{title}\n{body}".strip()
 
     def _find_duplicate(
@@ -1245,7 +1181,7 @@ class KnowledgeBase:
                 """,
                 (kind, embedding_model),
             ).fetchall()
-        from embed import cosine, unpack_vector  # local import — see embedder()
+        from embed import cosine, unpack_vector
 
         for candidate in candidates:
             if candidate["id"] == exempt_id:
@@ -1293,7 +1229,7 @@ class KnowledgeBase:
         embedder = self.embedder()
         if embedder is None:
             return 0
-        from embed import pack_vector  # local import
+        from embed import pack_vector
 
         self.init()
         with self.connect() as db:
@@ -1314,9 +1250,6 @@ class KnowledgeBase:
         if not rows:
             return 0
 
-        # Batch all texts in a single subprocess invocation; the runner
-        # supports list input. This keeps backfill cheap even on KBs
-        # with thousands of capsules.
         texts = [self._embed_text(r["title"], r["body"]) for r in rows]
         vectors = embedder.embed(texts)
         if not vectors or len(vectors) != len(rows):
@@ -1335,8 +1268,6 @@ class KnowledgeBase:
                     (pack_vector(vec), embedder.model, len(vec), now, r["id"]),
                 )
         return len(rows)
-
-    # --- doc ingestion -----------------------------------------------------
 
     def ingest_path(
         self,
@@ -1397,9 +1328,6 @@ class KnowledgeBase:
                 skipped += 1
                 continue
 
-            # Replace stale chunks atomically. Existing capsules for
-            # this file are removed first so retrieval doesn't return
-            # outdated content alongside the new chunks.
             if row:
                 old_ids = csv_split(row["capsule_ids"])
                 for old_id in old_ids:
@@ -1481,8 +1409,6 @@ class KnowledgeBase:
             stripped = line.lstrip()
             is_h12 = stripped.startswith("# ") or stripped.startswith("## ") or stripped == "#" or stripped == "##"
             if is_h12:
-                # Boundary: flush prior chunk, start a new one with
-                # this heading as title and content.
                 flush()
                 cur_title = stripped.lstrip("#").strip()
                 cur_lines = [line]
@@ -1493,15 +1419,8 @@ class KnowledgeBase:
 
     @staticmethod
     def _infer_domain_tags(path: Path, extra: list[str]) -> list[str]:
-        """Auto-derive a small list of domain tags from a path.
-
-        The tags surface in the FTS index and feed the `domain` filter
-        so retrieval can target docs from a specific area without
-        exact path matching. Uses the parent directory name(s) and the
-        file stem with simple normalization.
-        """
         candidates: list[str] = list(extra or [])
-        parts = list(path.parts[-3:])  # e.g. ['skills', 'github', 'SKILL.md']
+        parts = list(path.parts[-3:])
         for p in parts:
             if not p or p in (".", "/"):
                 continue
@@ -1509,8 +1428,6 @@ class KnowledgeBase:
             if cleaned and cleaned not in candidates and cleaned != "md":
                 candidates.append(cleaned)
         return candidates[:6]
-
-    # --- read paths --------------------------------------------------------
 
     def get(self, note_id: str) -> Capsule | None:
         self.init()
@@ -1523,7 +1440,6 @@ class KnowledgeBase:
 
     @staticmethod
     def _write_sidecar(path: Path, text: str) -> None:
-        """Write `text` to `path` atomically (temp file in the same dir + rename)."""
         tmp = path.with_name(path.name + ".tmp")
         tmp.write_text(text)
         os.replace(tmp, path)
@@ -1551,8 +1467,6 @@ class KnowledgeBase:
                 (limit,),
             ).fetchall()
         return [row_to_capsule(r) for r in rows]
-
-    # --- retrieval ---------------------------------------------------------
 
     def search(
         self,
@@ -1619,8 +1533,6 @@ class KnowledgeBase:
         kinds = _normalize_filter(kind)
         domains = _normalize_filter(domain)
 
-        # Pre-filter the candidate set. We over-fetch (4*limit) so RRF
-        # has room to mix the two lanes; final cut is `limit`.
         candidate_pool = max(limit * 4, 20)
 
         bm25_hits: list[tuple[str, float, str]] = []
@@ -1631,7 +1543,6 @@ class KnowledgeBase:
         if mode in ("hybrid", "vector"):
             vector_hits = self._vector_search(query, candidate_pool, scopes, kinds, domains)
 
-        # Build a unified candidate map keyed by capsule id.
         candidate_ids: list[str] = []
         seen: set[str] = set()
         for hid, _, _ in bm25_hits:
@@ -1646,7 +1557,6 @@ class KnowledgeBase:
             return []
 
         rows = self._fetch_rows(candidate_ids)
-        # Stable order: rows in insertion order from candidate_ids.
         ordered_rows = [rows[h] for h in candidate_ids if h in rows]
         if workspace_gate:
             ordered_rows = [
@@ -1673,10 +1583,10 @@ class KnowledgeBase:
             if r_vec is not None:
                 rrf += 1.0 / (RRF_K + r_vec)
             if workspace and row["workspace_path"] == workspace:
-                rrf += 0.1  # soft boost; same-workspace capsules win ties
+                rrf += 0.1
             decay = row["decay_score"] if "decay_score" in row.keys() else 0.0
             if decay:
-                rrf -= DECAY_PENALTY_WEIGHT * float(decay)  # soft penalty; dormant capsules sink
+                rrf -= DECAY_PENALTY_WEIGHT * float(decay)
             hits.append(
                 Hit(
                     id=row["id"],
@@ -1701,10 +1611,6 @@ class KnowledgeBase:
 
         hits.sort(key=lambda h: h.rrf_score, reverse=True)
 
-        # MMR diversification: for hybrid mode, walk the ranked list and
-        # penalize hits that are too close to already-selected ones in
-        # vector space. For BM25-only / vector-only modes we skip MMR
-        # (those modes are explicit "I want pure-X" requests).
         if mode == "hybrid":
             vectors = self._fetch_vectors([h.id for h in hits])
             recency = {row["id"]: (row["created_at"], row["id"]) for row in ordered_rows}
@@ -1725,8 +1631,6 @@ class KnowledgeBase:
         self._record_retrieval([h.id for h in hits])
         return [asdict(h) for h in hits]
 
-    # --- retrieval internals ----------------------------------------------
-
     def _bm25_search(
         self,
         query: str,
@@ -1735,11 +1639,6 @@ class KnowledgeBase:
         kinds: list[str],
         domains: list[str],
     ) -> list[tuple[str, float, str]]:
-        """Return [(id, score, snippet), ...] sorted best→worst.
-
-        Filters (scope/kind/domain) join to the `capsules` table because
-        they live there, not in FTS. We over-fetch and then trim to `n`.
-        """
         fts_query = to_fts_query(query)
         sql_filters, params = self._build_filter_clause(scopes, kinds, domains)
         sql = f"""
@@ -1822,16 +1721,6 @@ class KnowledgeBase:
         domains: list[str],
         alias: str = "c",
     ) -> tuple[str, list]:
-        """Compose the WHERE-tail used by both BM25 and vector paths.
-
-        Returns a SQL fragment starting with `AND` (or empty string)
-        and the parameter list to bind. Domains are checked with LIKE
-        against the CSV column because we don't normalize them into a
-        join table for now (small N, low value).
-
-        There is no retired-row filter: a correction amends its capsule
-        in place, so every stored row is current knowledge.
-        """
         parts: list[str] = []
         params: list = []
         if scopes:
@@ -1853,8 +1742,6 @@ class KnowledgeBase:
         return " AND " + " AND ".join(parts), params
 
     def _fetch_rows(self, ids: list[str]) -> dict[str, sqlite3.Row]:
-        """Bulk-fetch rows by id, preserving columns we need to score
-        and present. Returns {id: row}."""
         if not ids:
             return {}
         placeholders = ",".join("?" * len(ids))
@@ -2029,7 +1916,6 @@ class KnowledgeBase:
         selected: list[Hit] = []
         candidates = list(hits)
 
-        # Seed with the top-RRF hit.
         candidates.sort(key=lambda h: h.rrf_score, reverse=True)
         first = candidates.pop(0)
         first.mmr_selected = True
@@ -2058,8 +1944,6 @@ class KnowledgeBase:
             candidates.remove(best)
         return selected
 
-    # --- curation ----------------------------------------------------------
-
     def curate(
         self,
         *,
@@ -2081,11 +1965,6 @@ class KnowledgeBase:
           sidecar). A duplicate carries no knowledge the winner lacks,
           so keeping it as a retired row only costs retrieval slots.
 
-        - decay: every capsule not retrieved in this pass has its
-          `decay_score` increased by `decay_step`, capped at
-          `decay_max`. Search bias against high-decay rows can be
-          implemented in a future pass.
-
         - contradiction_scan: surface candidate pairs where a
           `kind=gotcha` and a `kind=fact` capsule have very similar
           embeddings (cosine > `contradiction_cosine_threshold`) —
@@ -2098,11 +1977,6 @@ class KnowledgeBase:
         """
         self.init()
 
-        # Snapshot capsule metadata once. We no longer load embedding
-        # BLOBs — the pairwise similarity work runs in vec_runner over
-        # its own vec_index. We just need the metadata for dedupe
-        # winner selection and for distinguishing dedupe pairs from
-        # contradiction pairs by kind.
         with self.connect() as db:
             rows = db.execute(
                 """
@@ -2156,11 +2030,6 @@ class KnowledgeBase:
                     continue
                 sim = float(pair["cosine"])
                 if dedupe and a["kind"] == b["kind"] and sim >= dedupe_cosine_threshold:
-                    # Pick the loser deterministically. Higher
-                    # confidence wins; ties go to the more recent
-                    # capsule. Body length is a final tiebreak so a
-                    # one-line stub doesn't outrank a fully-written
-                    # version of the same lesson.
                     keeper, loser = self._dedupe_winner(a, b)
                     entry: dict[str, object] = {
                         "removed_id": loser["id"],
@@ -2198,8 +2067,6 @@ class KnowledgeBase:
             with self.connect() as db:
                 # Decay is dormancy, not age: only capsules with no
                 # retrieval inside DECAY_RECENT_DAYS accumulate decay.
-                # A single UPDATE keeps the operation cheap regardless
-                # of KB size; ISO-8601 UTC strings compare lexically.
                 cur = db.execute(
                     """
                     UPDATE capsules
@@ -2233,11 +2100,7 @@ class KnowledgeBase:
             return (a, b) if a["created_at"] > b["created_at"] else (b, a)
         if len(a["body"]) != len(b["body"]):
             return (a, b) if len(a["body"]) > len(b["body"]) else (b, a)
-        # Last-resort tie-break: lexical id order so the choice is
-        # stable across runs even when nothing else differentiates.
         return (a, b) if a["id"] < b["id"] else (b, a)
-
-    # --- doctor ------------------------------------------------------------
 
     def doctor(self) -> list[str]:
         self.init()
@@ -2289,7 +2152,6 @@ class KnowledgeBase:
 
 
 def _normalize_filter(value) -> list[str]:
-    """Normalize a string|list|None filter argument into a clean list."""
     if value is None:
         return []
     if isinstance(value, str):
@@ -2303,9 +2165,6 @@ def _first_nonempty(lines: list[str]) -> str:
         if s:
             return s
     return ""
-
-
-# --- CLI -------------------------------------------------------------------
 
 
 def print_capsule(capsule: Capsule, as_json: bool) -> None:

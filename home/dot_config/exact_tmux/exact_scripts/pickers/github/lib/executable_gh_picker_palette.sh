@@ -82,10 +82,6 @@ rr|request review (PR only)|pr|0
 VERBS
 )
 
-# Filter the verb list to what applies to the current selection. If multi, drop
-# verbs that don't support multi. If the selection has any issue, drop pr-only
-# verbs; if any pr, drop issue-only verbs. (Today all single-kind verbs are
-# PR-only, but the filter handles both axes for future-proofing.)
 has_pr=0
 has_issue=0
 for k in "${kinds[@]}"; do
@@ -195,14 +191,12 @@ prompt_line() {
   printf '%s' "$var"
 }
 
-# fzf-driven arg picker over candidate completions piped on stdin.
 prompt_pick() {
   local prompt="$1"
   fzf --prompt="$prompt > " --height=40% --reverse --print-query \
     | tail -1
 }
 
-# Confirm a destructive action. Default = no.
 confirm() {
   local prompt="$1"
   local reply
@@ -274,9 +268,6 @@ case "$verb_id" in
     ;;
 esac
 
-# Dispatch the verb once per applicable item. Single-target verbs only got
-# past the verb filter when count == 1, so this loop is effectively a no-op
-# for them.
 _mark_selection_loading
 ok=0
 fail=0
@@ -314,6 +305,4 @@ else
   tmux display-message "palette $verb_id: $ok ok" 2> /dev/null || true
 fi
 
-# Settle selected-row animation, then refresh the outer fzf in the background
-# so closed/merged items disappear and label badges update.
 _refresh_after_mutation

@@ -86,8 +86,6 @@ acquire_pending_lock() {
 }
 release_pending_lock() { rmdir "$pending_lock_dir" 2> /dev/null || true; }
 
-# `sel_file` is a per-binding snapshot minted by fzf or `dispatch_async.sh`.
-# Release locks on EXIT (covers normal completion, errors, and interrupts).
 _action_remove_cleanup() {
   release_lock
   release_pending_lock
@@ -267,9 +265,6 @@ remove_paths_in_background() {
     printf '\n[%s] %s\n' "$(date +%Y-%m-%dT%H:%M:%S%z)" "$cmd"
   } >> "$rm_log_file" 2> /dev/null || true
 
-  # Trim the log opportunistically so it can't grow without bound across
-  # a long-running tmux server. We only trim when we're well past the cap to
-  # avoid rewriting on every removal.
   if [ -f "$rm_log_file" ]; then
     local _lines
     _lines="$(wc -l < "$rm_log_file" 2> /dev/null | tr -d ' ' || echo 0)"
@@ -346,9 +341,6 @@ while IFS= read -r _line; do
       fi
       wt_path="$(worktree_dir_for_path "$path" 2> /dev/null || true)"
       if [ -z "$wt_path" ] && [ -n "${target:-}" ] && [ -f "$cache_file" ]; then
-        # Fallback: if the selected row came from the live session overlay (or
-        # otherwise has a non-git path), try to map the session name back to a
-        # cached worktree-backed session row.
         cached="$(
           awk -F $'\t' -v t="$target" '
             $2 == "session" && $5 == t { print $3 "\t" $4; exit }
@@ -547,7 +539,6 @@ if [ ${#pending_plain_dirs[@]} -gt 0 ] && command -v zoxide > /dev/null 2>&1; th
   done
 fi
 
-# Prune selected worktrees (and their session rows) from the cache immediately.
 if [ -f "$cache_file" ] && acquire_lock; then
   CACHE_FILE="$cache_file" PENDING_WT="$(printf '%s\n' "${pending_wt_paths[@]-}")" PENDING_DIRS="$(printf '%s\n' "${pending_plain_dirs[@]-}")" python3 "$script_dir/lib/cache_prune_paths.py"
 fi

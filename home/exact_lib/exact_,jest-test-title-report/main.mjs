@@ -1,107 +1,4 @@
 #!/usr/bin/env node
-/**
- * Test Title Reporter - Compare test titles between two worktrees
- *
- * This script scans Jest test files in two git worktrees (before and after) and generates
- * a CSV report comparing test titles. It helps track test changes during refactors, migrations,
- * or PR reviews.
- *
- * Features:
- * - Scans .test.*, .spec.*, and __tests__/ directories for test files
- * - Extracts titles from test(), it(), test.each(), it.each() patterns
- * - Handles file renames (ts <-> tsx, js -> ts/tsx migrations, etc.)
- * - Supports custom replacements for consolidated tests
- * - Optional GitHub gist upload for sharing results
- *
- * Usage:
- *   ,jest-test-title-report \
- *     --before /path/to/before/worktree \
- *     --after /path/to/after/worktree \
- *     --scope src/core/server \
- *     --out /tmp/test-title-report.csv
- *
- * Required Arguments:
- *   --before <path>     Absolute path to the "before" worktree
- *   --after <path>      Absolute path to the "after" worktree
- *   --scope <path>      Relative directory path within the repo to scan
- *   --out <path>        Absolute path for the output CSV file
- *
- * Optional Arguments:
- *   --replacements <path>  JSON file mapping test titles that were consolidated (see below)
- *   --gist                Upload the CSV to a GitHub gist
- *   --gist-new            Force creating a new gist (don't update existing)
- *   --gist-state <path>   Path to gist state file (default: <out>.gist.json)
- *   --gist-filename <name> Filename for the gist (default: basename of --out)
- *   --gist-public         Create a public gist (default: private)
- *   --gist-desc <text>    Custom gist description
- *   -h, --help           Show this help message
- *
- * Replacements File Format:
- *
- *   Use --replacements when you've manually consolidated multiple tests into one. The script
- *   will mark deleted tests with "→ consolidated into: <new title>" instead of just showing
- *   them as removed.
- *
- *   The replacements file maps file paths to objects mapping old test titles to new ones:
- *
- *   {
- *     "src/core/server/index.test.ts": {
- *       "should handle error case": "handles error case",
- *       "should validate input": "validates input"
- *     },
- *     "src/core/http/index.test.ts": {
- *       "handles GET request": "handles HTTP requests"
- *     }
- *   }
- *
- *   Use Cases:
- *   - You merged 3 tests into 1 test with a parameterized approach (test.each)
- *   - You renamed a test and want the report to show the relationship
- *   - Multiple tests were consolidated into a single test covering all cases
- *
- * Examples:
- *
- *   Basic usage:
- *   ,jest-test-title-report \
- *     --before ~/code/repo/main \
- *     --after ~/code/repo/feat \
- *     --scope src/plugins/data \
- *     --out /tmp/data-tests.csv
- *
- *   With replacements for consolidated tests:
- *   ,jest-test-title-report \
- *     --before ~/code/repo/main \
- *     --after ~/code/repo/feat \
- *     --scope src/core/server \
- *     --out /tmp/server-tests.csv \
- *     --replacements /tmp/replacements.json
- *
- *   Upload to gist for sharing:
- *   ,jest-test-title-report \
- *     --before ~/code/repo/main \
- *     --after ~/code/repo/feat \
- *     --scope src/plugins/discover \
- *     --out /tmp/discover-tests.csv \
- *     --gist \
- *     --gist-public
- *
- * Output Format (CSV):
- *   FILE,BEFORE,AFTER
- *   src/plugin.tsx,test one,test one
- *   ,,test two
- *   src/old.test.ts,old test,
- *   src/other.ts,test A,→ consolidated into: test B
- *
- *   Interpretation:
- *   - Both columns filled: test title unchanged
- *   - Before filled, After empty: test removed
- *   - Before empty, After filled: test added
- *   - Arrow in After: test consolidated into another test
- *
- * Installed by chezmoi to: ~/bin/,jest-test-title-report
- *
- * Source of truth lives in this file. Keep it self-contained (no local imports).
- */
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -205,13 +102,13 @@ function parseArgs(argv) {
     const a = argv[i];
     if (!a.startsWith('--') && a !== '-h') continue;
     const key = a.slice(a.startsWith('--') ? 2 : 1);
-    if (key === 'help') {
+    if (key === 'help' || key === 'h') {
       showHelp();
       process.exit(0);
     }
     const next = argv[i + 1];
-    // Support boolean flags (e.g. --gist) by treating missing value as "true".
     if (!next || next.startsWith('-')) {
+      if (!['gist', 'gist-new', 'gist-public'].includes(key)) die(`Missing --${key} <value>`);
       out[key] = 'true';
       continue;
     }
@@ -227,6 +124,11 @@ const afterRoot = args.after;
 const scopeRel = args.scope;
 const outPath = args.out;
 const replacementsPath = args.replacements;
+
+if (!beforeRoot) die('Missing --before <abs worktree path>');
+if (!afterRoot) die('Missing --after <abs worktree path>');
+if (!scopeRel) die('Missing --scope <relative dir inside repo>');
+if (!outPath) die('Missing --out <abs output csv path>');
 
 const gistFlag =
   args.gist === 'true' ||
@@ -246,11 +148,6 @@ const gistPublic =
 const gistDescription =
   args['gist-desc'] ||
   `Jest test titles: ${scopeRel} (before vs after)\nbefore=${beforeRoot}\nafter=${afterRoot}`;
-
-if (!beforeRoot) die('Missing --before <abs worktree path>');
-if (!afterRoot) die('Missing --after <abs worktree path>');
-if (!scopeRel) die('Missing --scope <relative dir inside repo>');
-if (!outPath) die('Missing --out <abs output csv path>');
 
 const beforeScope = path.resolve(beforeRoot, scopeRel);
 const afterScope = path.resolve(afterRoot, scopeRel);
@@ -381,7 +278,6 @@ function resolveAfterPathFor(beforeRel, afterFiles) {
   if (afterFiles[beforeRel]) return beforeRel;
   if (beforeRel.endsWith('.ts') && afterFiles[normalizeTsToTsx(beforeRel)]) return normalizeTsToTsx(beforeRel);
   if (beforeRel.endsWith('.tsx') && afterFiles[normalizeTsxToTs(beforeRel)]) return normalizeTsxToTs(beforeRel);
-  // Handle JS/JSX -> TS/TSX migrations (common in refactors).
   if (beforeRel.endsWith('.js')) {
     if (afterFiles[normalizeJsToTs(beforeRel)]) return normalizeJsToTs(beforeRel);
     if (afterFiles[normalizeJsToTsx(beforeRel)]) return normalizeJsToTsx(beforeRel);
@@ -390,7 +286,6 @@ function resolveAfterPathFor(beforeRel, afterFiles) {
     if (afterFiles[normalizeJsxToTsx(beforeRel)]) return normalizeJsxToTsx(beforeRel);
     if (afterFiles[normalizeJsxToTs(beforeRel)]) return normalizeJsxToTs(beforeRel);
   }
-  // Also allow TS/TSX -> JS/JSX if refactor went the other way.
   if (beforeRel.endsWith('.ts') && afterFiles[normalizeTsToJs(beforeRel)]) return normalizeTsToJs(beforeRel);
   if (beforeRel.endsWith('.tsx') && afterFiles[normalizeTsxToJsx(beforeRel)]) return normalizeTsxToJsx(beforeRel);
   return null;

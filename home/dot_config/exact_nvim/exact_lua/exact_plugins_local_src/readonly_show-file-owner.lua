@@ -13,7 +13,6 @@ local M = {}
 ---@field owner_cache table<string, string> Cache for file owner lookups
 ---@field last_modified integer|nil Last modified time of the CODEOWNERS file
 
--- Cache for parsed CODEOWNERS and owner lookups
 ---@type CodeOwnersCache
 local cache = {
   codeowners_file = nil,
@@ -53,7 +52,6 @@ local function get_cached_codeowners()
     return nil
   end
 
-  -- Check if cache is still valid
   local stat = vim.uv.fs_stat(codeowners_file)
   if not stat then
     return nil
@@ -90,21 +88,18 @@ local function get_cached_codeowners()
     ::continue::
   end
 
-  -- Sort patterns by specificity (longer patterns first)
   table.sort(codeowners, function(a, b)
     return a.specificity > b.specificity
   end)
 
-  -- Update cache
   cache.codeowners_file = codeowners_file
   cache.codeowners_data = codeowners
   cache.last_modified = modified_time
-  cache.owner_cache = {} -- Clear owner cache when CODEOWNERS changes
+  cache.owner_cache = {}
 
   return codeowners
 end
 
--- Fast synchronous owner lookup with caching
 ---@param file_path string
 ---@return string|nil
 function M.get_file_owner(file_path)
@@ -145,7 +140,6 @@ function M.show_file_owner()
   end
 end
 
--- Format owner string for display in limited space
 ---@param owner_string string
 ---@param max_width integer Maximum width for the formatted string
 ---@return string|nil
@@ -156,7 +150,6 @@ function M.format_owner_for_preview(owner_string, max_width)
 
   max_width = max_width or 30
 
-  -- Extract individual owners (typically @username or team names)
   local owners = {}
   for owner in owner_string:gmatch("@?([^%s]+)") do
     table.insert(owners, owner:match("^@") and owner or "@" .. owner)
@@ -171,7 +164,6 @@ function M.format_owner_for_preview(owner_string, max_width)
     return formatted
   end
 
-  -- If too long, show first owner + count
   return owners[1] .. (#owners > 1 and " +" .. (#owners - 1) .. "" or "")
 end
 

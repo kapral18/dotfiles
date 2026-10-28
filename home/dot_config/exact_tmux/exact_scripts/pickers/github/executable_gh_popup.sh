@@ -17,7 +17,6 @@ token="$("$handoff_namespace" begin --owner-pid "$$" --owner-role popup-loop --e
   exit 1
 }
 export TMUX_PICKER_HANDOFF_TOKEN="$token"
-# Every exit ends (removes) this namespace by owner pid.
 _gh_popup_cleanup() {
   "$handoff_namespace" end --owner-pid "$$" --token "$TMUX_PICKER_HANDOFF_TOKEN" 2> /dev/null || true
 }

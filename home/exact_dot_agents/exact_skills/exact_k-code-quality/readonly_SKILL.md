@@ -72,6 +72,9 @@ Do not load React/web/test/design secondaries merely because they might become r
 - A "works with it" check is insufficient unless the user explicitly requested that artifact by name.
 - If the without-it probe passes, do not add the artifact; if already added, remove it.
 
+For a test file, the tooling consumer needs durable behavioral protection.
+Apply `~/AGENTS.md` §3's minimum sufficient test protection rule; the product still running without its tests does not refute their necessity.
+
 ## General Code Rules
 
 - Use precise TypeScript types; `as any` and unnecessary type assertions hide real type errors.
@@ -83,6 +86,5 @@ Do not load React/web/test/design secondaries merely because they might become r
 - Keep nesting shallow; use early returns.
 - Keep functions under 50 lines.
 - Prefer `async`/`await` over `.then()` chains.
-- Add JSDoc/TSDoc for complex functions.
 - Treat a behavioral claim in a comment, docstring, or commit message ("safe because", "always", "never", "cannot happen") as a claim to verify against the code and tests, not as evidence; do not preserve or add one you have not confirmed.
 - Plan the relevant tests/linters with the change; run them once on the finished change and report results or why a check was skipped.

@@ -71,7 +71,6 @@ def main() -> None:
 
     try:
         model = TextEmbedding(model_name=model_id)
-        # fastembed.embed yields one numpy vector per input text.
         vectors = [list(map(float, v)) for v in model.embed(texts)]
     except Exception as err:
         _eprint_and_exit(f"embed failed: {err}")

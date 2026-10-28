@@ -119,7 +119,6 @@ local function find_jest_binary(search_dirs)
   for _, dir in ipairs(search_dirs) do
     if dir and dir ~= "" then
       local normalized = vim.fn.fnamemodify(dir, ":p")
-      -- Use joinpath to avoid accidental double slashes
       local possible_jest_paths = {
         vim.fs.joinpath(normalized, "node_modules", ".bin", "jest"),
         vim.fs.joinpath(normalized, "node_modules", "jest", "bin", "jest.js"),
@@ -166,7 +165,6 @@ local function find_nearest_jest_config(test_path, root_dir)
   return nil
 end
 
--- Extended Jest config discovery with prompt-and-cache when multiple are found
 local JEST_CONFIG_EXTS_SET = { js = true, cjs = true, mjs = true, ts = true, cts = true, mts = true }
 
 local function is_jest_config_filename(name)
@@ -416,7 +414,6 @@ local function build_script_runner_command(
   local rel_file = rel_to_base(file_path:gsub("^'(.*)'$", "%1"), root_dir or project_root)
   local rel_escaped = escape_shell_arg(rel_file)
 
-  -- Normalize arg and inject relative --config if provided
   local extra = arg or ""
   if explicit_config and not extra:match("%-%-config") then
     local rel_cfg = rel_to_base(explicit_config, root_dir or project_root)
@@ -498,7 +495,6 @@ local function build_manual_jest_command(
     table.insert(tokens, escape_shell_arg(rel_to_base(config_path, project_root)))
   end
 
-  -- file_path_arg contains already-escaped path; rebuild with project-relative path
   local raw_path = file_path_arg:match("^'(.*)'$") or file_path_arg
   local rel_file = rel_to_base(raw_path, project_root)
   local rel_escaped = escape_shell_arg(rel_file)
@@ -572,7 +568,6 @@ local function escape_jest_regex(str, is_parametrized)
 
   local placeholder = "__PARAM_PATTERN__"
 
-  -- Handle template substitutions from non-parameterized tests
   str = str:gsub("__SUB__", placeholder)
 
   if is_parametrized then
@@ -589,12 +584,10 @@ local function escape_jest_regex(str, is_parametrized)
     str = str:gsub("__DOUBLE_DOLLAR__", "%$")
   end
 
-  -- Escape regex special characters
   str = str:gsub("[\\^$.|?*+()%[%]{}]", function(c)
     return escapes[c] or c
   end)
 
-  -- Replace all placeholders with .*
   str = str:gsub(placeholder, ".*")
 
   return str
@@ -658,7 +651,6 @@ local function get_full_test_context(node, bufnr)
       local test_type, name, parametrized = nil, nil, false
 
       if is_each then
-        -- Handle direct .each calls
         local parent_call = current_node:parent()
         if parent_call and parent_call:type() == "call_expression" then
           name = get_test_name(parent_call, bufnr)
@@ -667,7 +659,6 @@ local function get_full_test_context(node, bufnr)
           current_node = parent_call
         end
       else
-        -- Handle nested .each calls (e.g., describe.each()())
         local fn_node = current_node:field("function")[1]
         if fn_node:type() == "call_expression" and is_each_call(fn_node, bufnr) then
           test_type = get_test_type_from_each_call(fn_node, bufnr)
@@ -738,20 +729,17 @@ M.run_jest_cmd = function(arg, debug_mode)
     return
   end
 
-  -- locate nearest package.json starting from the test file directory and walking up to the project root
   local context = discover_package_context(test_file_path, root_dir)
   if not context then
     vim.notify("No package.json found in current or parent directories", vim.log.levels.ERROR)
     return
   end
 
-  -- Resolve explicit jest config with prompt-and-cache when multiple are present
   local branch = get_git_branch(root_dir)
   local cache = load_config_cache()
   local key = make_cache_key(root_dir, branch, test_file_path)
   local explicit_config = cache[key]
 
-  -- Invalidate stale cache entries
   if explicit_config and not fs_util.file_exists(explicit_config) then
     cache[key] = nil
     save_config_cache(cache)
@@ -859,7 +847,6 @@ end
 ---@field entire_file? boolean Whether to run tests for the entire file
 ---@field debug? boolean Whether to run tests in debug mode
 
----Run Jest tests in a split terminal window
 ---@param options? JestRunOptions Options for running Jest tests
 M.run_jest_in_split = function(options)
   options = options or {}
@@ -884,7 +871,7 @@ M.run_jest_in_split = function(options)
     pattern = "^" .. test_name
   end
 
-  pattern = pattern:gsub("%s+", " ") -- Normalize spaces
+  pattern = pattern:gsub("%s+", " ")
 
   if is_parametrized then
     show_parametrized_prompt(pattern, update_arg, options.debug)

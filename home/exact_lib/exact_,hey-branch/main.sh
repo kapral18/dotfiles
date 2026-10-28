@@ -3,14 +3,11 @@
 
 set -euo pipefail
 
-# Source the utility library
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$script_dir/../shared/bash_utils_lib.sh"
 
-# Get the current branch name
 current_branch=$(git branch --show-current)
 
-# Get the remote tracking branch
 remote_branch=$(git rev-parse --abbrev-ref "$current_branch"@{upstream} 2> /dev/null || true)
 
 echo ------------------------------------
@@ -20,7 +17,6 @@ if [ -z "$remote_branch" ]; then
   exit 1
 fi
 
-# Extract the remote name and branch name
 remote_branch_remote=$(echo "$remote_branch" | cut -d'/' -f1)
 remote_branch_name=$(echo "$remote_branch" | cut -d'/' -f2-)
 
@@ -28,15 +24,12 @@ echo "Tracked Branch: '$remote_branch'"
 
 echo ------------------------------------
 
-# Fetch the latest information from the remote
 git fetch "$remote_branch_remote" "$remote_branch_name" 2> /dev/null
 
-# Check if the remote branch still exists
 if git ls-remote --exit-code --heads "$remote_branch_remote" "$remote_branch_name" > /dev/null 2>&1; then
   echo "Tracked Branch Exists: Yes"
   echo ------------------------------------
 
-  # Check if the local branch is up to date with the remote
   local_commit=$(git rev-parse HEAD)
   remote_commit=$(git rev-parse "$remote_branch")
 

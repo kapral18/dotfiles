@@ -39,7 +39,6 @@ return {
         run_in_floaterm = true,
         textobjects = false,
       })
-      -- Configure nvim-dap-go as well for standard DAP setup
       require("dap-go").setup()
     end,
     keys = {

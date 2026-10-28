@@ -254,8 +254,6 @@ return {
         desc = "Live Grep Selection (+ignored)",
       },
 
-      -- Snacks
-
       {
         "<leader>,",
         function()

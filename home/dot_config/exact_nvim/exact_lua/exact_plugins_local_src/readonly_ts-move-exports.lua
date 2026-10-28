@@ -131,7 +131,6 @@ local function add_missing_imports_in_file(path)
   vim.fn.bufload(bufnr)
   vim.api.nvim_win_set_buf(0, bufnr)
 
-  -- Ensure the typescript-tools client is attached before requesting fixes.
   local client = get_ts_client(bufnr)
   if not client then
     vim.cmd("edit") -- triggers FileType/LSP attach for the now-focused buffer
@@ -277,7 +276,6 @@ M.ts_move_exports = function()
       vim.cmd("write")
     end)
 
-    -- Restore focus to the original source window.
     if vim.api.nvim_win_is_valid(src_win) then
       vim.api.nvim_set_current_win(src_win)
       vim.api.nvim_win_set_buf(src_win, src_bufnr)

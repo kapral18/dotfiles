@@ -40,11 +40,7 @@ log_debug "send_command invoked: sel_file=$sel_file cmd=[$cmd]"
 
 # Per-row state for worktree/dir entries we may have to spawn a session for.
 # Stored as TAB-joined "kind\tpath\tmeta\ttarget" so we keep the cache fields
-# needed by session_name_for_entry (in lib/session_naming.sh), which mirrors
-# pick_session.sh's repo/branch naming convention. Without meta/target we'd
-# diverge from the canonical session name and the picker would show a
-# duplicate-looking row until the user did a regular `enter` (which renames any
-# path-matching session to the canonical name).
+# needed by session_name_for_entry (in lib/session_naming.sh).
 declare -a sess=()
 declare -a entries=()
 
@@ -66,10 +62,6 @@ done < "$sel_file"
 
 log_debug "parsed: sess=[${sess[*]+${sess[*]}}] entries=${#entries[@]}"
 
-# Shared naming/path helpers live in lib/session_naming.sh so this script and
-# pick_session.sh produce identical canonical names (a divergent name would
-# manifest as a stray-looking row in the picker until the user's next `enter`
-# triggered the picker's path-keyed rename). See that file for the contract.
 # shellcheck source=lib/session_naming.sh
 # shellcheck disable=SC1091
 . "$HOME/.config/tmux/scripts/pickers/session/lib/session_naming.sh"
@@ -83,14 +75,11 @@ declare -a spawned=()
 declare -a spawn_failed=()
 
 if [ ${#entries[@]} -gt 0 ] && command -v tmux > /dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
-  # Build (rpath, name) lookup over live sessions so we can match selected
-  # worktree/dir rows against existing sessions before spawning new ones.
   declare -A live_paths=()
   while IFS=$'\t' read -r _ln _lp; do
     [ -n "$_ln" ] || continue
     [ -n "$_lp" ] || continue
     _lp="$(realpath "$_lp" 2> /dev/null || printf '%s' "$_lp")"
-    # Last wins on collisions; good enough for matching.
     live_paths["$_lp"]="$_ln"
   done < <(tmux list-sessions -F $'#{session_name}\t#{session_path}' 2> /dev/null || true)
 
@@ -235,19 +224,6 @@ elif [ ${#spawn_failed[@]} -gt 0 ] && command -v tmux > /dev/null 2>&1 && [ -n "
   tmux display-message -d 3000 "pick_session: sent to ${sent_ok}/${#sess[@]} session(s); failed to spawn ${#spawn_failed[@]} path(s)" 2> /dev/null || true
 fi
 
-# Now that any spawn-and-send work is done, poke the still-open picker so
-# newly-created sessions become visible without the user having to hit
-# ctrl-r. We post `reload($filter_cmd --refresh --force-order)+track` via
-# fzf's --listen socket (FZF_SOCK / FZF_PORT are propagated by
-# dispatch_async.sh; the picker's transform shell always has them when
-# --listen is active).
-#
-# `--refresh` runs a synchronous quick scan that picks up the sessions we just
-# spawned while preserving cached dirty badges; `--force-order` keeps the
-# grouped output consistent with what the picker rendered on open. The +track
-# inside fzf_reload.sh pins the highlighted row across the reload so the visible
-# order around the user's cursor stays as stable as the new cache contents allow.
-#
 # Only triggered when this run actually created new sessions: sending to
 # existing sessions doesn't change the cache, so the post would be churn
 # (re-rendering the same items in the same order). Skipped when the picker

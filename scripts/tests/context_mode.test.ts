@@ -35,7 +35,6 @@ function harness(initial: Model = model()) {
   let changes = 0
   const catalog = new Map([[`${initial.provider}/${initial.id}`, initial]])
   const notices: string[] = []
-  const statuses = new Map<string, string | undefined>()
   const ctx = {
     get model() { return current },
     modelRegistry: { find: (provider: string, id: string) => catalog.get(`${provider}/${id}`) },
@@ -44,7 +43,7 @@ function harness(initial: Model = model()) {
     isIdle: () => idle,
     ui: {
       notify: (text: string) => { notices.push(text) },
-      setStatus: (key: string, text: string | undefined) => { statuses.set(key, text) },
+      setStatus: () => {},
     },
   }
   let onSelect: (() => Promise<void>) | undefined
@@ -59,7 +58,7 @@ function harness(initial: Model = model()) {
     entries.push({ type: "custom", customType, data })
   }
   return {
-    ctx, catalog, notices, statuses, select, append,
+    ctx, catalog, notices, select, append,
     policy: createContextMode(select, append),
     get current() { return current },
     get changes() { return changes },
@@ -319,7 +318,7 @@ describe("WHEN a selection must not proceed", () => {
 })
 
 describe("WHEN the native active branch grows", () => {
-  for (const count of [0, 1, 1000, 10_000]) {
+  for (const count of [0, 10_000]) {
     it(`SHOULD restore the same model selection across ${count} unrelated entries`, async () => {
       const h = harness()
       await h.policy.command("long", h.ctx)

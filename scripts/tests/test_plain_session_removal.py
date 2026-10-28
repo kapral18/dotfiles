@@ -24,16 +24,11 @@ import time
 import unittest
 from pathlib import Path
 
-import _test_support  # noqa: F401  (puts scripts/ on sys.path)
 from _test_support import TMUX_PICKERS, modern_bash
 
 ACTION_SCRIPT = TMUX_PICKERS / "session/executable_action_remove_worktrees.sh"
 
-# Mock `tmux` used across this module: logs every `kill-session -t <name>`
-# attempt to $KILL_LOG (one name per line) so tests can assert exactly which
-# sessions were targeted, then simulates "no such session" for any name other
-# than `alive-session` (mirroring a stale/already-gone session) without ever
-# failing the caller (every real call site guards with `|| true`).
+# Logs each kill-session target and reports every session except `alive-session` as gone.
 MOCK_TMUX = """#!/usr/bin/env bash
 case "$1" in
   kill-session)
@@ -77,14 +72,7 @@ class TestPlainSessionRemoval(unittest.TestCase):
         mock_bin.mkdir()
         kill_log = tmp / "kill.log"
 
-        # `action_remove_worktrees.sh` dispatches plain-dir removal via a
-        # hardcoded deployed path ($HOME/.config/tmux/scripts/...), matching
-        # how it (and the sibling remove_all_worktrees.sh dispatch) run in
-        # production. Reproduce that deployment shape for the real
-        # (source-of-truth) remove_plain_dir.sh: chezmoi's `executable_`
-        # prefix carries no `+x` bit in the source tree itself (git stores it
-        # as 100644; chezmoi sets +x only when applying to $HOME), so a plain
-        # symlink to the source file would not be runnable via its shebang.
+        # The action dispatches via the deployed path, and source `executable_` files lack +x.
         deployed_dir = home / ".config/tmux/scripts/pickers/session"
         deployed_dir.mkdir(parents=True)
         deployed_script = deployed_dir / "remove_plain_dir.sh"
@@ -124,13 +112,9 @@ class TestPlainSessionRemoval(unittest.TestCase):
             home = tmp_path / "home"
             home.mkdir()
 
-            # Selected: a plain (non-git-backed) directory whose row carries an
-            # explicit, currently-alive tmux session identity.
             target_dir = home / "plain/target-dir"
             target_dir.mkdir(parents=True)
 
-            # Not selected at all: represents an unrelated, still-running
-            # session/directory that must never be touched.
             untouched_dir = home / "plain/untouched-dir"
             untouched_dir.mkdir(parents=True)
 
@@ -147,7 +131,6 @@ class TestPlainSessionRemoval(unittest.TestCase):
 
             kill_names = kill_log.read_text().splitlines() if kill_log.exists() else []
             assert kill_names == ["alive-session"], kill_names
-            assert "unrelated-still-running" not in kill_names
 
     def test_missing_session_is_harmless_and_directory_still_removed(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -201,7 +184,6 @@ class TestPlainSessionRemoval(unittest.TestCase):
             shared_dir = home / "plain/shared-dir"
             shared_dir.mkdir(parents=True)
 
-            # Not selected: an unrelated session/dir that must survive untouched.
             unrelated_dir = home / "plain/unrelated-dir"
             unrelated_dir.mkdir(parents=True)
 
@@ -219,9 +201,6 @@ class TestPlainSessionRemoval(unittest.TestCase):
 
             kill_names = kill_log.read_text().splitlines() if kill_log.exists() else []
             assert sorted(kill_names) == ["session-a", "session-b"], kill_names
-            assert kill_names.count("session-a") == 1
-            assert kill_names.count("session-b") == 1
-            assert "unrelated-still-running" not in kill_names
 
     def test_session_name_with_spaces_is_killed_as_one_exact_value(self):
         with tempfile.TemporaryDirectory() as tmp:

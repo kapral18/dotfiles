@@ -1,6 +1,6 @@
 ---
 name: k-build
-description: "Manual-only recipe to implement an approved spec inline, with tests and docs, and one check run on the finished change."
+description: "Manual-only recipe to implement an approved spec inline, with necessary checks and one verification run on the finished change."
 disable-model-invocation: true
 ---
 
@@ -18,7 +18,8 @@ Implement the approved `k-spec` plan inline.
 ## Implement
 
 - Follow the plan's dependency order; do not assume two edits are independent just because they touch different files.
-- Write tests and docs with the change, regenerate generated outputs, and format.
+- Ensure minimum sufficient test protection under `~/AGENTS.md` §3 alongside the implementation;
+  update affected docs and generated outputs, then format.
 - Update every co-edit-set member in the impact map. A consumer left unchanged needs evidence that it is unaffected.
 - If a discovery invalidates the approved approach, stop and bring the concrete decision to the user instead of silently changing scope.
 

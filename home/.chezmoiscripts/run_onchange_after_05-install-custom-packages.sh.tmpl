@@ -61,10 +61,6 @@ find_single_file() {
   printf '%s' "${files[0]}"
 }
 
-# -----------------------------------------------
-# Function to download and install DMG-based macOS apps
-# -----------------------------------------------
-
 # Usage: install_dmg_app "AppName" "owner/repo|https://..." "release-tag|latest" "App.app" [asset-pattern]
 # HTTPS sources use latest and .dmg for the release tag and asset pattern.
 install_dmg_app() (
@@ -115,11 +111,9 @@ install_dmg_app() (
     fi
   fi
 
-  # Find the DMG file
   local dmg_file
   dmg_file=$(find_single_file "$temp_dir" "-name '*$asset_pattern'" "DMG")
 
-  # Mount DMG and copy app
   hdiutil attach "$dmg_file" -quiet -nobrowse -mountpoint "$mount_dir" || return 1
   mounted=1
 
@@ -132,10 +126,6 @@ install_dmg_app() (
 
   echo "$app_name installed successfully"
 )
-
-# -----------------------------------------------
-# Function to download and install GitHub release CLI binaries (no eget)
-# -----------------------------------------------
 
 download_release_asset() {
   local github_repo="$1"
@@ -330,10 +320,6 @@ if [[ $status -ne 0 ]]; then
   exit $status
 fi
 
-# -----------------------------------------------
 # Install command-line tools
-# -----------------------------------------------
-
-# YtSurf
 curl -o ~/.local/bin/ytsurf https://raw.githubusercontent.com/kapral18/ytsurf/reduce-deps/ytsurf.sh
 chmod +x ~/.local/bin/ytsurf

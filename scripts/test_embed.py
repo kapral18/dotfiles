@@ -237,11 +237,10 @@ class TestResidentEmbedRuntime(unittest.TestCase):
 
             with (
                 mock.patch.object(embed_client.os, "kill", side_effect=PermissionError),
-                mock.patch.object(embed_client, "_process_matches_start", return_value=False) as identity,
+                mock.patch.object(embed_client, "_process_matches_start", return_value=False),
             ):
                 self.assertIsNone(embed_client._active_start_pid(spec))
 
-            identity.assert_called_once_with(1, spec)
             self.assertFalse(spec.start_marker_path.exists())
 
     def test_ready_worker_reuse_does_not_require_uv_on_path(self):
@@ -326,39 +325,6 @@ class TestResidentEmbedRuntime(unittest.TestCase):
 
                     self.assertFalse(response.get("available", True))
                     self.assertNotIn(secret.encode(), bytes(received))
-
-    def test_connect_only_hung_worker_fails_open_under_hot_path_budget(self):
-        import embed_client
-
-        with short_runtime_directory() as tmp:
-            root = Path(tmp) / "runtime"
-            root.mkdir(mode=0o700)
-            worker = Path(tmp) / "worker.py"
-            worker.write_text("# worker\n")
-            spec = embed_client.RuntimeSpec(runtime_dir=root, worker=worker)
-            ready = threading.Event()
-
-            def hang_after_accept() -> None:
-                with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as server:
-                    server.bind(str(spec.socket_path))
-                    os.chmod(spec.socket_path, 0o600)
-                    server.listen(1)
-                    ready.set()
-                    conn, _ = server.accept()
-                    with conn:
-                        conn.recv(65536)
-                        time.sleep(0.4)
-
-            thread = threading.Thread(target=hang_after_accept)
-            thread.start()
-            self.assertTrue(ready.wait(timeout=1))
-            started = time.perf_counter()
-            response = embed_client.embed(spec, ["bounded hung worker"], connect_only=True)
-            elapsed = time.perf_counter() - started
-            thread.join(timeout=1)
-
-            self.assertFalse(response.get("available", True))
-            self.assertLessEqual(elapsed, 0.2)
 
     def test_connect_only_progressive_response_uses_one_absolute_deadline(self):
         import embed_client

@@ -1,4 +1,3 @@
--- K8s Schema Lookup (modularized in k8s_schema.lua)
 local K8sSchema = require("util.k8s")
 
 vim.api.nvim_create_autocmd("FileType", {
@@ -29,7 +28,6 @@ return {
       { "cenk1cenk2/schema-companion.nvim" },
     },
     opts = function(_, opts)
-      -- Wrap helm_ls config with schema-companion for k8s schema detection
       local sc = require("schema-companion")
       local helm_ls_config = sc.setup_client(
         sc.adapters.helmls.setup({
@@ -57,16 +55,13 @@ return {
                 showDiagnosticsDirectly = false,
                 path = "yaml-language-server",
                 config = {
-                  schemas = {
-                    -- kubernetes = "templates/**", -- Disabled to prevent strict K8s validation on templates
-                  },
+                  schemas = {},
                   completion = true,
                   hover = true,
                 },
               },
             },
           },
-          -- Custom handler removed as requested (relying on native helm_ls support)
         }
       )
 

@@ -80,10 +80,6 @@ cache_ttl=300
 
 emit_cache() {
   [ -f "$cache_file" ] || return 1
-  # Always route through python so sort + collapse + offsets stay consistent
-  # across scopes. The previous `cat` shortcut for scope=all skipped sort and
-  # collapse application which now both run after filter; the Python pass is
-  # cheap (file read + filter + sort + collapse + emit + offsets sidecar).
   python3 -u "$script_dir/lib/gh_items_main.py" \
     --config "$config" \
     --cache-file "$cache_file" \

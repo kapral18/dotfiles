@@ -17,8 +17,6 @@ BIN_DIR="$HOME/bin"
 
 mkdir -p "$CACHE_DIR" 2> /dev/null || true
 
-# ── recency helpers ──────────────────────────────────────────────────────────
-
 touch_history() {
   local key="$1"
   [ -n "$key" ] || return 0
@@ -52,16 +50,12 @@ recency_rank() {
     | cut -f2-
 }
 
-# ── ANSI helpers ─────────────────────────────────────────────────────────────
-
 C_KIND=$'\033[38;5;244m'
 C_CMD=$'\033[38;5;81m'
 C_DESC=$'\033[38;5;252m'
 C_KEY=$'\033[38;5;214m'
 C_GIT=$'\033[38;5;150m'
 C_R=$'\033[0m'
-
-# ── source: ~/bin/,* commands ────────────────────────────────────────────────
 
 emit_bin_commands() {
   local f name desc line
@@ -89,8 +83,6 @@ emit_bin_commands() {
       "bin:${name}" "$name"
   done
 }
-
-# ── source: tmux prefix keybindings ──────────────────────────────────────────
 
 human_key() {
   local raw="$1"
@@ -219,8 +211,6 @@ emit_tmux_bindings() {
   )
 }
 
-# ── source: git aliases ─────────────────────────────────────────────────────
-
 emit_git_aliases() {
   local alias_key name cmd
   while IFS= read -r line; do
@@ -234,8 +224,6 @@ emit_git_aliases() {
   done < <(git config --global --get-regexp '^alias\.' 2> /dev/null || true)
 }
 
-# ── source: palette.d drop-ins ───────────────────────────────────────────────
-
 emit_palette_extras() {
   [ -d "$PALETTE_EXTRA_DIR" ] || return 0
   local f
@@ -245,8 +233,6 @@ emit_palette_extras() {
   done
 }
 
-# ── build the full list ──────────────────────────────────────────────────────
-
 build_items() {
   {
     emit_bin_commands
@@ -255,8 +241,6 @@ build_items() {
     emit_palette_extras
   } | recency_rank
 }
-
-# ── preview: show help / details for the selected entry ──────────────────────
 
 preview_cmd() {
   local kind_key="$1"
@@ -284,8 +268,6 @@ preview_cmd() {
       ;;
   esac
 }
-
-# ── execute the selected entry ───────────────────────────────────────────────
 
 execute_entry() {
   local selected="$1"
@@ -317,8 +299,6 @@ execute_entry() {
       ;;
   esac
 }
-
-# ── main ─────────────────────────────────────────────────────────────────────
 
 if [ "${1:-}" = "--preview" ]; then
   preview_cmd "${2:-}" "${3:-}"

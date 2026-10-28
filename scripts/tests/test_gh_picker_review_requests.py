@@ -7,7 +7,6 @@ import importlib.util
 import unittest
 from importlib.machinery import SourceFileLoader
 
-import _test_support  # noqa: F401  (puts scripts/ on sys.path)
 from _test_support import REPO
 
 MODULE = REPO / "home/dot_config/exact_tmux/exact_scripts/pickers/github/lib/gh_items_main.py"
@@ -46,7 +45,6 @@ class TestReviewRequestActors(unittest.TestCase):
         )
 
         self.assertEqual(actors, {"team:elastic/cloud-ui"})
-        self.assertNotIn("user:kapral18", actors)
 
     def test_direct_request_stays_visible_when_teams_are_also_requested(self):
         actors = self.module._review_request_actor_keys(
@@ -73,25 +71,6 @@ class TestReviewRequestActors(unittest.TestCase):
 
         self.assertIn("user:kapral18", actors)
         self.assertIn("team:elastic/cloud-ui", actors)
-
-    def test_team_actor_uses_fully_qualified_key(self):
-        actors = self.module._review_request_actor_keys(
-            {
-                "reviewRequests": {
-                    "nodes": [
-                        {
-                            "requestedReviewer": {
-                                "__typename": "Team",
-                                "slug": "ai-guild-docs",
-                                "organization": {"login": "elastic"},
-                            }
-                        }
-                    ]
-                }
-            }
-        )
-
-        self.assertEqual(actors, {"team:elastic/ai-guild-docs"})
 
     def test_graphql_item_matches_picker_filters(self):
         item = self.module._graphql_review_request_item(

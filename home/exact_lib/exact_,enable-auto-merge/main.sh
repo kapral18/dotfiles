@@ -3,7 +3,6 @@
 
 set -euo pipefail
 
-# Source the utility library
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$script_dir/../shared/bash_utils_lib.sh"
 

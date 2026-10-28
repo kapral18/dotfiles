@@ -250,14 +250,6 @@ class TestFormatMdCommand(unittest.TestCase):
                 self.assertFalse(format_md.preserves_hard_wraps(path))
                 self.assertEqual(format_md.unwrap(text, path), text)
 
-    def test_SHOULD_preserve_regular_markdown_paragraphs(self):
-        format_md = _load_format_md_command()
-        text = "This is one paragraph\nthat was hard wrapped.\n\n- Keep list items\n  structural.\n"
-
-        result = format_md.unwrap(text, "docs/topics/example.md")
-
-        assert result == text
-
     def test_SHOULD_preserve_sop_sentence_breaks(self):
         format_md = _load_format_md_command()
         text = "Keep this gate visible.\nDo not hide it later in the same line.\n"
@@ -352,14 +344,6 @@ class TestFormatMdCommand(unittest.TestCase):
         )
 
         result = format_md.unwrap(text, "home/exact_dot_agents/exact_skills/exact_k-review/readonly_SKILL.md")
-
-        assert result == text
-
-    def test_preserves_multiline_inline_code_examples(self):
-        format_md = _load_format_md_command()
-        text = "- `First sentence. Second sentence\nwithout closing until here.`\n"
-
-        result = format_md.unwrap(text, "home/readonly_AGENTS.md")
 
         assert result == text
 

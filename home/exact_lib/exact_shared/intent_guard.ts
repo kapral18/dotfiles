@@ -2,6 +2,7 @@
 
 export interface Answer {
   context?: string
+  notes?: string
   deny?: string
   note?: string
   instructions?: string
@@ -33,7 +34,6 @@ export function writePaths(tool: string, input: Record<string, unknown>): string
   return [input.path, input.file_path, ...listed].filter((path): path is string => typeof path === "string" && path !== "")
 }
 
-/** The text blocks of an agent message, joined. */
 export function messageText(message: unknown): string {
   if (!message || typeof message !== "object" || !("content" in message)) return ""
   const content = (message as { content: unknown }).content
@@ -45,7 +45,6 @@ export function messageText(message: unknown): string {
     .join("\n")
 }
 
-/** The last assistant message's text in a list of agent messages. */
 export function lastAnswer(messages: readonly unknown[]): string {
   for (let index = messages.length - 1; index >= 0; index--) {
     const message = messages[index] as { role?: unknown } | undefined

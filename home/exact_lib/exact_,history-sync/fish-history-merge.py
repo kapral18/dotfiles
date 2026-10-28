@@ -50,14 +50,12 @@ def parse_fish_history(
                 elif line.startswith("  paths:"):
                     current_entry["paths"] = []
                     i += 1
-                    # Collect all path entries
                     while i < end and lines[i].startswith("    - "):
                         current_entry["paths"].append(lines[i][len("    - ") :])
                         i += 1
                     continue  # Don't increment i again
                 i += 1
 
-            # Store entry, keeping most recent for duplicate commands
             cmd_str = str(current_entry["cmd"])
             when_value = current_entry.get("when", 0)
             timestamp = int(when_value) if isinstance(when_value, (int, str)) else 0
@@ -78,21 +76,15 @@ def parse_fish_history(
 
 
 def merge_histories(local_file: str, remote_file: str, output_file: str) -> bool:
-    """Merge two fish history files chronologically"""
-    # Parse both files
     local_entries = parse_fish_history(local_file)
     remote_entries = parse_fish_history(remote_file)
 
-    # Merge keeping the most recent version of each command
-    all_entries = dict(local_entries)  # Start with local entries
+    all_entries = dict(local_entries)
 
-    # Add remote entries, but only if they're newer or don't exist locally
     for cmd, remote_entry in remote_entries.items():
         if cmd not in all_entries:
-            # Command doesn't exist locally, add it
             all_entries[cmd] = remote_entry
         else:
-            # Command exists in both, keep the most recent one
             local_when = all_entries[cmd].get("when", 0)
             remote_when = remote_entry.get("when", 0)
 
@@ -102,7 +94,6 @@ def merge_histories(local_file: str, remote_file: str, output_file: str) -> bool
             if remote_timestamp > local_timestamp:
                 all_entries[cmd] = remote_entry
 
-    # Sort by timestamp and write
     try:
 
         def get_timestamp(entry_dict: dict[str, str | int | list[str]]) -> int:

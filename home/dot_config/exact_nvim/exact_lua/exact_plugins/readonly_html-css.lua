@@ -26,8 +26,6 @@ return {
             vendorPrefix = "ignore",
             unknownVendorSpecificProperties = "ignore",
 
-            -- unknownProperties = "ignore", -- duplicate with stylelint
-
             duplicateProperties = "warning",
             emptyRules = "warning",
             importStatement = "warning",

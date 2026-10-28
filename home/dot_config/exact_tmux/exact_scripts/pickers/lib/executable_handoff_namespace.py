@@ -71,11 +71,6 @@ class HandoffError(Exception):
     """A fail-closed error: report to stderr, exit non-zero, print nothing to stdout."""
 
 
-# --------------------------------------------------------------------------- #
-# Secure root                                                                  #
-# --------------------------------------------------------------------------- #
-
-
 def root_path() -> Path:
     base = os.environ.get("XDG_CACHE_HOME") or os.path.join(os.path.expanduser("~"), ".cache")
     return Path(os.path.abspath(base)).joinpath(*ROOT_SUBPATH)
@@ -141,11 +136,6 @@ def require_root() -> Path:
     return root
 
 
-# --------------------------------------------------------------------------- #
-# Owner identity and liveness                                                  #
-# --------------------------------------------------------------------------- #
-
-
 def _ps_field(pid: int, field: str) -> "str | None":
     try:
         proc = subprocess.run(
@@ -198,11 +188,6 @@ def probe_owner(pid: int, expected_start: str, expected_command: str) -> str:
     if start == expected_start and command == expected_command:
         return LIVE
     return DEAD
-
-
-# --------------------------------------------------------------------------- #
-# Owner metadata                                                               #
-# --------------------------------------------------------------------------- #
 
 
 def _valid_positive_int(value: object) -> bool:
@@ -316,11 +301,6 @@ def _write_owner(owner_path: Path, owner: dict) -> None:
             os.close(fd)
 
 
-# --------------------------------------------------------------------------- #
-# Cleanup                                                                      #
-# --------------------------------------------------------------------------- #
-
-
 def _remove_path(path: Path) -> None:
     try:
         info = os.lstat(path)
@@ -340,7 +320,6 @@ def _remove_path(path: Path) -> None:
 
 
 def _remove_tree(path: Path) -> None:
-    """Remove a namespace tree, tolerating only concurrent removal."""
     try:
         info = os.lstat(path)
     except FileNotFoundError:
@@ -429,11 +408,6 @@ def sweep_root(root: Path) -> None:
     _reap_dead(dead, now)
 
 
-# --------------------------------------------------------------------------- #
-# Token resolution                                                             #
-# --------------------------------------------------------------------------- #
-
-
 def resolve_token(explicit: "str | None") -> str:
     token = explicit if explicit else os.environ.get(ENV_TOKEN)
     if not token:
@@ -441,11 +415,6 @@ def resolve_token(explicit: "str | None") -> str:
     if not TOKEN_RE.match(token):
         raise HandoffError("malformed handoff token")
     return token
-
-
-# --------------------------------------------------------------------------- #
-# Verbs                                                                        #
-# --------------------------------------------------------------------------- #
 
 
 def cmd_begin(args: argparse.Namespace) -> int:
@@ -536,11 +505,6 @@ def cmd_sweep(_args: argparse.Namespace) -> int:
         return 0
     sweep_root(root)
     return 0
-
-
-# --------------------------------------------------------------------------- #
-# CLI                                                                          #
-# --------------------------------------------------------------------------- #
 
 
 def build_parser() -> argparse.ArgumentParser:

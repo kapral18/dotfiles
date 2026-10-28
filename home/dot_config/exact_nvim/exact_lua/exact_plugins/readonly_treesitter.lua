@@ -82,11 +82,9 @@ return {
         return
       end
 
-      -- Setup treesitter
       TS.setup(opts)
       ts_util.get_installed(true)
 
-      -- Install missing parsers
       local install = vim.tbl_filter(function(lang)
         return not ts_util.have(lang)
       end, opts.ensure_installed or {})
@@ -99,7 +97,6 @@ return {
         end)
       end
 
-      -- Enable features per filetype
       vim.api.nvim_create_autocmd("FileType", {
         group = vim.api.nvim_create_augroup("treesitter_features", { clear = true }),
         callback = function(ev)
@@ -117,17 +114,14 @@ return {
               and ts_util.have(ft, query)
           end
 
-          -- Highlighting
           if enabled("highlight", "highlights") then
             pcall(vim.treesitter.start, ev.buf)
           end
 
-          -- Indentation
           if enabled("indent", "indents") then
             set_default("indentexpr", "v:lua.require'util.treesitter'.indentexpr()")
           end
 
-          -- Folds
           if enabled("folds", "folds") then
             if set_default("foldmethod", "expr") then
               set_default("foldexpr", "v:lua.require'util.treesitter'.foldexpr()")
@@ -181,29 +175,20 @@ return {
     "aaronik/treewalker.nvim",
     version = false,
 
-    -- The following options are the defaults.
-    -- Treewalker aims for sane defaults, so these are each individually optional,
-    -- and setup() does not need to be called, so the whole opts block is optional as well.
     opts = {
-      -- Whether to briefly highlight the node after jumping to it
       highlight = true,
 
-      -- How long should above highlight last (in ms)
       highlight_duration = 250,
 
-      -- The color of the above highlight. Must be a valid vim highlight group.
-      -- (see :h highlight-group for options)
       highlight_group = "CursorLine",
     },
 
     keys = {
-      -- movement
       { "<A-S-k>", "<cmd>Treewalker Up<cr>", mode = { "n", "x" } },
       { "<A-S-j>", "<cmd>Treewalker Down<cr>", mode = { "n", "x" } },
       { "<A-S-l>", "<cmd>Treewalker Right<cr>", mode = { "n", "x" } },
       { "<A-S-h>", "<cmd>Treewalker Left<cr>", mode = { "n", "x" } },
 
-      -- swapping
       { "<C-S-j>", "<cmd>Treewalker SwapDown<cr>" },
       { "<C-S-k>", "<cmd>Treewalker SwapUp<cr>" },
       { "<C-S-l>", "<cmd>Treewalker SwapRight<CR>" },
@@ -240,7 +225,7 @@ return {
     config = function()
       require("nvim-ts-autotag").setup({
         opts = {
-          enable_close_on_slash = true, -- Auto close on trailing </
+          enable_close_on_slash = true,
         },
       })
     end,

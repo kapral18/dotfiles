@@ -15,8 +15,9 @@ Before calling a deletion safe, verify each item and report a one-line deletion 
 - **Public surface:** deleted exports are removed from barrels and not part of a published package entry point still consumed downstream.
 - **Behavior parity:**
   - every deleted behavior is intentionally dropped (user-approved) or demonstrably replaced; name each replacement
-- **Tests:** deleted tests were migrated, or removed only because the code they covered is gone;
-  coverage still exists for behavior that remains after the diff.
+- **Tests:** removal may eliminate redundant, obsolete or implementation-pinning tests even when code remains.
+  Identify any unique material behavior they protected and verify that necessary protection remains;
+  do not require replacement tests merely to preserve test count or structure.
 - **Base comparison:**
   - for branch-heavy/stateful deletions, compare against base behavior buckets, see State-Machine Verification Gate, and classify each difference as intended/unexpected
 - **Disclosure:** meaningful deleted infrastructure is reflected in the PR description (Summary/Fix), not silently dropped.
@@ -37,9 +38,9 @@ Before a candidate can become review feedback:
      absence-of-observation never substitutes for naming the replacement's contract.
    - A migration handing a property to the target component (e.g. local CSS replaced by a shared component default) is only `preserved_limitation`/`scope_expansion`/intended-replacement after citing the target's contract (static source proof).
      Until then the candidate stays unclassified, not dropped.
-   - For a stateful replacement (lifecycle, retry, ordered/flag-dependent state), run the same transition cases against base and head code in a local run that ends on its own
-     (unit tests or a disposable harness; the old implementation is the oracle; `~/AGENTS.md` §3 step 4);
-     otherwise report missing parity evidence as a gap.
+   - For a stateful replacement (lifecycle, retry, ordered/flag-dependent state), compare material intended/preserved transitions against base contracts, source and existing checks.
+     Use a bounded local probe only when that evidence cannot settle a concrete material risk (`~/AGENTS.md` §3 step 4);
+     report the specific unresolved parity claim instead of demanding a new harness by default.
 2. **Assign exactly one classification:**
    - `parity_gap`: old behavior or coverage existed and the replacement omits or weakens it.
    - `new_regression`: the replacement adds a failure mode the old implementation did not have.

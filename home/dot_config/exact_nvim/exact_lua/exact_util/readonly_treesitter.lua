@@ -1,5 +1,3 @@
---- Treesitter utilities (for nvim-treesitter main branch)
-
 local M = {}
 
 M._installed = nil ---@type table<string,boolean>?
@@ -27,7 +25,6 @@ function M.prefer_bundled_parser(lang)
   return false
 end
 
---- Get installed parsers
 ---@param update boolean?
 ---@return table<string,boolean>
 function M.get_installed(update)
@@ -45,7 +42,6 @@ function M.get_installed(update)
   return M._installed or {}
 end
 
---- Check if query exists for language
 ---@param lang string
 ---@param query string
 ---@return boolean
@@ -62,7 +58,6 @@ function M.have_query(lang, query)
   return M._queries[key]
 end
 
---- Check if treesitter parser is installed and optionally has query support
 ---@param what string|number|nil Buffer number or filetype
 ---@param query? string Query name to check
 ---@return boolean
@@ -95,19 +90,16 @@ function M.have(what, query)
   return true
 end
 
---- Treesitter fold expression
 ---@return string
 function M.foldexpr()
   return M.have(nil, "folds") and vim.treesitter.foldexpr() or "0"
 end
 
---- Treesitter indent expression
 ---@return number
 function M.indentexpr()
   return M.have(nil, "indents") and require("nvim-treesitter").indentexpr() or -1
 end
 
---- Build treesitter with callback
 ---@param cb function
 function M.build(cb)
   M.ensure_treesitter_cli(function(ok, err)
@@ -134,7 +126,6 @@ function M.build(cb)
   end)
 end
 
---- Check system requirements for treesitter
 ---@return boolean ok, table<string,boolean> health
 function M.check()
   local function have(tool)
@@ -159,20 +150,17 @@ function M.check()
   return ok, ret
 end
 
---- Ensure tree-sitter CLI is installed
 ---@param cb fun(ok:boolean, err?:string)
 function M.ensure_treesitter_cli(cb)
   if vim.fn.executable("tree-sitter") == 1 then
     return cb(true)
   end
 
-  -- Try installing with mason
   local mason_ok = pcall(require, "mason")
   if not mason_ok then
     return cb(false, "mason.nvim is not available")
   end
 
-  -- Check again since we might have installed it already
   if vim.fn.executable("tree-sitter") == 1 then
     return cb(true)
   end

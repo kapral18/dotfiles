@@ -18,9 +18,7 @@ return {
     version = "*",
     ft = { "rust" },
     init = function()
-      -- Configure rustaceanvim here
       vim.g.rustaceanvim = function()
-        -- Get codelldb path from mason
         local adapter
         local mason_registry = require("mason-registry")
         if mason_registry.is_installed("codelldb") then

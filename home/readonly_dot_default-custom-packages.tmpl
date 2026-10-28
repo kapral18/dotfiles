@@ -1,29 +1,18 @@
 # Custom package registry (rendered by chezmoi).
-#
 # Format (pipe-delimited):
 # - dmg|App Name|owner/repo|release-tag|AppBundle.app|asset-pattern
 # - dmg|App Name|https://.../app.dmg|latest|AppBundle.app|.dmg
 # - tar_gz_bin|tool-name|owner/repo|release-tag|asset-pattern|bin-in-archive|output-binary-name
 # - file|tool-name|owner/repo|release-tag|asset-pattern|output-binary-name
 # - zip_opt|tool-name|owner/repo|release-tag|asset-pattern|bin-in-archive|output-binary-name
-#
 # Lines starting with `#` are ignored.
 
-# Template helpers
 {{ $os := .chezmoi.os }}
 {{ $arch := .chezmoi.arch }}
-
-# -----------------------------------------------
-# DMG-based macOS apps
-# -----------------------------------------------
 
 dmg|FluidVoice|altic-dev/FluidVoice|latest|FluidVoice.app|.dmg
 dmg|Squirrel Disk|adileo/squirreldisk|latest|SquirrelDisk.app|.dmg
 dmg|Jharu|riponcm/Jharu|latest|Jharu.app|.dmg
-
-# -----------------------------------------------
-# GitHub release CLI tools
-# -----------------------------------------------
 
 # mdtt
 # https://github.com/szktkfm/mdtt

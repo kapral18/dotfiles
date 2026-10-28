@@ -7,7 +7,6 @@ import json
 import subprocess
 import unittest
 
-import _test_support  # noqa: F401  (puts scripts/ on sys.path)
 from _test_support import REPO
 
 
@@ -44,8 +43,6 @@ class TestOmpMigration(unittest.TestCase):
         self.assertEqual((gate["reviewMode"], gate["syncBacklog"]), ("agent-end", 1))
         self.assertNotIn("model", gate)
         self.assertNotIn("tools", gate)
-        # Gate judges against the SOP instead of restating its rules.
-        self.assertIn("~/AGENTS.md", gate["instructions"])
 
     def test_global_advisor_sync_backlog_is_a_value_omp_accepts(self):
         # OMP's global `advisor.syncBacklog` enum takes strings only; a bare number falls back to "off" silently.

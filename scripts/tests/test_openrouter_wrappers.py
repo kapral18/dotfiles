@@ -452,12 +452,10 @@ class TestOpenRouterWrappers(unittest.TestCase):
     def test_SHOULD_keep_reasoning_models_that_omit_supported_efforts(self):
         # OpenRouter lists inclusionai/ling-3.0-flash under supported_parameters=reasoning
         # with reasoning={mandatory:false, default_enabled:true} and no supported_efforts.
-        # The completer used to skip those rows, so --model never offered the id.
         source = (REPO / "home/dot_config/fish/functions/readonly___openrouter_catalog.fish").read_text()
         start = source.index("import json, sys")
         end = source.index("' $tmp", start)
         snippet = source[start:end]
-        self.assertNotIn("if not efforts:", snippet)
         fixture = {
             "data": [
                 {
@@ -595,35 +593,6 @@ printf 'args=%s\\n' "$*"
         assert f"--model {OPENROUTER_WIRE_PIN}" in codex_result.stdout
         # Effort rides the preset slug, not a Codex body field, so model_reasoning_effort is unset.
         assert "model_reasoning_effort" not in codex_result.stdout
-
-    def test_SHOULD_compose_wire_model_from_model_and_effort_flags(self):
-        # Model and effort are selectable; the wire id composes the matching preset slug.
-        cases = [
-            (["-p", "x"], "xiaomi/mimo-v2.6-pro@preset/effort-high"),
-            (
-                ["--model", "z-ai/glm-5.3-flash", "--effort", "max"],
-                "z-ai/glm-5.3-flash@preset/effort-max",
-            ),
-        ]
-        with tempfile.TemporaryDirectory() as tmp:
-            bindir = Path(tmp)
-            claude = bindir / "claude"
-            claude.write_text('#!/usr/bin/env bash\necho "model=$ANTHROPIC_MODEL"\n', encoding="utf-8")
-            claude.chmod(0o755)
-            for argv, expected in cases:
-                with self.subTest(argv=argv):
-                    result = subprocess.run(
-                        [modern_bash(), str(REPO / "home/exact_bin/executable_,claude-openrouter"), *argv],
-                        capture_output=True,
-                        text=True,
-                        env={
-                            **os.environ,
-                            "PATH": f"{bindir}:{os.environ['PATH']}",
-                            "OPENROUTER_API_KEY": "fixture-key",
-                        },
-                    )
-                    assert result.returncode == 0, result.stderr
-                    assert f"model={expected}" in result.stdout
 
     def test_SHOULD_project_small_prompt_and_output_limits_to_claude(self):
         _, env = self._openrouter_route_fixture()

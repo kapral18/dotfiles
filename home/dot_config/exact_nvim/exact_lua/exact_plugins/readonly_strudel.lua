@@ -1,15 +1,8 @@
 -- Original idea credits: https://github.com/Trevato/nvim/blob/main/lua/plugins/music.lua
 
--- Music and live coding plugins
 -- Only load when NVIM_MUSIC environment variable is set
 -- Usage: NVIM_MUSIC=1 nvim or use alias: nvim-music
---
--- Setup:
--- 1. Custom filetype `strdl` for Strudel buffers
--- 2. Treesitter uses JavaScript grammar for Strudel files
--- 3. Strudel.nvim handles browser sync and live coding session
 
--- Strudel uses custom filetype `strdl` but reuses JavaScript syntax highlighting
 vim.filetype.add({
   extension = {
     str = "strdl",
@@ -18,7 +11,6 @@ vim.filetype.add({
   },
 })
 
--- Use JavaScript treesitter for strdl filetype
 vim.treesitter.language.register("javascript", "strdl")
 
 local music_mode = vim.env.NVIM_MUSIC ~= nil
@@ -28,7 +20,6 @@ if music_mode then
 end
 
 return {
-  -- Strudel: Live coding music environment
   {
     "gruvw/strudel.nvim",
     version = false,
@@ -37,7 +28,7 @@ return {
     cond = function()
       return music_mode
     end,
-    ft = { "strdl" }, -- Lazy-load when our filetype is detected
+    ft = { "strdl" },
     cmd = {
       "StrudelLaunch",
       "StrudelToggle",
@@ -46,9 +37,7 @@ return {
       "StrudelStop",
       "StrudelExecute",
     },
-    -- Lazy-loaded keymaps
     keys = function()
-      -- Define configs once for reuse
       local base_config = {
         update_on_save = true,
         report_eval_errors = true,
@@ -71,7 +60,7 @@ return {
         headless = false,
         sync_cursor = true,
         ui = {
-          hide_code_editor = false, -- Show Strudel code editor for side-by-side
+          hide_code_editor = false,
           hide_menu_panel = false,
           maximise_menu_panel = false,
           hide_top_bar = false,
@@ -144,36 +133,28 @@ return {
       }
     end,
 
-    -- Use opts instead of config for simple setup
     opts = {
-      -- Performance optimizations
-      headless = true, -- Reduce GPU/display overhead
-      sync_cursor = false, -- Less synchronization overhead
-      update_on_save = true, -- Auto-update when saving
-      report_eval_errors = true, -- Show errors in Neovim
+      headless = true,
+      sync_cursor = false,
+      update_on_save = true,
+      report_eval_errors = true,
 
-      -- Browser configuration
       browser_data_dir = vim.fn.expand("~/.cache/strudel-nvim/"),
-      browser_exec_path = nil, -- Use system Chromium
+      browser_exec_path = nil,
 
-      -- UI customization (hide redundant elements)
       ui = {
-        hide_code_editor = true, -- We're using Neovim
-        hide_menu_panel = false, -- Keep controls visible
-        maximise_menu_panel = false, -- Normal size
-        hide_top_bar = false, -- Keep navigation
-        hide_error_display = false, -- Show errors in browser too
+        hide_code_editor = true,
+        hide_menu_panel = false,
+        maximise_menu_panel = false,
+        hide_top_bar = false,
+        hide_error_display = false,
       },
 
-      -- Custom CSS for better integration
-      custom_css_file = nil, -- Add custom styling if needed
+      custom_css_file = nil,
     },
-    -- Setup plugin and autocmds
     config = function(_, opts)
-      -- Setup the plugin
       require("strudel").setup(opts)
 
-      -- Auto-commands for Strudel files
       local strudel_group = vim.api.nvim_create_augroup("StrudelMusic", { clear = true })
 
       -- Remove Strudel's default filetype autocmd (sets to javascript)
@@ -199,7 +180,6 @@ return {
         end,
       })
 
-      -- Notify on file open (matches all extensions from filetype detection)
       vim.api.nvim_create_autocmd("BufReadPost", {
         group = strudel_group,
         pattern = { "*.str", "*.strdl", "*.strudel" },
@@ -210,7 +190,6 @@ return {
         end,
       })
 
-      -- Auto-update on save with visual feedback
       vim.api.nvim_create_autocmd("BufWritePost", {
         group = strudel_group,
         pattern = { "*.str", "*.strdl", "*.strudel" },
@@ -221,7 +200,6 @@ return {
         end,
       })
 
-      -- Ensure Strudel session exits when Neovim closes
       vim.api.nvim_create_autocmd("VimLeavePre", {
         group = strudel_group,
         callback = function()

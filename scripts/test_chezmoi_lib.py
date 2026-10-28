@@ -10,7 +10,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-import _test_support  # noqa: F401  (puts scripts/ on sys.path)
 from _test_support import REPO, SCRIPTS
 
 LIB = SCRIPTS / "chezmoi_lib.sh"

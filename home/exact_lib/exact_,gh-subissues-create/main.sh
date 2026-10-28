@@ -1,38 +1,31 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Ensure we're in an interactive shell with proper readline
 if [[ ! -t 0 ]]; then
   echo "Error: This script must be run in an interactive terminal"
   exit 1
 fi
 
-# Enable readline editing and history
-set -o emacs # or set -o vi if you prefer vi mode
+set -o emacs
 HISTCONTROL=ignoredups
 
-# Colors for better UX
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# Session file for storing last session data
 SESSION_FILE="/tmp/github-sub-issue-creator-session.json"
 
-# Function to print colored output
 print_info() { echo -e "${BLUE}ℹ${NC} $1" >&2; }
 print_success() { echo -e "${GREEN}✓${NC} $1" >&2; }
 print_warning() { echo -e "${YELLOW}⚠${NC} $1" >&2; }
 print_error() { echo -e "${RED}✗${NC} $1" >&2; }
 
-# Function to trim whitespace
 trim_whitespace() {
   echo "$1" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
 }
 
-# Function to save session data
 save_session() {
   local owner="$1"
   local repo="$2"
@@ -51,7 +44,6 @@ save_session() {
 EOF
 }
 
-# Function to load session data
 load_session() {
   if [[ -f "$SESSION_FILE" ]]; then
     if command -v jq &> /dev/null; then
@@ -64,7 +56,6 @@ load_session() {
   fi
 }
 
-# Function to check dependencies
 check_dependencies() {
   print_info "Checking dependencies..."
 
@@ -89,24 +80,20 @@ check_dependencies() {
   print_success "All dependencies are ready"
 }
 
-# Enhanced function to prompt for input with proper readline
 prompt_with_default() {
   local prompt="$1"
   local default="$2"
   local var_name="$3"
   local input
 
-  # Show prompt with default
   if [[ -n "$default" ]]; then
     printf "%s [%s]: " "$prompt" "$default"
   else
     printf "%s: " "$prompt"
   fi
 
-  # Use readline with editing enabled (-e flag)
   read -e -r input
 
-  # Use default if empty
   if [[ -z "$input" && -n "$default" ]]; then
     input="$default"
   fi
@@ -114,7 +101,6 @@ prompt_with_default() {
   eval "$var_name=\"\$input\""
 }
 
-# Function to get issues data (titles and bodies) using editor
 get_issues_data() {
   if [[ -z "${EDITOR:-}" ]]; then
     print_error "EDITOR environment variable is not set. Please set it (e.g., export EDITOR=nvim)"
@@ -162,7 +148,6 @@ EOF
     content=$(cat "$temp_file")
     rm "$temp_file"
 
-    # Parse the content
     TITLES=()
     BODIES=()
     local current_title=""
@@ -172,12 +157,10 @@ EOF
       local trimmed
       trimmed=$(trim_whitespace "$line")
 
-      # Skip comment lines
       if [[ "$trimmed" == "#"* ]]; then
         continue
       fi
 
-      # Handle separator
       if [[ "$trimmed" == "---" ]]; then
         if [[ -n "$current_title" ]]; then
           TITLES+=("$current_title")
@@ -188,16 +171,13 @@ EOF
         continue
       fi
 
-      # Skip empty lines when looking for title
       if [[ -z "$trimmed" && -z "$current_title" ]]; then
         continue
       fi
 
-      # If we don't have a title yet, this becomes the title
       if [[ -z "$current_title" ]]; then
         current_title="$trimmed"
       else
-        # Add original line to body (preserving formatting)
         if [[ -n "$current_body" ]]; then
           current_body="$current_body"$'\n'"$line"
         else
@@ -206,7 +186,6 @@ EOF
       fi
     done <<< "$content"
 
-    # Add the last issue if exists
     if [[ -n "$current_title" ]]; then
       TITLES+=("$current_title")
       BODIES+=("$current_body")
@@ -217,7 +196,6 @@ EOF
       continue
     fi
 
-    # Show parsed issues for confirmation
     echo
     print_info "Parsed ${#TITLES[@]} issues:"
     for i in "${!TITLES[@]}"; do
@@ -245,7 +223,6 @@ EOF
   done
 }
 
-# Function to fetch issue ID given the issue number
 fetch_issue_id() {
   local org="$1"
   local repo="$2"
@@ -261,7 +238,6 @@ fetch_issue_id() {
     }
   }' --jq '.data.repository.issue.id')
 
-  # Check if the query was successful
   if [[ $? -ne 0 ]] || [[ -z "$issue_id" ]]; then
     print_error "Issue #$issue_number not found in repository '$repo' of organization '$org'."
     exit 1
@@ -270,7 +246,6 @@ fetch_issue_id() {
   echo "$issue_id"
 }
 
-# Function to check if an issue is already a sub-issue of the parent
 is_sub_issue() {
   local parent_id="$1"
   local child_id="$2"
@@ -300,14 +275,12 @@ is_sub_issue() {
   fi
 }
 
-# Function to create a single issue
 create_issue() {
   local title="$1"
   local body="$2"
   local label="$3"
   local milestone_number="$4"
 
-  # Calculate date 2 weeks ago in ISO 8601 format
   local two_weeks_ago
   if command -v gdate &> /dev/null; then
     # macOS with GNU coreutils
@@ -320,7 +293,6 @@ create_issue() {
     two_weeks_ago=$(date -v-2w '+%Y-%m-%dT%H:%M:%SZ')
   fi
 
-  # Check if issue with same title already exists (search issues from last 2 weeks only)
   local existing_num
   existing_num=$(gh api "repos/$OWNER/$REPO/issues?since=$two_weeks_ago&per_page=100" | jq --arg title "$title" '.[] | select(.title == $title) | .number' | head -1)
 
@@ -362,7 +334,6 @@ create_issue() {
   echo "$new_issue_num"
 }
 
-# Function to add sub-issues to parent using GraphQL
 add_sub_issues() {
   local parent_issue_number="$1"
   shift
@@ -370,25 +341,20 @@ add_sub_issues() {
 
   print_info "Adding ${#sub_issues[@]} sub-issues to parent issue #$parent_issue_number..."
 
-  # Fetch parent issue ID
   local parent_issue_id
   parent_issue_id=$(fetch_issue_id "$OWNER" "$REPO" "$parent_issue_number")
 
-  # Add each sub-issue
   for sub_issue_number in "${sub_issues[@]}"; do
     print_info "Adding sub-issue #$sub_issue_number to parent #$parent_issue_number"
 
-    # Fetch child issue ID
     local child_issue_id
     child_issue_id=$(fetch_issue_id "$OWNER" "$REPO" "$sub_issue_number")
 
-    # Check if already linked
     if is_sub_issue "$parent_issue_id" "$child_issue_id"; then
       print_warning "Issue #$sub_issue_number is already a sub-issue of #$parent_issue_number. Skipping."
       continue
     fi
 
-    # Add the sub-issue to the parent issue using GraphQL
     local result
     result=$(gh api graphql \
       -H "GraphQL-Features:issue_types" \
@@ -424,14 +390,12 @@ add_sub_issues() {
     else
       print_error "Failed to add #$sub_issue_number as sub-issue to #$parent_issue_number"
       echo "Error: $result"
-      # Continue with other sub-issues instead of exiting
     fi
   done
 
   print_success "Sub-issue linking completed"
 }
 
-# Function to validate repo exists
 validate_repo() {
   local owner="$1"
   local repo="$2"
@@ -443,7 +407,6 @@ validate_repo() {
   return 0
 }
 
-# Function to validate issue exists
 validate_issue() {
   local owner="$1"
   local repo="$2"
@@ -456,13 +419,11 @@ validate_issue() {
   return 0
 }
 
-# Function to find milestone number by name or number
 find_milestone_number() {
   local owner="$1"
   local repo="$2"
   local milestone_title="$3"
 
-  # Try to find by title
   local milestone_number
   milestone_number=$(gh api "repos/$owner/$repo/milestones?per_page=100" --jq ".[] | select(.title == \"$milestone_title\") | .number")
 
@@ -474,7 +435,6 @@ find_milestone_number() {
   return 1
 }
 
-# Function to validate milestone exists
 validate_milestone() {
   local owner="$1"
   local repo="$2"
@@ -494,7 +454,6 @@ validate_milestone() {
   fi
 }
 
-# Main interactive function
 main() {
   echo
   echo "🚀 GitHub Sub-Issue Creator"
@@ -502,14 +461,11 @@ main() {
   echo -e "${BLUE}💡${NC} Use ↑/↓ arrows for command history, Tab for completion"
   echo
 
-  # Check dependencies first
   check_dependencies
   echo
 
-  # Load last session data if available
   load_session
 
-  # Get repository information
   print_info "Repository Information"
   echo "----------------------"
 
@@ -535,7 +491,6 @@ main() {
   print_success "Repository: $OWNER/$REPO"
   echo
 
-  # Get parent issue
   print_info "Parent Issue"
   echo "------------"
 
@@ -553,7 +508,6 @@ main() {
   print_success "Parent Issue: #$PARENT_ISSUE"
   echo
 
-  # Get milestone
   print_info "Milestone"
   echo "---------"
 
@@ -571,7 +525,6 @@ main() {
   print_success "Milestone: $MILESTONE_TITLE (ID: $MILESTONE_NUMBER)"
   echo
 
-  # Get label
   print_info "Label"
   echo "-----"
   prompt_with_default "Label" "${LAST_LABEL:-}" "LABEL"
@@ -589,10 +542,8 @@ main() {
   fi
   echo
 
-  # Save session data for next time
   save_session "$OWNER" "$REPO" "$PARENT_ISSUE" "$MILESTONE_TITLE" "$LABEL"
 
-  # Get issues data using editor
   print_info "Issues Data"
   echo "-----------"
   print_info "Opening editor to enter titles and bodies..."
@@ -602,7 +553,6 @@ main() {
   get_issues_data
   echo
 
-  # Show summary
   print_info "Summary"
   echo "-------"
   echo "Repository: $OWNER/$REPO"
@@ -625,7 +575,6 @@ main() {
   echo
   print_info "Creating sub-issues..."
 
-  # Create issues
   local created_issues=()
 
   for i in "${!TITLES[@]}"; do
@@ -640,7 +589,6 @@ main() {
     created_issues+=("$issue_num")
   done
 
-  # Add sub-issues to parent
   if [[ ${#created_issues[@]} -gt 0 ]]; then
     add_sub_issues "$PARENT_ISSUE" "${created_issues[@]}"
   else
@@ -660,5 +608,4 @@ main() {
   echo "🔗 Sub-issues are properly linked to the parent issue"
 }
 
-# Run main function
 main "$@"

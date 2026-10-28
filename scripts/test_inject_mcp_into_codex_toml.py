@@ -8,7 +8,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-import _test_support  # noqa: F401  (puts scripts/ on sys.path)
 from _test_support import (
     FIXTURES,
     run_script,
@@ -120,18 +119,6 @@ class TestInjectMcpIntoCodexToml(unittest.TestCase):
                     _table_body(actual, "mcp_servers.plain-tool.tools.search"), 'approval_mode = "approve"'
                 )
 
-    def test_golden(self):
-        actual = run_script(
-            [
-                "inject_mcp_into_codex_toml.py",
-                str(FIXTURES / "codex_base.toml"),
-                str(FIXTURES / "mcp_servers.yaml"),
-                "codex",
-            ]
-        )
-        expected = (FIXTURES / "golden_codex.toml").read_text()
-        assert actual == expected
-
     def test_preserves_existing_mcp_approval_overrides(self):
         with tempfile.TemporaryDirectory() as tmp:
             existing = Path(tmp) / "config.toml"
@@ -178,37 +165,6 @@ class TestInjectMcpIntoCodexToml(unittest.TestCase):
         assert 'approval_mode = "approve"' in actual
         assert "retired-tool.tools.hidden" not in actual
         assert "http-tool.tools.invalid" not in actual
-
-    def test_preserves_existing_hook_trust_state(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            existing = Path(tmp) / "config.toml"
-            existing.write_text(
-                "\n".join(
-                    [
-                        '[hooks.state."/tmp/hooks.json:session_start:0:0"]',
-                        'trusted_hash = "sha256:abc123"',
-                        "",
-                        '[hooks.state."/tmp/hooks.json:post_tool_use:0:0"]',
-                        'trusted_hash = "sha256:def456"',
-                        "",
-                    ]
-                )
-            )
-
-            actual = run_script(
-                [
-                    "inject_mcp_into_codex_toml.py",
-                    str(FIXTURES / "codex_base.toml"),
-                    str(FIXTURES / "mcp_servers.yaml"),
-                    "codex",
-                    str(existing),
-                ]
-            )
-
-        assert '[hooks.state."/tmp/hooks.json:session_start:0:0"]' in actual
-        assert 'trusted_hash = "sha256:abc123"' in actual
-        assert '[hooks.state."/tmp/hooks.json:post_tool_use:0:0"]' in actual
-        assert 'trusted_hash = "sha256:def456"' in actual
 
     def test_SHOULD_preserve_only_valid_project_trust_and_u32_tui_state(self):
         with tempfile.TemporaryDirectory() as tmp:

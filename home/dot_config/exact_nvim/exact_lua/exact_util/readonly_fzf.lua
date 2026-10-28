@@ -1,5 +1,3 @@
---- FZF-specific utilities (from utils/common.lua)
-
 local M = {}
 
 local function bin_path(cmd)
@@ -14,7 +12,6 @@ local function bin_path(cmd)
   return cmd
 end
 
---- Return the executable path for a helper binary.
 --- Falls back to `cmd` when not found (so shells can still resolve it via PATH).
 ---@param cmd string
 ---@return string
@@ -58,7 +55,6 @@ local function open_qf_window(opts)
   if vim.api.nvim_win_get_config(0).relative ~= "" then
     local fzf_win = require("fzf-lua").win.__SELF()
     local target_win = nil
-    -- Prefer the original window that launched fzf-lua
     if
       opts.__CTX
       and type(opts.__CTX.winid) == "number"
@@ -67,7 +63,6 @@ local function open_qf_window(opts)
     then
       target_win = opts.__CTX.winid
     else
-      -- Fallback: find the first valid, non-floating, non-fzf window
       for _, win in ipairs(vim.api.nvim_list_wins()) do
         if
           vim.api.nvim_win_is_valid(win)
@@ -165,16 +160,12 @@ function M.entries_to_quickfix(selected, opts)
   open_qf_window(opts)
 end
 
---- Return `rg` options with ANSI coloring disabled.
---- This is useful when the result lines are post-processed (e.g. split into multiline entries)
---- and we don't want ANSI codes to interfere with parsing.
 ---@param opts string
 ---@return string
 function M.rg_opts_without_color(opts)
   if type(opts) ~= "string" then
     return ""
   end
-  -- `string.gsub` returns (string, count); wrapping to return only the string.
   return (opts:gsub("%-%-color=always", "--color=never"))
 end
 
@@ -186,8 +177,6 @@ end
 --- - previews/actions to use the hidden tab fields reliably.
 ---@return string
 function M.rg_to_fzf_multiline_tab_fields_pipe()
-  -- Uses `,fzf-rg-multiline` (installed from `home/exact_bin/executable_,fzf-rg-multiline`).
-  -- This avoids embedding an unreadable inline perl one-liner here.
   -- NOTE: do NOT shellescape the command here: fzf-lua already wraps commands,
   -- and nested quoting can prevent the helper from executing (breaking multiline).
   return " | " .. bin_path(",fzf-rg-multiline")
@@ -202,14 +191,10 @@ end
 ---@param line_field string fzf placeholder for line field (e.g. "{3}" or "{2}")
 ---@return string
 function M.fzf_preview_follow_cmd(file_field, line_field)
-  -- Use the helper as $0, and pass file/line as $1/$2.
-  -- Avoid nested shellescape/quotes for the same reason as above.
   local preview_bin = bin_path(",fzf-preview-follow")
   return 'bash -lc \'exec "$0" --file "$1" --line "$2"\' ' .. preview_bin .. " " .. file_field .. " " .. line_field
 end
 
---- Open a grep-like entry (`file:line:col:` or tab-metadata multiline entry).
---- Supports entries produced by `M.rg_to_fzf_multiline_tab_fields_pipe()`.
 ---@param selected string[]
 ---@param opts table?
 ---@param opener? "edit"|"split"|"vsplit"|"tabedit"
@@ -258,7 +243,6 @@ function M.open_rg_entry(selected, opts, opener)
   end
 end
 
---- Actions table for grep-like entries that open the selected match.
 ---@return table
 function M.grep_entry_actions()
   return {
@@ -283,10 +267,8 @@ function M.grep_entry_actions()
   }
 end
 
---- Copy text to the system clipboard
 ---@param text string
 function M.copy_to_clipboard(text)
-  -- Use pbcopy to copy text to the system clipboard
   local handle = io.popen("pbcopy", "w")
   if handle == nil then
     return
@@ -295,37 +277,29 @@ function M.copy_to_clipboard(text)
   handle:close()
 end
 
---- Check if a file is an image
 ---@param file_path string
 ---@return boolean
 function M.is_image(file_path)
-  -- Use a library or a simple heuristic to detect images
-  -- For example, you can use the `file` command to check the file type
   local file_type = io.popen("file -b --mime-type " .. vim.fn.shellescape(file_path)):read("*a")
   return file_type:match("image/%w+")
 end
 
---- Open an image file with the default application
 ---@param img_path string
 ---@param fallback function
 function M.open_image(img_path, fallback)
   if M.is_image(img_path) then
-    -- Open the image file with the default Mac associated application
     io.popen("open " .. vim.fn.shellescape(img_path))
   else
-    -- Handle non-image files as needed
     fallback()
   end
 end
 
---- FZF open file handler (supports image preview)
 function M.open_file(selected, opts)
   M.open_image(selected[1], function()
     require("fzf-lua.actions").file_edit(selected, opts)
   end)
 end
 
---- Get fzf options for files and grep
 ---@return function
 function M.get_opts()
   return function()
@@ -430,13 +404,11 @@ function M.get_opts()
   end
 end
 
---- Get options for fzf rg command
 ---@return string, string
 function M.get_rg_opts()
   return M.rg_opts, M.rg_opts_unrestricted
 end
 
---- Get options for fzf fd command
 ---@return string, string
 function M.get_fd_opts()
   return M.fd_opts, M.fd_opts_unrestricted

@@ -5,19 +5,6 @@
 # Args: <verb> <scope_file> <items_cmd>
 #   verb: "toggle" or "global"
 #
-# Outputs fzf actions (transform binding). After updating the collapse state
-# file, emits a reload that re-runs `--cache-only` so the picker reflects the
-# new state immediately, plus an `execute-silent` toast so the user knows
-# what happened.
-#
-# Cursor toggle (`alt-z`):
-#   - If cursor is on a parent: toggle that parent's id in the set.
-#   - If cursor is on a child: toggle the child's parent.
-#   - Otherwise: no-op.
-#
-# Global toggle (`alt-Z`):
-#   - If any currently-visible parent is collapsed, expand them all.
-#   - Otherwise, collapse every visible parent that has at least one child.
 set -euo pipefail
 
 verb="${1:-}"
@@ -55,10 +42,6 @@ case "$verb" in
     cursor="${FZF_POS:-1}"
     parent_id=""
     if [ -n "$rendered_tmp" ] && [ -s "$rendered_tmp" ]; then
-      # awk picks the row, returns either kind:repo:num (if cursor is on a
-      # parent) or the parent_id field (if cursor is on a child). Loose rows
-      # and headers produce empty output, which the python helper short-
-      # circuits as a no-op.
       parent_id="$(awk -F '\t' -v r="$cursor" '
         NR == r {
           role = $13

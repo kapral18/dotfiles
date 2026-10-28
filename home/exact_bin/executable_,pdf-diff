@@ -51,7 +51,6 @@ update_progress() {
   printf "\rProcessing page %d of %d" "$current_page" "$total_pages"
 }
 
-# Main script starts here
 check_requirements
 
 density=300
@@ -105,7 +104,6 @@ trap on_exit EXIT
 trap 'on_interrupt INT' INT
 trap 'on_interrupt TERM' TERM
 
-# Convert PDFs to images and process them
 log_info "Converting PDFs to images..."
 magick -density "$density" "$leftarg" -fill red -opaque black +antialias "${temp_dir}/back%02d.png"
 magick -density "$density" "$rightarg" -transparent white +antialias "${temp_dir}/front%02d.png"
@@ -122,7 +120,7 @@ find "${temp_dir}" -name "back*.png" -print0 |
   sed 's/back//' |
   xargs -P "$(sysctl -n hw.ncpu)" -I {} bash -c 'process_pages "$@"' _ {}
 
-echo # New line after progress indicator
+echo
 
 log_info "Generating final output..."
 if [ -n "$(find "${temp_dir}" -name "result*.png")" ]; then

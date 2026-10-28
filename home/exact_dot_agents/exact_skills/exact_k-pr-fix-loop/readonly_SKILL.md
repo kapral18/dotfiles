@@ -12,7 +12,7 @@ It does not authorize merging, rebasing, pulling/merging base, unrelated metadat
 A rejected push stops the loop; report it.
 
 1. Resolve the PR URL/number, current head/branch, local changes, and known unresolved thread batch.
-2. Use `k-review`'s `~/.agents/skills/k-review/references/pr_fix.md` to understand concerns and produce scoped fixes/tests/docs for that batch.
+2. Use `k-review`'s `~/.agents/skills/k-review/references/pr_fix.md` to understand concerns and produce scoped fixes with necessary checks and affected docs for that batch.
    Batch scope includes defects in the change's impact (`review_fixes.md` Fix Scope), except one another open thread reports;
    list each in the step 5 report.
 3. Run the combined checks once on the finished batch.

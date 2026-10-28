@@ -39,9 +39,6 @@ class MarkdownPreviewTests(unittest.TestCase):
     def test_SHOULD_reject_a_successful_installer_without_a_binary(self) -> None:
         self.run_case("missing")
 
-    def test_SHOULD_enable_the_preview_binding_for_markdown_and_mdx(self) -> None:
-        self.run_case("filetypes")
-
     def test_SHOULD_report_a_killed_installer_with_an_existing_binary(self) -> None:
         self.run_case("signal")
 

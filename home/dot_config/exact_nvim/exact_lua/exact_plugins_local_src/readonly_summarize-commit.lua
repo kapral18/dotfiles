@@ -1,6 +1,5 @@
 local M = {}
 
--- ───────────────────────────────── SYSTEM CONSTANTS ────────────────────────────
 local PROMPT = [[
 Generate a commit summary using conventional commit format from the output of a git diff.
 Return only the commit message, in this exact shape:
@@ -37,7 +36,6 @@ local OPENROUTER_MAX_OUTPUT_TOKENS = 131072
 local OPENROUTER_PROVIDER_ROUTING = { preferred_min_throughput = 30 }
 local OPENROUTER_CONTEXT_COMPRESSION_PLUGIN = { id = "context-compression" }
 
--- ───────────────────────────── HELPERS (provider-agnostic) ─────────────────────
 local function split_lines(text)
   local lines = {}
   if type(text) ~= "string" or text == "" then
@@ -290,7 +288,6 @@ local function strip_thinking(text)
   text = text:gsub("<thinking>[%s%S]-</thinking>", "")
   text = text:gsub("<analysis>[%s%S]-</analysis>", "")
 
-  -- Trim leading/trailing whitespace after stripping.
   text = text:gsub("^%s+", ""):gsub("%s+$", "")
   return text
 end
@@ -505,9 +502,7 @@ local function require_env(provider_key, vars)
   return true
 end
 
--- ───────────────────────────────── PROVIDER CONFIG ─────────────────────────────
 local providers = {
-  -- OpenRouter (OpenAI-compatible Chat Completions)
   openrouter = {
     url = "https://openrouter.ai/api/v1/chat/completions", -- POST body uses OpenAI chat schema
     required_env = { "OPENROUTER_API_KEY" },
@@ -538,11 +533,9 @@ local providers = {
 
       return payload
     end,
-    -- Non-streaming: choices.message.content (Lua index 1)
     extract_path = { "choices", 1, "message", "content" },
   },
 
-  -- Gemini API
   gemini = {
     url = function()
       local base = "https://generativelanguage.googleapis.com"
@@ -574,7 +567,6 @@ local providers = {
         },
       }
     end,
-    -- Gemini response structure: candidates[0].content.parts[0].text
     extract_path = { "candidates", 1, "content", "parts", 1, "text" },
   },
 }
@@ -628,7 +620,6 @@ local function format_generic_error(parsed)
   return nil
 end
 
--- ───────────────────────────── GENERIC WORKFLOW ───────────────────────────────
 local function summarize_with(provider_key)
   local cfg = providers[provider_key]
   if not cfg then
@@ -765,7 +756,6 @@ local function summarize_with(provider_key)
   end)
 end
 
--- ────────────────────────── PUBLIC COMMANDS ───────────────────────────────────
 M.summarize_commit_openrouter = function()
   summarize_with("openrouter")
 end

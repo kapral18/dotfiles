@@ -1,5 +1,3 @@
-# Completions for ,image-local.
-
 set -l __image_local_subs sync status
 
 complete -c ',image-local' -f

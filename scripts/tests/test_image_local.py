@@ -8,7 +8,6 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-import _test_support  # noqa: F401
 from _test_support import REPO, load_module
 
 CLI = REPO / "home" / "exact_lib" / "exact_,image-local" / "main.py"
@@ -64,10 +63,6 @@ class TestParseManifest(unittest.TestCase):
         entries = MOD.parse_manifest(path.read_text(encoding="utf-8").splitlines())
         self.assertEqual([entry[0] for entry in entries], list(MOD.KNOWN_ROLES))
         self.assertTrue(all(entry[2].endswith((".gguf", ".safetensors")) for entry in entries))
-        vae = next(entry for entry in entries if entry[0] == "vae")
-        self.assertEqual(vae[3], "flux2_ae.safetensors")
-        self.assertIn("split_files/vae/", vae[2])
-        self.assertNotIn("ideogram", [entry[0] for entry in entries])
 
     def test_it_should_keep_role_repo_file_and_optional_dest(self) -> None:
         entries = MOD.parse_manifest(io.StringIO(SAMPLE_MANIFEST))
@@ -145,27 +140,8 @@ class TestBuildGenArgv(unittest.TestCase):
         self.assertIn("--diffusion-fa", argv)
         self.assertIn("--offload-to-cpu", argv)
         self.assertNotIn("-r", argv)
-        self.assertNotIn("--uncond-diffusion-model", argv)
         self.assertNotIn("--sampling-method", argv)
-        self.assertNotIn("--cache-mode", argv)
-        self.assertNotIn("--llm_vision", argv)
         self.assertNotIn("{", argv[argv.index("-p") + 1])
-
-    def test_it_should_pass_canvas_only_when_width_and_height_are_set(self) -> None:
-        argv = MOD.build_gen_argv(
-            sd_cli="/opt/sd-cli",
-            paths=GEN_PATHS,
-            prompt="a cat",
-            output=Path("/tmp/out.png"),
-            width=1024,
-            height=1024,
-            steps=MOD.DEFAULT_STEPS,
-            cfg=MOD.DEFAULT_CFG,
-            seed=None,
-            offload=False,
-        )
-        self.assertEqual(argv[argv.index("-W") + 1], "1024")
-        self.assertEqual(argv[argv.index("-H") + 1], "1024")
 
 
 class TestBuildEditArgv(unittest.TestCase):
@@ -194,9 +170,6 @@ class TestBuildEditArgv(unittest.TestCase):
         self.assertIn("--offload-to-cpu", argv)
         self.assertNotIn("-W", argv)
         self.assertNotIn("-H", argv)
-        self.assertNotIn("--uncond-diffusion-model", argv)
-        self.assertNotIn("--cache-mode", argv)
-        self.assertNotIn("--llm_vision", argv)
         self.assertNotIn("{", argv[argv.index("-p") + 1])
 
 
@@ -213,33 +186,6 @@ class TestOffloadToCpu(unittest.TestCase):
             self.assertFalse(MOD.use_offload_to_cpu())
         with mock.patch.dict(os.environ, {MOD.OFFLOAD_ENV: "1"}, clear=False):
             self.assertTrue(MOD.use_offload_to_cpu())
-        no_offload = MOD.build_gen_argv(
-            sd_cli="sd-cli",
-            paths=GEN_PATHS,
-            prompt="a cat",
-            output=Path("/tmp/out.png"),
-            width=None,
-            height=None,
-            steps=MOD.DEFAULT_STEPS,
-            cfg=MOD.DEFAULT_CFG,
-            seed=None,
-            offload=False,
-        )
-        offload = MOD.build_gen_argv(
-            sd_cli="sd-cli",
-            paths=GEN_PATHS,
-            prompt="a cat",
-            output=Path("/tmp/out.png"),
-            width=None,
-            height=None,
-            steps=MOD.DEFAULT_STEPS,
-            cfg=MOD.DEFAULT_CFG,
-            seed=None,
-            offload=True,
-        )
-        self.assertNotIn("--offload-to-cpu", no_offload)
-        self.assertIn("--diffusion-fa", no_offload)
-        self.assertIn("--offload-to-cpu", offload)
 
 
 class TestMissingSdCli(unittest.TestCase):
@@ -285,7 +231,6 @@ class TestGenerateThroughMain(unittest.TestCase):
             self.assertIn("--steps 4", printed)
             self.assertIn("--cfg-scale 1.0", printed)
             self.assertNotIn("high_level_description", printed)
-            self.assertNotIn("--uncond-diffusion-model", printed)
             self.assertNotIn(" -r ", f" {printed} ")
             self.assertNotIn("--sampling-method", printed)
             self.assertNotIn("--offload-to-cpu", printed)

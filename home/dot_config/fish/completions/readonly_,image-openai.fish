@@ -1,5 +1,3 @@
-# Completions for ,image-openai.
-
 complete -c ',image-openai' -f
 complete -c ',image-openai' -s i -l input -d 'Input image (repeatable; metadata stripped before upload)' -r
 complete -c ',image-openai' -l mask -d 'Edit mask for the first input image' -r

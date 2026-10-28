@@ -15,7 +15,6 @@ import urllib.request
 from pathlib import Path
 from unittest import mock
 
-import _test_support  # noqa: F401
 from _test_support import REPO, load_module, png_with_metadata
 
 CLI = REPO / "home" / "exact_lib" / "exact_,image-openrouter" / "main.py"
@@ -65,7 +64,7 @@ class TestPayload(unittest.TestCase):
             aspect_ratio="16:9",
             resolution="1K",
         )
-        self.assertEqual(payload["model"], "bytedance-seed/seedream-5-0-pro")
+        self.assertEqual(payload["model"], MOD.DEFAULT_MODEL)
         self.assertEqual(
             payload["provider"],
             {"data_collection": "deny", "zdr": True},

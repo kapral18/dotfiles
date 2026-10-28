@@ -6,7 +6,7 @@ title: Pi coding agent
 # Pi coding agent settings
 
 Pi runs from pnpm-managed packages plus readonly chezmoi sources under `home/dot_pi/agent/`.
-There are no hooks, advisors, or model-profile switchers; settings and models are set directly in the files below.
+Settings and models are set directly in the files below; extensions provide the task and context policy.
 
 ## Sources
 
@@ -43,13 +43,26 @@ Pi 1.1.0 loads context by path, not symlink identity. Inside `$HOME`, it include
 
 ## Extensions
 
-| File                            | Purpose                                                                                                                                                                                                                                                                                                                                                                              |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `context-mode.ts.tmpl`          | `/context-mode short\|long\|status`: choose a smaller working window on eligible models. Policy lives in `~/lib/shared/context_mode.ts`; OMP uses its native context controls instead.                                                                                                                                                                                               |
-| `intent-guard.ts.tmpl`          | Keeps the session on its intent card through `,task hook`: card with each user prompt, typed input recorded as the user's own words, first uncarded edit refused, scope and zoom-out notes after tool results, a continuation while a `Done when` item is open. Shared logic in `~/lib/shared/intent_guard.ts` (also used by OMP); see [Staying on the goal](../staying-on-goal.md). |
-| `model-pin.ts`                  | Re-pins the routed model after a turn whose echoed model id differs, so `pi -c` restores it. Workaround for [earendil-works/pi#9243](https://github.com/earendil-works/pi/issues/9243).                                                                                                                                                                                              |
-| `read-supersede.ts`             | Replaces older reads of the same file with a short notice before each provider call, only while the cache cost is small.                                                                                                                                                                                                                                                             |
-| `subagent/readonly_config.json` | `modelResponseAliases` so `pi-subagents` accepts the `claude-fable-5-1` echo.                                                                                                                                                                                                                                                                                                        |
+| File                            | Purpose                                                                                                                                                                                                                                              |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `context-mode.ts.tmpl`          | `/context-mode short\|long\|status`: choose a smaller working window on eligible models. Policy lives in `~/lib/shared/context_mode.ts`; OMP uses its native context controls instead.                                                               |
+| `intent-guard.ts.tmpl`          | Tracks the task through `,task hook`, maintains a current checkpoint, archives older text with raw-history retrieval, and preserves stop continuation. Policy: `~/lib/shared/task_context.ts`; shared event adapter: `~/lib/shared/intent_guard.ts`. |
+| `model-pin.ts`                  | Re-pins the routed model after a turn whose echoed model id differs, so `pi -c` restores it. Workaround for [earendil-works/pi#9243](https://github.com/earendil-works/pi/issues/9243).                                                              |
+| `subagent/readonly_config.json` | `modelResponseAliases` so `pi-subagents` accepts the `claude-fable-5-1` echo.                                                                                                                                                                        |
+
+### Task checkpoints and output retention
+
+Requires Pi 1.4.0. The existing runtime, TUI, session ID, compaction settings and review/fix procedure remain in use.
+
+Before provider calls, the extension projects one task checkpoint, computed at the last completed tool turn or fetched fresh after a prompt: goal, criteria/status, scope, corrections, saved preferences, latest acceptance snapshot, decisions, findings and claim provenance/source pointers. Source bodies stay in the ledger. User prompts add only what the checkpoint lacks, such as correction notes. The latest assistant note is an unverified reference, not evidence of completion.
+
+At completed tool-turn boundaries, older successful plain-text tool results can become short references. The checkpoint follows the conversation so routine refreshes preserve the earlier provider prefix. The policy preserves the most recent 32,000 text code units (JavaScript string length), errors, images, user messages and assistant messages. It writes a batch only when it saves at least 32,000 text code units. An older read with the same arguments as a later one is labelled identical or changed; a small changed read keeps only its label. Different ranges stay distinct. Archival runs with or without an intent card. The path-only `read-supersede.ts` extension is removed.
+
+`task_context_read` retrieves original text by `entryId` from the active branch, including after compaction. Pages contain at most 12,000 Unicode code points; pass `nextOffset` as `offset` until it is null. Archival edits preserve tool-call/result metadata and append-only raw history. A result's preview and history are source data, not fresh verification.
+
+The checkpoint persists in the branch as a non-context `custom` entry, written only when it changes, so extension reload and native compaction can recover it without a `context_edit` that would turn off Pi's usage-based overflow check. If the task backend fails, the extension labels a restored checkpoint as stored and skips archival. Aborted/error boundaries and queued user input also skip archival. Native compaction still summarizes conversation; this policy does not detect false beliefs or guarantee that every relevant detail stays in active context.
+
+The shared Codex/Claude task ledger, acceptance snapshots and unbounded independent review/fix loop remain available. This extension does not dispatch additional reviewers.
 
 ### Working-context selection
 

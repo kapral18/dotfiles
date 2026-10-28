@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-# Shared utility functions for bash scripts
 
-# Safe command execution with error handling
 _safe_exec_cmd() {
   local output
   if output=$("$@" 2>&1); then
@@ -14,7 +12,6 @@ _safe_exec_cmd() {
   fi
 }
 
-# Check GitHub API rate limit
 _check_rate_limit() {
   local remaining
   if ! remaining=$(_safe_exec_cmd gh api rate_limit --jq '.rate.remaining'); then
@@ -28,7 +25,6 @@ _check_rate_limit() {
   return 0
 }
 
-# Check if auto-merge is enabled for a PR
 _is_auto_merge_enabled() {
   local pr_number="$1"
   local auto_merge_enabled
@@ -38,7 +34,6 @@ _is_auto_merge_enabled() {
   [ "$auto_merge_enabled" = "true" ]
 }
 
-# Check if PR has the specific comment
 is_pr_commented() {
   local pr_number="$1"
   local comment_body
@@ -48,7 +43,6 @@ is_pr_commented() {
   echo "$comment_body" | grep -q "Please do not merge this pull request"
 }
 
-# Process a single PR for auto-merge disabling
 _process_single_pr() {
   local pr_number="$1"
   local actions_performed=false
@@ -77,7 +71,6 @@ _process_single_pr() {
   return 0
 }
 
-# Get split branch name (remote and branch)
 _get_split_branch_name() {
   if [ $# -eq 0 ]; then
     echo "Error: _get_split_branch_name requires a branch name argument" >&2
@@ -86,14 +79,12 @@ _get_split_branch_name() {
   echo "$1" | awk -F'/' '{print $1; $1=""; gsub(/^\//, ""); print}'
 }
 
-# Confirmation prompt
 _confirm() {
   read -p "Continue? [y/N] " -n 1 -r reply
   echo
   [[ $reply =~ ^[Yy]$ ]]
 }
 
-# Get worktree parent directory
 _get_worktree_parent_dir() {
   local git_common_dir main_repo_root
   git_common_dir=$(realpath "$(git rev-parse --git-common-dir)")
@@ -197,7 +188,6 @@ _bag_and_rmdir_upwards_ignoring_ds_store() {
       fi
     done < <(find "$cur" -mindepth 1 -maxdepth 1 ! -name '.DS_Store' -print 2> /dev/null || true)
 
-    # If we couldn't move anything, avoid leaving empty timestamp dirs around.
     if [ "$moved_any" -ne 1 ]; then
       rmdir "$dest" 2> /dev/null || true
       if _dir_is_effectively_empty_ignoring_ds_store "$bag_root"; then
@@ -212,7 +202,6 @@ _bag_and_rmdir_upwards_ignoring_ds_store() {
       continue
     fi
 
-    # Still not removable -> stop.
     break
   done
 }

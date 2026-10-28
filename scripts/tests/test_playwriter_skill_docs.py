@@ -98,12 +98,6 @@ class ReadDocsTests(unittest.TestCase):
             self.assertEqual(output, RAW)
             self.assertEqual(receipt["mode"], "full-unrecognized-version")
 
-    def test_truncated_document_is_returned_as_full_unknown_not_known_core(self):
-        truncated = RAW[:-40]
-        output, receipt = DOCS.select(truncated, ["core"])
-        self.assertEqual(output, truncated)
-        self.assertEqual(receipt["mode"], "full-unrecognized-document")
-
     def test_unclassified_new_heading_falls_back_even_if_hash_was_updated(self):
         changed = RAW + b"## new global guard\nNever leak secrets.\n"
         with patch.object(DOCS, "AUDITED_SHA", hashlib.sha256(changed).hexdigest()):

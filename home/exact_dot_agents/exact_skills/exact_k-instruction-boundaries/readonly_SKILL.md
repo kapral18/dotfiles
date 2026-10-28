@@ -31,8 +31,9 @@ Forbidden: <hard ban>. Verify: <observable check>.` Keep the ban even when the r
 5. **Use emphasis as contract strength, not decoration.**
    `MUST`, `MUST NOT`, and `NEVER` are valid for safety, authorization, destructive, publication, ownership, git, secret, compatibility, and verification gates.
    Repetition or caps alone do not create precision; name the actor, object, condition, and consequence.
-6. **Back critical boundaries with checks.** Instruction wording is not enforcement by itself.
-   Add tests, checklists, hooks, probes, or acceptance criteria when the repository gives you a local way to verify the boundary.
+6. **Distinguish instruction content from enforcement.** Source review can verify a written boundary; it does not prove model adherence.
+   Do not add wording tests, checklists or runtime machinery merely to verify an instruction.
+   Additional enforcement needs a concrete material failure; implementation changes follow `~/AGENTS.md` §3's minimum sufficient test protection rule.
 
 ## Fidelity Boundaries
 

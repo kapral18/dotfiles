@@ -4,11 +4,9 @@ import sys
 import threading
 import urllib.request
 
-# Global set to track video IDs and prevent duplicates across threads
 seen_ids = set()
 lock = threading.Lock()
 
-# Mapping of keywords to YouTube's "sp" parameter (Search Parameters)
 SP_FILTERS = {
     "short": "EgIYAQ%3D%3D",  # Under 4 minutes
     "long": "EgIYAg%3D%3D",  # Over 20 minutes
@@ -84,11 +82,11 @@ def parse_duration_to_seconds(duration_str):
         return 0
     parts = duration_str.split(":")
     try:
-        if len(parts) == 3:  # H:M:S
+        if len(parts) == 3:
             return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
-        elif len(parts) == 2:  # M:S
+        elif len(parts) == 2:
             return int(parts[0]) * 60 + int(parts[1])
-        elif len(parts) == 1:  # S
+        elif len(parts) == 1:
             return int(parts[0])
     except:
         return 0
@@ -100,7 +98,6 @@ def print_video(video, active_filter):
     if not video_id:
         return
 
-    # Extract duration
     # standard videos have lengthText, compact (related) have lengthText or simpleText
     duration_text = video.get("lengthText", {}).get("simpleText", "")
     if not duration_text:
@@ -114,7 +111,6 @@ def print_video(video, active_filter):
 
     duration_sec = parse_duration_to_seconds(duration_text)
 
-    # STRICT CLIENT-SIDE FILTERING
     if active_filter and active_filter.startswith("dur:"):
         try:
             bounds = active_filter.split(":")[1].split("-")
@@ -278,7 +274,6 @@ def process_results(res, is_initial, active_filter):
         )
 
     for section in contents:
-        # Check for direct video (common in continuations)
         if "videoRenderer" in section:
             print_video(section["videoRenderer"], active_filter)
             continue
@@ -289,7 +284,6 @@ def process_results(res, is_initial, active_filter):
             print_channel(section["channelRenderer"])
             continue
 
-        # Check for itemSectionRenderer
         item_section = section.get("itemSectionRenderer", {}).get("contents", [])
         for item in item_section:
             video = item.get("videoRenderer")
@@ -391,20 +385,16 @@ def search(raw_query):
                     print_video(r["compactVideoRenderer"], None)
                 elif "lockupViewModel" in r:
                     # Related videos now use lockupViewModel too
-                    # We can try to print it as a video if it has video metadata
                     lvm = r["lockupViewModel"]
                     content_id = lvm.get("contentId")
                     if not content_id:
                         continue
 
-                    # Check if it's a video by looking for duration or video-specific badges
                     is_video = True
                     if "collectionThumbnailViewModel" in lvm.get("contentImage", {}):
-                        is_video = False  # It's a playlist
+                        is_video = False
 
                     if is_video:
-                        # Construct a fake videoRenderer object to pass to print_video
-                        # or just extract here. Let's extract here since it's simpler
                         with lock:
                             if content_id in seen_ids:
                                 continue
@@ -454,7 +444,6 @@ def search(raw_query):
 
                         duration = ""
                         try:
-                            # Try multiple paths for duration in lockupViewModel
                             duration = (
                                 lvm.get("contentImage", {})
                                 .get("imageThumbnailViewModel", {})

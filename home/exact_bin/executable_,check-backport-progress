@@ -26,19 +26,16 @@ Example:
 EOF
 }
 
-# Initialize parameters
 merged_label=""
 required_labels=()
 branches=()
 upstream_remote="origin"
 
-# Show help if no arguments or -h/--help is provided
 if [[ $# -eq 0 ]] || [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
   show_help
   exit 0
 fi
 
-# Parse command-line arguments
 while [[ $# -gt 0 ]]; do
   case $1 in
   --merged-label)
@@ -73,7 +70,6 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Validate required parameters
 validate_param() {
   if [[ -z "$2" ]] || { [[ "$1" == "array" ]] && [[ ${#2} -eq 0 ]]; }; then
     echo "Error: --${3} is required"
@@ -87,13 +83,11 @@ validate_param "array" "${required_labels[*]}" "required-labels"
 validate_param "array" "${branches[*]}" "branches"
 validate_param "string" "$upstream_remote" "upstream"
 
-# Ensure we are running in a git repository
 if ! git rev-parse --git-dir >/dev/null 2>&1; then
   echo "Error: Not inside a git repository."
   exit 1
 fi
 
-# Fetch latest branches from upstream
 git fetch "$upstream_remote" "${branches[@]}"
 
 echo "=== Checking merged PRs for missing backport commits ==="

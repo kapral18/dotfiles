@@ -528,12 +528,10 @@ for pr_number in "${pr_numbers[@]}"; do
   _add_worktree_tmux_session "$quiet_mode" "$parent_name" "$local_branch" "$worktree_path"
   _print_created_worktree_message "$quiet_mode" "$local_branch" "$worktree_path" "$base_ref"
 
-  # For non-prefixed branches, keep upstream tracking sane.
   if [[ "$local_branch" != *__* ]]; then
     git branch --set-upstream-to="$base_ref" "$local_branch" > /dev/null 2>&1 || true
   fi
 
-  # Native Git Smart Push Routing for prefixed branches
   if [[ "$local_branch" == *__* ]] && ! _comma_w_remote_is_first_party "$remote_name"; then
     _comma_w_configure_prefixed_branch_push_routing "$worktree_path" "$local_branch" "$remote_name" "$branch_name" "$quiet_mode" || true
   fi

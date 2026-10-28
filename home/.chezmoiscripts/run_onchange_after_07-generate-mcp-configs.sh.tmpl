@@ -23,7 +23,6 @@ gen="$source_dir/../scripts/generate_mcp_configs.py"
 tmp="$(mktemp)"
 trap 'rm -f "$tmp"' EXIT
 
-# Claude Code — merge mcpServers into existing .claude.json
 python3 "$gen" "$yaml_src" claude >"$tmp"
 python3 "$source_dir/../scripts/merge_claude_mcp.py" "$tmp" "$HOME/.claude.json"
 chezmoi_record_checksum "$HOME/.claude.json"
@@ -39,7 +38,6 @@ chezmoi_record_artifact --id claude-mcp \
   --transform "$source_dir/../scripts/chezmoi_lib.sh" \
   --consumer claude
 
-# Pi — install with restricted permissions
 python3 "$gen" "$yaml_src" pi >"$tmp"
 chezmoi_install_if_changed "$tmp" "$HOME/.pi/agent/mcp.json" 0444
 chezmoi_record_artifact --id pi-mcp \
@@ -52,7 +50,6 @@ chezmoi_record_artifact --id pi-mcp \
   --transform "$source_dir/../scripts/chezmoi_lib.sh" \
   --consumer pi
 
-# OMP — native MCP file.
 python3 "$gen" "$yaml_src" omp >"$tmp"
 chezmoi_write_if_changed "$(cat "$tmp")" "$HOME/.omp/agent/mcp.json" 0600
 chezmoi_record_artifact --id omp-mcp \

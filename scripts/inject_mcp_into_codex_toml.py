@@ -366,7 +366,6 @@ def main() -> None:
 
     if MARKER in base:
         before, after = base.split(MARKER, 1)
-        # Drop the marker line itself (including a trailing newline if present).
         if after.startswith("\n"):
             after = after[1:]
         after = after.lstrip()
@@ -378,7 +377,6 @@ def main() -> None:
         sys.stdout.write(_with_preserved_runtime_state(output, existing_toml_path))
         return
 
-    # Fallback: strip any existing [mcp_servers.*] blocks and append snippet.
     lines = base.splitlines(keepends=True)
     out: list[str] = []
     skipping = False

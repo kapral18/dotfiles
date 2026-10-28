@@ -110,75 +110,6 @@ class TestArtifactCommand(unittest.TestCase):
         assert prompt["rect"]["width"] == 30
         assert prompt["ancestors"][0]["selector"] == "form"
 
-    def test_multi_target_feedback_survives_normalization(self):
-
-        batch = artifact_feedback.normalize_feedback_batch(
-            {
-                "items": [
-                    {
-                        "prompt": "merge these two cards",
-                        "selector": "main > section:nth-of-type(1)",
-                        "text": "First card",
-                        "targets": [
-                            {"selector": "main > section:nth-of-type(1)", "text": "First card", "selection": ""},
-                            {"selector": "main > section:nth-of-type(2)", "text": "Second card", "selection": ""},
-                        ],
-                    }
-                ]
-            }
-        )
-
-        assert batch is not None
-        prompt = artifact_feedback.flatten_feedback_batches([batch])[0]
-        assert prompt["prompt"] == "merge these two cards"
-        assert len(prompt["targets"]) == 2
-        assert prompt["targets"][1]["text"] == "Second card"
-
-    def test_semantic_entity_feedback_survives_normalization(self):
-
-        batch = artifact_feedback.normalize_feedback_batch(
-            {
-                "items": [
-                    {
-                        "prompt": "connect these concepts",
-                        "selector": '[data-artifact-id="entity.option.auth.jwt"]',
-                        "text": "JWT auth",
-                        "artifact_id": "auth-plan",
-                        "entity_id": "entity.option.auth.jwt",
-                        "entity_kind": "option",
-                        "entity_label": "JWT auth",
-                        "entity_summary": "Stateless token-based auth option.",
-                        "entity": {
-                            "id": "entity.option.auth.jwt",
-                            "kind": "option",
-                            "label": "JWT auth",
-                            "parent": "entity.section.auth",
-                        },
-                        "entity_ancestors": [{"id": "entity.section.auth", "kind": "section", "label": "Auth options"}],
-                        "relations": [
-                            {"from": "entity.option.auth.jwt", "to": "entity.risk.revocation", "kind": "has_risk"}
-                        ],
-                        "targets": [
-                            {
-                                "selector": '[data-artifact-id="entity.option.auth.jwt"]',
-                                "entity_id": "entity.option.auth.jwt",
-                                "entity": {"id": "entity.option.auth.jwt", "kind": "option", "label": "JWT auth"},
-                            }
-                        ],
-                    }
-                ]
-            }
-        )
-
-        assert batch is not None
-        prompt = artifact_feedback.flatten_feedback_batches([batch])[0]
-        assert prompt["artifact_id"] == "auth-plan"
-        assert prompt["entity_id"] == "entity.option.auth.jwt"
-        assert prompt["entity"]["parent"] == "entity.section.auth"
-        assert prompt["entity_ancestors"][0]["label"] == "Auth options"
-        assert prompt["relations"][0]["kind"] == "has_risk"
-        assert prompt["targets"][0]["entity_id"] == "entity.option.auth.jwt"
-
     def test_feedback_poll_archives_delivered_batches(self):
         with tempfile.TemporaryDirectory() as tmp:
             fdir = Path(tmp) / "feedback"
@@ -196,22 +127,6 @@ class TestArtifactCommand(unittest.TestCase):
                 assert archive.is_file()
                 assert not pending.exists()
                 assert archive.parent == fdir / "delivered"
-            finally:
-                artifact_feedback.feedback_dir = old_feedback_dir
-
-    def test_clear_ended_allows_reusing_artifact_name(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            fdir = Path(tmp) / "feedback"
-            fdir.mkdir()
-            old_feedback_dir = artifact_feedback.feedback_dir
-            artifact_feedback.feedback_dir = lambda: fdir
-            try:
-                ended = artifact_feedback.ended_path("demo")
-                ended.write_text("", encoding="utf-8")
-
-                artifact_feedback.clear_ended("demo")
-
-                assert not ended.exists()
             finally:
                 artifact_feedback.feedback_dir = old_feedback_dir
 

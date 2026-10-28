@@ -49,9 +49,6 @@ class MapError(Exception):
     """A user-facing failure; main() prints it and exits 1."""
 
 
-# ---------------------------------------------------------------- git
-
-
 def git(*args: str, cwd: Path | None = None) -> str:
     result = subprocess.run(["git", *args], capture_output=True, text=True, cwd=cwd)
     if result.returncode != 0:
@@ -96,9 +93,6 @@ def current_branch() -> str | None:
 def branch_slug(branch: str) -> str:
     cleaned = re.sub(r"[^a-z0-9._-]+", "-", branch.lower()).strip("-.")[:48] or "branch"
     return f"{cleaned}-{hashlib.sha1(branch.encode()).hexdigest()[:6]}"
-
-
-# ---------------------------------------------------------------- context
 
 
 @dataclass
@@ -146,9 +140,6 @@ def build_context(args: argparse.Namespace) -> Context:
         branch=args.branch or current_branch(),
         default=default_branch(),
     )
-
-
-# ---------------------------------------------------------------- entries
 
 
 @dataclass
@@ -322,9 +313,6 @@ def repo_lock(ctx: Context) -> Iterator[None]:
             lock.rmdir()
 
 
-# ---------------------------------------------------------------- views
-
-
 @dataclass
 class View:
     id: str
@@ -443,9 +431,6 @@ def status_line(ctx: Context, views: dict[str, View]) -> str:
 def header(view: View) -> str:
     layer = "base" if view.layer == "base" else f"branch:{view.path.parents[1].name}"
     return f"<!-- behavior-map id={view.id} layer={layer} hash={file_hash(view.path)} flags={','.join(view.flags)} -->"
-
-
-# ---------------------------------------------------------------- commands
 
 
 def cmd_path(ctx: Context, args: argparse.Namespace) -> int:

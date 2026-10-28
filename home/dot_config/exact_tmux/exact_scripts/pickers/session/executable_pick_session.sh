@@ -20,12 +20,6 @@ need_cmd() {
   fi
 }
 
-# Shared naming/path helpers (login_shell, normalize, tildefy_to_reply,
-# tmux_sanitize_session_name, session_name, resolve_path,
-# worktree_root_dir_for_path, has_linked_worktrees_for_root_checkout,
-# default_branch_for_root_checkout, session_name_for_entry) live in a sourced
-# library so action_send_command.sh produces the same canonical names this
-# script uses on regular `enter`. See lib/session_naming.sh for the contract.
 # shellcheck source=lib/session_naming.sh
 . "$HOME/.config/tmux/scripts/pickers/session/lib/session_naming.sh"
 
@@ -99,10 +93,6 @@ bulk_guard_clear() {
   tmux set-option -gq "$bulk_guard_key" "0" > /dev/null 2>&1 || true
 }
 bulk_guard_set
-# `_pick_session_pid_scoped_files` is filled with the per-picker mktemp paths
-# below. Cleaning them up on EXIT keeps the cache dir tidy when the picker
-# finishes / is killed; their contents are read by execute-silent bindings and
-# any background dispatchers we hand them off to before we exit.
 _pick_session_pid_scoped_files=()
 _pick_session_cleanup_pid_scoped() {
   local _f
@@ -235,11 +225,6 @@ fi
 
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux"
 mkdir -p "$cache_dir" 2> /dev/null || true
-# Per-picker state is PID-scoped so concurrent picker instances (popups + stray
-# invocations) don't fight over a single shared file. ctrl-x / alt-x / ctrl-s
-# bindings all dispatch through `dispatch_async.sh`, which mints per-binding
-# mktemp snapshots from `{+f}` at action-fire time — there is no shared
-# selection file to clobber across rapid keypresses or concurrent pickers.
 primary_tmp="${cache_dir}/pick_session_fzf_primary.$$.tsv"
 _pick_session_pid_scoped_files+=("$primary_tmp")
 pin_file="$(handoff_slot_path pick_session_pin)"
@@ -274,9 +259,6 @@ rm_pending_snap="${cache_dir}/pick_session_rm_pending.$$.tsv"
 # markers are cleaned here too; a stale .busy would block alt-x and the modes.
 _pick_session_pid_scoped_files+=("$cmd_tmp" "$mode_flag" "$wt_mode_flag" "$wt_branch_tmp" "$only_mode_flag" "$rm_confirm_flag" "${rm_confirm_flag}.busy" "${rm_confirm_flag}.run" "$rm_pending_snap")
 
-# alt-1/alt-2 quick filters jump to the first two scan-root segments via their
-# trailing-slash labels (e.g. `code/` surfaces `~/code/`). Overridable so the
-# bindings can follow non-default `@pick_session_worktree_scan_roots`.
 filter_quick_1="$(tmux_opt '@pick_session_filter_quick_1' 'code')"
 filter_quick_2="$(tmux_opt '@pick_session_filter_quick_2' 'share')"
 
@@ -311,18 +293,6 @@ preview_with_help="if [ -f $(printf %q "$help_flag") ]; then $(printf %q "$help_
 # - empty query: `--no-sort` preserves grouped/frecency ordering
 # - non-empty query: sessions, worktrees, and directories remain strict tiers;
 #   fzf relevance determines order only within each tier
-#
-# Correctness + speed:
-# - Correctness: every input reload refreshes the daemon's complete source rows;
-#   clearing the query restores that source order.
-# - Speed: no per-keystroke shell fork. fzf's `change:transform:<sh>` forks
-#   bash (~10ms) on each keystroke, which made held-backspace visibly laggy.
-#
-# Solution: fzf's `--listen=<sock>` Unix-socket HTTP server exposes the live
-# query and globally ranked matches. A tiny Python daemon polls at 20ms,
-# stable-partitions those matches by kind, and reloads the complete row set with
-# sorting disabled. fzf's `change` binding stays on the zero-cost `first` action,
-# so typing remains fzf-native.
 sort_daemon_cmd="$HOME/.config/tmux/scripts/pickers/session/lib/sort_toggle_daemon.py"
 sort_daemon_sock="${cache_dir}/pick_session_fzf.$$.sock"
 sort_source_file="${cache_dir}/pick_session_fzf_source.$$.tsv"
@@ -345,9 +315,6 @@ ctrl_r_reload="$(snapshot_reload_command "$filter_cmd --refresh --force-order")"
 alt_r_reload="$(snapshot_reload_command "$filter_cmd --force-refresh --force-order")"
 kill_reload="$(snapshot_reload_command "$hide_selected_cmd {+f} kill {q}")"
 
-# fzf send-mode: ctrl-s enters a modal where the query line becomes a command
-# prompt. enter dispatches the command to selected sessions; esc cancels.
-#
 # The selection is captured at enter-time via `{+f}`, snapshotted by
 # `dispatch_async.sh` running *inside* the enter:transform shell command. This
 # placement matters: fzf substitutes `{+f}` into the transform body's shell
@@ -357,26 +324,10 @@ kill_reload="$(snapshot_reload_command "$hide_selected_cmd {+f} kill {q}")"
 # would already be a literal path that fzf had just deleted. Running
 # `dispatch_async.sh` *during* the transform shell snapshots `{+f}` to a stable
 # mktemp while the file is still alive, sidestepping that race.
-#
-# Net effect: the visual selection state and what gets dispatched are in sync;
-# a row toggled with tab while typing the command is honored.
 _modal_header='?=help  ctrl-/=preview  alt-y=copy  alt-o=filter  alt-c=new wt  alt-g=GitHub'
 _modal_rebind='ctrl-s,ctrl-x,alt-x,alt-y,alt-c,alt-o,alt-p,alt-i,alt-g,change'
 send_restore="enable-search+change-prompt($fzf_prompt)+change-ghost($fzf_ghost)+change-header($_modal_header)+clear-query+deselect-all+rebind($_modal_rebind)+unbind(esc)"
 
-# alt-x removal runs as a two-phase state machine inside this fzf instance
-# (see altx_remove_transform.sh). The helper echoes these action strings back
-# to fzf; the in-progress cue is the binding's own prompt swap, not a takeover:
-# - CHECK start: alt-x first repaints the query line as "⏳ removing…" before
-#   launching the helper, so the preflight pause reads as progress instantly.
-# - SAFE (nothing dirty/unpushed): async removal + optimistic hide reloaded
-#   from $PICK_SESSION_SORT_SOURCE_FILE (the live row set each reload tees),
-#   filtered by the checked snapshot. Snapshot-filtered: no items rescan
-#   between the keypress and rows vanishing. Prompt restores with the reload.
-# - BLOCKED: only prompt/ghost/header swap, offering a second alt-x as FORCE.
-# - FORCE confirmed: same instant hide + visual restore. esc in either state
-#   clears the confirm flag and the transform's run marker (aborting an
-#   in-flight check) via the shared esc binding and restores standard visuals.
 #   esc stays unbound outside modals: `start` unbinds it once, so reloads
 #   (live refresh, re-sorting, ctrl-r) never touch it. The alt-x cue and the
 #   force prompt rebind it, and every alt-x outcome (safe, force, restore)
@@ -404,10 +355,6 @@ export ALTX_FORCE_ACTIONS="$altx_force_actions"
 export ALTX_RESTORE_ACTIONS="$altx_visual_restore"
 send_mode="execute-silent(touch $mode_flag)+disable-search+change-prompt(❯ send: )+change-ghost()+change-header(enter=send  esc=cancel)+clear-query+unbind($_modal_rebind)+rebind(esc)"
 
-# alt-c worktree-create modal: query line becomes a "new branch" prompt.
-# enter creates a worktree off the selected repo via ,w add; esc cancels.
-# Reuses the same modal scaffolding as send-mode (separate flag so enter can
-# tell the two apart).
 wt_mode="execute-silent(touch $wt_mode_flag)+disable-search+change-prompt(❯ new branch: )+change-ghost(branch off selected repo)+change-header(enter=create worktree  esc=cancel)+clear-query+unbind($_modal_rebind)+rebind(esc)"
 
 # A late alt-x outcome (safe, confirm, restore) would clobber a mode opened over
@@ -416,12 +363,8 @@ wt_mode="execute-silent(touch $wt_mode_flag)+disable-search+change-prompt(❯ ne
 # The cue's prompt covers keys typed before the helper creates its .busy marker.
 altx_pending="[ \"\$FZF_PROMPT\" = $(printf %q "$altx_check_prompt") ] || [ -e $(printf %q "${rm_confirm_flag}.busy") ] || [ -e $(printf %q "$rm_confirm_flag") ]"
 
-# enter:transform routes by active modal flag: send-mode dispatches the typed
-# command; wt-mode creates a worktree off the selected repo; otherwise accept.
 enter_transform="enter:transform:if [ -f $mode_flag ]; then printf '%s' {q} > $cmd_tmp; $dispatch_async_cmd $send_cmd {+f} $cmd_tmp >/dev/null 2>&1; echo 'execute-silent(rm -f $mode_flag)+$send_restore'; elif [ -f $wt_mode_flag ]; then printf '%s' {q} > $wt_branch_tmp; $dispatch_async_cmd $create_wt_cmd {f} $wt_branch_tmp >/dev/null 2>&1; echo 'execute-silent(rm -f $wt_mode_flag)+$send_restore'; else echo 'execute-silent(cp {f} $primary_tmp)+accept'; fi"
 
-# Shared fzf bindings/options for both invocation branches (pinned vs not).
-# Maintaining a single array avoids the two copies drifting as bindings grow.
 fzf_common_binds=(
   --bind "start:execute-silent($live_refresh_cmd >/dev/null 2>&1 &)+unbind(esc)"
   --bind "ctrl-r:reload($ctrl_r_reload)+track"
@@ -1067,8 +1010,6 @@ else
   create_layout="deferred"
 fi
 created_any_session=0
-# Collect (name\tpath) pairs for sessions created during this run so we can
-# inject them into the cache instantly without a full reindex.
 created_session_lines=()
 target_session=""
 primary_set=0
@@ -1092,8 +1033,6 @@ while IFS= read -r _line; do
   case "$kind" in
     session)
       this_session="$target"
-      # If this session was discovered via a worktree and it has a preferred name,
-      # rename it on selection so the tmux session list matches the picker.
       case "$meta" in
         sess_root:* | sess_wt:*)
           if [[ "$meta" == *"|expected="* ]]; then
@@ -1141,7 +1080,6 @@ while IFS= read -r _line; do
         repo_id="${repo_id%%|*}"
       fi
       if [ -z "$repo_id" ]; then
-        # Fallback: use the worktree root path as a repo identifier.
         case "$path" in
           "$HOME"/*) repo_id="${path#"$HOME"/}" ;;
           *) repo_id="$path" ;;
@@ -1175,13 +1113,6 @@ while IFS= read -r _line; do
       # If a session name is already taken by a "bagged" path (e.g. a worktree
       # that was moved under ~/.bag during removal), rename it away so selecting
       # this worktree can (re)create the canonical session at the real path.
-      # bag_rename_if_needed lives in lib/session_naming.sh so the picker and
-      # action_send_command.sh share one implementation. The outer
-      # tmux_has_session_exact gate keeps the no-collision path fork-free (it
-      # consults the picker's in-memory session cache); only on a collision do
-      # we call into the lib and pass the cached existing-path to avoid the
-      # lib's `tmux list-sessions` lookup. The lib's stdout ("OLD\tNEW" on
-      # rename) is consumed to keep the picker's cache coherent.
       if [ -n "$session_name" ] && tmux_has_session_exact "$session_name"; then
         existing_path=""
         if [ "${__sess_cache_loaded:-0}" -eq 1 ]; then
@@ -1276,8 +1207,6 @@ if [ "${#cache_session_lines[@]}" -gt 0 ]; then
     fi
     _row="${_sess_icon}  ${_sess_color}${_label}${_reset}"$'\t'"session"$'\t'"${_cpath}"$'\t'$'\t'"${_cname}"$'\t'"${_mk}"
     if [ -f "$_cache_file" ]; then
-      # Prepend the session row and drop stale same-path rows so a selected
-      # directory immediately reopens as a session, not as its old folder row.
       _tmp_cache="$(mktemp "${cache_dir}/pick_session_inject.XXXXXX")"
       printf '%s\n' "$_row" > "$_tmp_cache"
       awk -F $'\t' -v p="$_cpath" -v n="$_cname" '
@@ -1290,9 +1219,7 @@ if [ "${#cache_session_lines[@]}" -gt 0 ]; then
       printf '%s\n' "$_row" > "$_cache_file"
     fi
   done
-  # Invalidate the ordered snapshot so the next open regenerates it.
   rm -f "$_ordered_file" 2> /dev/null || true
-  # Schedule a proper reindex in the background for full group/position accuracy.
   # Delay 1s so it doesn't compete with the initial shell render for CPU.
   tmux run-shell -b "sleep 1; $HOME/.config/tmux/scripts/pickers/session/index_update.sh --force --quiet --quick-only" 2> /dev/null || true
 fi

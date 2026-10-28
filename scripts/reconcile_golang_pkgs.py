@@ -55,7 +55,6 @@ def load_modules(path: Path) -> list[str]:
         line = raw.strip()
         if not line or line.startswith("#"):
             continue
-        # Defensive: the list format is "module" but tolerate trailing fields.
         modules.append(line.split()[0])
     return modules
 
@@ -73,7 +72,6 @@ def main() -> int:
     previously_managed = load_modules(state_file)
 
     desired_set = set(desired)
-    # Modules we installed before but that are no longer wanted.
     to_remove = [m for m in previously_managed if m not in desired_set]
 
     for module in to_remove:
@@ -92,7 +90,6 @@ def main() -> int:
             except OSError as exc:
                 sys.stderr.write(f"warning: failed to remove {binary}: {exc}\n")
 
-    # Rewrite the ledger to exactly the current desired set.
     state_file.parent.mkdir(parents=True, exist_ok=True)
     state_file.write_text("".join(f"{m}\n" for m in desired), encoding="utf-8")
     return 0

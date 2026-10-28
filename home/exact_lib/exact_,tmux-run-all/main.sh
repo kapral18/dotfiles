@@ -79,7 +79,6 @@ function get_first_idle_pane_in_session() {
   done
   panes_list=("${trimmed[@]}")
 
-  # First pass: look for idle pane in first window (window 0)
   for pane_info in "${panes_list[@]}"; do
     window_index="${pane_info#*:}"
     window_index="${window_index%%.*}"
@@ -97,7 +96,6 @@ function get_first_idle_pane_in_session() {
     fi
   done
 
-  # Second pass: look for idle pane in any window
   for pane_info in "${panes_list[@]}"; do
     pane_command="${pane_info#*$'\t'}"
     pane_command="${pane_command#*$'\t'}"
@@ -137,10 +135,8 @@ function get_matching_sessions() {
   local matching_sessions=()
 
   while IFS= read -r session; do
-    # Check if session matches the include pattern
     # shellcheck disable=SC2053
     if [[ $session == $pattern ]]; then
-      # Check if session should be excluded
       # shellcheck disable=SC2053
       if [[ -n "$exclude_pattern" && $session == $exclude_pattern ]]; then
         continue
@@ -149,7 +145,6 @@ function get_matching_sessions() {
     fi
   done <<< "$sessions"
 
-  # Only print if we have matches
   if [[ ${#matching_sessions[@]} -gt 0 ]]; then
     printf '%s\n' "${matching_sessions[@]}"
   fi
@@ -161,7 +156,6 @@ function run_command_in_session() {
   local all_panes="${3:-false}"
 
   if [[ "$all_panes" == "true" ]]; then
-    # Original behavior: run in all idle panes
     mapfile -t session_panes < <(tmux list-panes -t "$session" -F '#{pane_id}	#{session_name}:#{window_index}.#{pane_index}	#{pane_current_command}' 2> /dev/null || true)
 
     if [[ ${#session_panes[@]} -eq 0 ]]; then
@@ -172,7 +166,6 @@ function run_command_in_session() {
 
     log_info "Running command in idle panes of session '$session'"
   else
-    # New behavior: run only in first idle pane (prefer first window)
     if ! first_pane_info=$(get_first_idle_pane_in_session "$session"); then
       printf '0 0 1\n'
       log_info "No idle pane found in session '$session' (skipped)"
@@ -194,7 +187,6 @@ function run_command_in_session() {
   local skipped_count=0
 
   if [[ "$all_panes" == "true" ]]; then
-    # Original behavior: handle all panes with prioritization
     local current_pane_id="${TMUX_PANE:-}"
     local CURRENT_PANE_ID="$current_pane_id"
     local current_pane_info=""
@@ -254,7 +246,6 @@ function run_command_in_session() {
       fi
     done
   else
-    # New behavior: run only in the single first window pane (already validated as idle)
     for pane_info in "${session_panes[@]}"; do
       pane_id="${pane_info%%$'\t'*}"
       rest="${pane_info#*$'\t'}"
@@ -285,17 +276,14 @@ function main() {
   local command=""
   local all_panes="false"
 
-  # Parse arguments
   local args=("$@")
   local arg_offset=0
 
-  # Check for --all flag
   if [[ ${#args[@]} -gt 0 && "${args[0]}" == "--all" ]]; then
     all_panes="true"
     arg_offset=1
   fi
 
-  # Shift arguments based on offset
   local remaining_args=("${args[@]:$arg_offset}")
 
   case ${#remaining_args[@]} in
@@ -319,16 +307,13 @@ function main() {
       ;;
   esac
 
-  # Handle help flags
   if [[ "$pattern" == "-h" || "$pattern" == "--help" ]]; then
     show_help
     exit 0
   fi
 
-  # Validate tmux is available
   validate_tmux
 
-  # Get matching sessions
   local matching_sessions
   mapfile -t matching_sessions < <(get_matching_sessions "$pattern" "$exclude_pattern")
 
@@ -342,7 +327,6 @@ function main() {
 
   log_info "Found ${#matching_sessions[@]} matching session(s)"
 
-  # Run command in each matching session
   local sessions_success_count=0
   local sessions_failure_count=0
   local panes_success=0
@@ -369,7 +353,6 @@ function main() {
     fi
   done
 
-  # Summary
   echo
   log_info "Sessions: $sessions_success_count successful, $sessions_failure_count failed"
   log_info "Panes: $panes_success successful, $panes_failure failed, $panes_skipped skipped"

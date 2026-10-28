@@ -80,13 +80,6 @@ notify_error() {
 }
 
 ttl="$(tmux_opt '@pick_session_cache_ttl' '60')"
-# Full scans (worktree/dir discovery) are gated on their own freshness stamp,
-# independent of the cache mtime, so that frequent quick-only refreshes (which
-# bump the cache mtime on every session switch/create/picker open) cannot
-# starve the full scan. Without this, the full scan -- the only path that finds
-# session-less worktrees -- was perpetually skipped whenever a quick refresh had
-# touched the cache within `ttl`, so the picker only ever listed worktrees that
-# happened to have a live tmux session.
 full_scan_ttl="$(tmux_opt '@pick_session_full_scan_ttl' '60')"
 mutation_ttl="$(tmux_opt '@pick_session_mutation_tombstone_ttl' '300')"
 if [ -n "$ttl_override" ]; then
@@ -105,7 +98,6 @@ esac
 
 if [ "$force" -ne 1 ]; then
   if [ "$quick_only" -eq 1 ]; then
-    # Quick-only: gate on cache mtime (cheap, session-focused refresh).
     if [ -f "$cache_file" ]; then
       mt="$(mtime_epoch "$cache_file" 2> /dev/null || echo 0)"
       age="$(($(now_epoch) - mt))"
@@ -151,7 +143,6 @@ while ! mkdir "$lock_dir" 2> /dev/null; do
       rm -rf "$lock_dir" 2> /dev/null || true
       continue
     fi
-    # Another updater is in flight and this is not a pre-empting refresh; defer.
     exit 0
   fi
   # No live owner: either lock_dir is a leftover from a crashed updater
@@ -302,7 +293,6 @@ build_cache_refreshing_sessions_preserving_others() {
     return 0
   fi
 
-  # Fallback: kind-based merge when src has only sessions (e.g. minimal scan).
   awk -F $'\t' 'NF>=5 && $2 == "session" { print }' "$src" 2> /dev/null >> "$out" || true
   if file_has_worktree_rows "$cache_file"; then
     awk -F $'\t' 'NF>=5 && $2 == "worktree" { print }' "$cache_file" 2> /dev/null >> "$out" || true
@@ -400,14 +390,12 @@ if [ "$quick_only" -eq 1 ]; then
     exit 0
   fi
 else
-  # Quick scan: sessions only (merged into existing cache).
   gen_skip_args=()
   [ "$skip_dirty" -eq 1 ] && gen_skip_args+=(--skip-dirty)
   [ "$skip_gh" -eq 1 ] && gen_skip_args+=(--skip-gh)
   "$gen" --quick --sessions-only ${gen_skip_args[@]+"${gen_skip_args[@]}"} > "$tmp_quick" 2> "$tmp_err_quick" &
   pid_quick=$!
   gen_pids+=("$pid_quick")
-  # Perform a full scan (including directories) in the background.
   "$gen" ${gen_skip_args[@]+"${gen_skip_args[@]}"} > "$tmp_full" 2> "$tmp_err_full" &
   pid_full=$!
   gen_pids+=("$pid_full")
@@ -481,7 +469,6 @@ if [ "$quiet" -ne 1 ] && command -v tmux > /dev/null 2>&1 && [ -n "${TMUX:-}" ];
   tmux display-message -d 1500 "pick_session: list updated" 2> /dev/null || true
 fi
 
-# Keep a precomputed ordered snapshot in sync so picker open can stay instant.
 if [ -x "$ordered_update_cmd" ] && [ -s "$cache_file" ]; then
   "$ordered_update_cmd" --quiet > /dev/null 2>&1 &
 fi

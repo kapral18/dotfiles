@@ -163,7 +163,6 @@ git_summary() {
     printf '%s  %s%s%s\n' "${C_DIM}branch${C_R}" "$C_GREEN" "$branch" "$C_R"
   fi
 
-  # Combine ahead/behind into one rev-list call.
   local lr
   lr="$(git -C "$dir" rev-list --left-right --count '@{upstream}...HEAD' 2> /dev/null || true)"
   if [ -n "$lr" ]; then
@@ -213,7 +212,6 @@ pane_capture() {
   local sess="$1"
   [ -n "$sess" ] || return 0
 
-  # Single tmux call for session metadata: command, path, window count.
   local sess_info
   sess_info="$(tmux display-message -t "$sess" -p '#{pane_current_command}	#{session_path}	#{session_windows}' 2> /dev/null || true)"
   if [ -n "$sess_info" ]; then

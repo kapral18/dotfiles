@@ -41,24 +41,19 @@ TRUE_VALUES = {"1", "true", "yes", "on"}
 
 
 def runner_path() -> Path:
-    """Absolute path to the colocated embed_runner.py script."""
     return Path(__file__).resolve().parent / "embed_runner.py"
 
 
 def uv_binary() -> str | None:
-    """`uv` is required to drive the PEP 723 inline-script invocation."""
     return shutil.which("uv")
 
 
 def resident_connect_only() -> bool:
-    """Whether this process may only use an already-running resident worker."""
     return os.environ.get("AI_EMBED_CONNECT_ONLY", "").strip().lower() in TRUE_VALUES
 
 
 @dataclass
 class EmbedResult:
-    """Single embed response payload."""
-
     model: str
     dim: int
     vectors: list[list[float]]
@@ -139,7 +134,6 @@ class Embedder:
             return []
 
     def embed_one(self, text: str) -> list[float]:
-        """Embed a single text. Returns [] on any failure."""
         if not text:
             return []
         vectors = self.embed([text])
@@ -206,9 +200,6 @@ class Embedder:
         )
 
 
-# --- Vector packing helpers ------------------------------------------------
-
-
 def pack_vector(vector: list[float]) -> bytes:
     """Pack a float vector into a compact little-endian float32 BLOB.
 
@@ -219,7 +210,6 @@ def pack_vector(vector: list[float]) -> bytes:
 
 
 def unpack_vector(blob: bytes | None) -> list[float]:
-    """Inverse of `pack_vector`. Returns [] for None/empty BLOBs."""
     if not blob:
         return []
     n = len(blob) // 4

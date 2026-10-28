@@ -21,7 +21,7 @@ Identify which question is being answered — from the prompt, the surrounding c
 
 The two branches produce very different artifacts — getting this wrong wastes the whole prototype.
 If genuinely ambiguous and the user is unreachable, default to whichever matches the surrounding code (a backend module → logic;
-a page/component → UI) and state the assumption at the top of the prototype.
+a page/component → UI) and state the assumption in the task record.
 
 ## Rules that apply to both
 
@@ -33,11 +33,13 @@ a page/component → UI) and state the assumption at the top of the prototype.
    The user must start it without thinking.
 3. **No persistence by default.** State lives in memory — persistence is the thing the prototype is _checking_, not something it depends on.
    If the question is about a database, hit a scratch DB or a local file with a clear "PROTOTYPE — wipe me" name.
-4. **Skip the polish.** No tests, no error handling beyond what makes it runnable, no abstractions. Learn something fast, then delete it.
+4. **Skip the polish during disposable exploration.** No tests, no error handling beyond what makes it runnable, no abstractions.
+   Learn something fast, then delete it.
 5. **Surface the state.**
    After every action (logic) or on every variant switch (UI), print or render the full relevant state so the user sees what changed.
 6. **Delete or absorb when done.**
    Either delete it or fold the validated decision into the real code, so nothing is left rotting in the repo.
+   Absorbed material behavior must meet `~/AGENTS.md` §3's minimum sufficient test protection rule before implementation is complete.
 
 ## When done
 

@@ -101,12 +101,10 @@ def cmd_global_toggle(state_path: str, rendered_tsv_path: str) -> int:
     p = Path(state_path)
     current = _read_set(p)
     if current & parents:
-        # Something visible is collapsed → expand everything.
         new = current - parents
     elif parents_with_children:
         new = current | parents_with_children
     else:
-        # Nothing to collapse and nothing currently collapsed.
         return 0
     _write_set(p, new)
     return 0

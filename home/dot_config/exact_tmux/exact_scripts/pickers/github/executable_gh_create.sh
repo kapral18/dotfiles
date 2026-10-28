@@ -6,13 +6,6 @@
 # Wired to alt-i (issue) and alt-E (epic). Resolves a target repo (defaulting to
 # the cursor row's repo), composes title/body in $EDITOR, creates via
 # gh_create.py, then offers to create a worktree + focus its tmux session.
-#
-# Worktree handoff: on "yes", writes the new issue's identity to
-# `gh_picker_create_pin`; gh_picker.sh's transform sees the file, aborts the
-# picker, and routes it through the existing checkout path
-# (,gh-worktree issue ... --focus, interactive branch prompt). On "no", POSTs a
-# dashboard refresh to the fzf listen socket so the new item appears and the
-# picker stays open.
 set -euo pipefail
 
 die() {
@@ -60,7 +53,6 @@ repo_valid() {
   printf '%s' "$1" | grep -qE '^[^/[:space:]]+/[^/[:space:]]+$'
 }
 
-# --- resolve target repo (default = cursor row repo; fzf to confirm/override) ---
 default_candidate=""
 if repo_valid "$default_repo"; then
   default_candidate="$default_repo"
@@ -82,7 +74,6 @@ repo="$(printf '%s\n' "$repo" | tail -1 | tr -d '[:space:]')"
 [ -n "$repo" ] || exit 0
 repo_valid "$repo" || die "invalid repo (expected owner/repo): $repo"
 
-# --- compose title/body in $EDITOR ---
 tmpfile="$(mktemp "/tmp/gh_create_${kind}_XXXXXX.md")"
 trap 'rm -f "$tmpfile"' EXIT
 
@@ -109,7 +100,6 @@ if [ -z "$remaining" ]; then
   exit 0
 fi
 
-# --- create via the Python helper (stdout = "<num>\t<url>") ---
 show_loader "creating ${kind} in ${repo}"
 result="$(python3 "$create_py" create --repo "$repo" --kind "$kind" --file "$tmpfile")" \
   || die "failed to create $kind in $repo"
@@ -121,7 +111,6 @@ if [ -n "${TMUX:-}" ]; then
   tmux display-message "gh_create: created ${repo}#${num}" 2> /dev/null || true
 fi
 
-# --- optional worktree + focus ---
 printf '\n' > /dev/tty 2> /dev/null || true
 printf 'Created %s#%s. Create worktree + focus session now? (y/N) ' "$repo" "$num" > /dev/tty 2> /dev/null || true
 answer=""
@@ -139,7 +128,6 @@ case "$answer" in
     printf 'issue\t%s\t%s\t%s\n' "$repo" "$num" "$url" > "$create_pin_file"
     ;;
   *)
-    # Refresh the dashboard so the new issue/epic appears; picker stays open.
     if [ -n "${FZF_PORT:-}" ]; then
       reload_cmd="GH_PICKER_SCOPE=$(printf %q "$scope") $(printf %q "$items_cmd") --refresh"
       curl -s --max-time 5 -XPOST "http://127.0.0.1:${FZF_PORT}" -d "reload(${reload_cmd})+track" > /dev/null 2>&1 || true

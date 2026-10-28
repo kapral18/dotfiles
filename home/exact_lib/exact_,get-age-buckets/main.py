@@ -88,7 +88,6 @@ def parse_bucket_spec(spec: str) -> List[Bucket]:
             end = int(b)
             label = f"{start}-{end}d"
             buckets.append(Bucket(label=label, start=start, end=end))
-    # Validate ordering/non-overlap
     last_end = -1
     for b in buckets:
         if b.start is not None and b.start <= last_end:
@@ -108,7 +107,6 @@ def assign_bucket(age_days: int, buckets: List[Bucket]) -> str:
 
 def build_git_command(patterns: List[str], rename_limit: int | None) -> List[str]:
     cmd = ["git", "log", "--reverse", "--raw", "--format=commit %H %ct"]
-    # Add rename detection tuning
     if rename_limit is not None:
         # Use -M with a lower similarity threshold if desired; leave default
         cmd.append("-M")
@@ -124,7 +122,6 @@ def compute_last_content_change(patterns: List[str], rename_limit: int | None) -
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, errors="replace")
     mapping: Dict[str, int] = {}
     current_ts: int | None = None
-    # Parse streaming output
     for raw_line in proc.stdout:  # type: ignore[arg-type]
         line = raw_line.rstrip("\n")
         if line.startswith("commit "):
@@ -141,7 +138,6 @@ def compute_last_content_change(patterns: List[str], rename_limit: int | None) -
             continue
         if current_ts is None:
             continue
-        # Strip leading ':' then split meta / path(s)
         line_body = line[1:]
         tab_split = line_body.split("\t")
         if len(tab_split) < 2:
@@ -155,7 +151,6 @@ def compute_last_content_change(patterns: List[str], rename_limit: int | None) -
         newsha = meta_tokens[3]
         status = meta_tokens[4]
 
-        # Rename handling
         if status.startswith("R"):
             if len(rest_parts) < 2:
                 continue
@@ -171,7 +166,6 @@ def compute_last_content_change(patterns: List[str], rename_limit: int | None) -
                 mapping.pop(oldpath, None)
             continue
 
-        # Delete
         if status == "D":
             path = rest_parts[0]
             mapping.pop(path, None)
@@ -186,7 +180,7 @@ def compute_last_content_change(patterns: List[str], rename_limit: int | None) -
     if proc.returncode != 0:
         print(stderr, file=sys.stderr)
         raise SystemExit(proc.returncode)
-    if stderr.strip():  # propagate warnings to stderr
+    if stderr.strip():
         print(stderr, file=sys.stderr)
     return mapping
 
@@ -219,13 +213,12 @@ def format_output(counts: Dict[str, int], buckets: List[Bucket], fmt: str, heade
         else:
             lines.append(f"Total\t{total}\t100.00%")
         return "\n".join(lines)
-    if fmt == "table":  # markdown table
+    if fmt == "table":
         lines = ["| Bucket | Count | Percent |", "|--------|-------|---------|"]
         for b, c, p in rows:
             lines.append(f"| {b} | {c} | {p:.2f}% |")
         lines.append(f"| **Total** | {total} | 100.00% |")
         return "\n".join(lines)
-    # plain text
     lines = []
     if header:
         lines.append(f"{'Bucket':<12} {'Count':>8} {'Percent':>8}")
@@ -287,7 +280,6 @@ def main(argv: List[str]) -> int:
 
     mapping = compute_last_content_change(patterns, args.rename_limit)
 
-    # Count per bucket
     counts: Dict[str, int] = {b.label: 0 for b in buckets}
     now = int(time.time())
     for _, ts in mapping.items():

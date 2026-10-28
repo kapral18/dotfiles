@@ -1,8 +1,5 @@
---- LSP utilities
-
 local M = {}
 
---- Create an LSP formatter descriptor for the format registry
 ---@return table
 function M.formatter()
   return {

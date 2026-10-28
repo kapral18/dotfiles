@@ -8,7 +8,6 @@ local function extract_path_from_text(text)
   end
 
   if trimmed:match("^%a:[/\\]") then
-    -- Windows-style absolute path
     local win_path = trimmed:match("^(%a:[/\\].-):%d+") or trimmed:match("^(%a:[/\\].-):%d+:%d+") or trimmed
     return win_path
   end

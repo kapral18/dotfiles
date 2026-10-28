@@ -1,5 +1,3 @@
-# Completions for ,image-openrouter.
-
 function __image_openrouter_models
     printf '%s\t%s\n' \
         bytedance-seed/seedream-5-0-pro 'Default; quality/value; generation/editing; 1K/2K' \

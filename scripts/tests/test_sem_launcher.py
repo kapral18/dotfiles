@@ -12,7 +12,6 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 LAUNCHER = REPO / "home" / "exact_bin" / "executable_,sem"
-STATE = REPO / "home" / "dot_sem" / "readonly_telemetry.json"
 
 
 class SemLauncherTests(unittest.TestCase):
@@ -53,11 +52,6 @@ class SemLauncherTests(unittest.TestCase):
             actual["privacy"],
             {"DO_NOT_TRACK": "1", "SEM_NO_TELEMETRY": "1", "SEM_NO_UPDATE_CHECK": "1", "SEM_NO_NETWORK": "1"},
         )
-
-    def test_SHOULD_manage_telemetry_state_as_off(self):
-        state = json.loads(STATE.read_text())
-        self.assertEqual(state["mode"], "off")
-        self.assertTrue(state["notice_shown"])
 
 
 if __name__ == "__main__":

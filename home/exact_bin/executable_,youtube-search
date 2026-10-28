@@ -35,7 +35,6 @@ RENDER_VID_INFO() {
 
 export -f SEARCH_VID RENDER_VID_INFO
 
-# The TUI Loop
 INITIAL_QUERY="${1:-}"
 
 fzf --preview-window "down,60%,border-top" --layout reverse --disabled --with-shell 'bash -c' \
@@ -47,7 +46,6 @@ fzf --preview-window "down,60%,border-top" --layout reverse --disabled --with-sh
   --bind 'load:first' \
   --bind 'ctrl-r:execute-silent(echo "" > "$YT_FILTER_FILE")+unbind(change)+change-prompt(YouTube> )+reload(SEARCH_VID {q} "")+rebind(change)' \
   --bind 'tab:transform:
-    # Open filter menu in tmux popup
     filter=""
     disp_filter=""
     while true; do

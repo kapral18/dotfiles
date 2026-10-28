@@ -1,4 +1,3 @@
---- Chezmoi template helpers for Neovim integrations
 local M = {}
 
 local placeholder_prefix = "__CHEZMOI_TMPL_"
@@ -7,7 +6,6 @@ local function has_template_syntax(text)
   return text:find("{{", 1, true) ~= nil
 end
 
---- Replace Go template markers with safe placeholders.
 ---@param text string
 ---@return string sanitized
 ---@return table<string, string> replacements
@@ -57,7 +55,6 @@ function M.mask_template(text)
   return table.concat(sanitized_parts), replacements
 end
 
---- Restore Go template markers from placeholders.
 ---@param text string
 ---@param replacements table<string, string>
 ---@return string
@@ -73,7 +70,6 @@ function M.unmask_template(text, replacements)
   return text
 end
 
---- Prepare buffer lines for external tools by masking template markers.
 ---@param lines string[]
 ---@param bufnr? integer
 ---@return { text: string, replacements: table<string,string>, had_eol: boolean, original_lines: string[] }
@@ -102,7 +98,6 @@ function M.prepare_format_input(lines, bufnr)
   }
 end
 
---- Restore formatter output back to template form.
 ---@param output string
 ---@param context { replacements: table<string,string>, had_eol: boolean, original_lines: string[] }
 ---@return string[]

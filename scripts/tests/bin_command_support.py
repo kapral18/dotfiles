@@ -3,35 +3,24 @@
 
 from __future__ import annotations
 
-import base64
-import contextlib
-import hashlib
 import http.server
 import importlib.util
 import io
 import json
 import os
-import pkgutil
-import queue
-import re
 import shlex
 import shutil
-import signal
-import socket
-import sqlite3
 import subprocess
 import sys
 import tempfile
 import threading
 import time
-import types
 import unittest
 from importlib.machinery import SourceFileLoader
 from pathlib import Path
 from unittest import mock
 from urllib.request import Request, urlopen
 
-import _test_support  # noqa: F401  (puts scripts/ on sys.path)
 from _test_support import (
     ARTIFACT_COMMAND,
     CODEX_COMMAND,
@@ -42,16 +31,6 @@ from _test_support import (
 # Every OpenRouter wrapper defaults to this route; model and effort remain selectable.
 OPENROUTER_PIN = "xiaomi/mimo-v2.6-pro"
 OPENROUTER_WIRE_PIN = f"{OPENROUTER_PIN}@preset/effort-high"
-
-
-def _load_artifact_command():
-    loader = SourceFileLoader("artifact_command", str(ARTIFACT_COMMAND))
-    spec = importlib.util.spec_from_loader("artifact_command", loader)
-    if spec is None or spec.loader is None:
-        raise AssertionError("could not load ,artifact command module")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
 
 
 def _load_format_md_command():

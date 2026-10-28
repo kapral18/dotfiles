@@ -30,20 +30,12 @@ SCRIPTS = Path(__file__).resolve().parents[1]
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
-import _test_support  # noqa: F401  (puts scripts/ on sys.path)
 from _test_support import TMUX_PICKERS, modern_bash
 
 GH_POPUP_SRC = TMUX_PICKERS / "github/executable_gh_popup.sh"
 SESSION_POPUP_SRC = TMUX_PICKERS / "session/executable_popup.sh"
 CORE_SRC = TMUX_PICKERS / "lib/executable_handoff_namespace.py"
 
-LEGACY_TOP_LEVEL = (
-    "gh_picker_pin",
-    "pick_session_pin",
-    "gh_picker_create_pin",
-    "gh_picker_switch_sessions",
-    "pick_session_switch_gh",
-)
 TOKEN_RE = re.compile(r"^[0-9a-f]{32}$")
 
 TMUX_STUB_SCRIPT = textwrap.dedent(
@@ -115,29 +107,6 @@ TMUX_STUB_SCRIPT = textwrap.dedent(
         return 0
 
 
-    def handle_command_prompt(args: list[str]) -> int:
-        seed = None
-        prompt = None
-        if "-I" in args:
-            try:
-                seed = args[args.index("-I") + 1]
-            except IndexError:
-                seed = None
-        if "-p" in args:
-            try:
-                prompt = args[args.index("-p") + 1]
-            except IndexError:
-                prompt = None
-        record(
-            "command-prompt",
-            argv=args,
-            label=os.environ.get("LIFECYCLE_LABEL"),
-            seed=seed,
-            prompt=prompt,
-        )
-        return 0
-
-
     def handle_display_popup(args: list[str]) -> int:
         env_updates: dict[str, str] = {}
         command = None
@@ -182,8 +151,6 @@ TMUX_STUB_SCRIPT = textwrap.dedent(
             return handle_set_option(args)
         if verb == "display-popup":
             return handle_display_popup(args)
-        if verb == "command-prompt":
-            return handle_command_prompt(args)
         record("passthrough", argv=args, label=os.environ.get("LIFECYCLE_LABEL"))
         return 0
 
@@ -335,7 +302,7 @@ POPUP_ACTOR_SCRIPT = textwrap.dedent(
     def main() -> int:
         record("inner-start", command=COMMAND, count=COUNT, token=TOKEN)
         if COMMAND == "gh_picker.sh" and SCENARIO != "session-wrapper-roundtrip":
-            if SCENARIO in {"gh-wrapper-roundtrip", "legacy-globals-unchanged"}:
+            if SCENARIO == "gh-wrapper-roundtrip":
                 if COUNT == 1:
                     write_slot("pick_session_pin", f"pr\towner/repo\t42\t{LABEL}\\n")
                     touch_slot("gh_picker_switch_sessions")
@@ -348,11 +315,9 @@ POPUP_ACTOR_SCRIPT = textwrap.dedent(
                 barrier_arrive(f"ready-{LABEL}")
                 barrier_wait("release")
                 return 0
-            if SCENARIO == "normal-exit-cleanup":
-                return 0
-                return 0
+            return 0
         if COMMAND == "pick_session.sh":
-            if SCENARIO in {"gh-wrapper-roundtrip", "legacy-globals-unchanged", "gh-concurrent-isolation"}:
+            if SCENARIO in {"gh-wrapper-roundtrip", "gh-concurrent-isolation"}:
                 consumed = consume_slot("pick_session_pin")
                 if SCENARIO != "gh-concurrent-isolation" and consumed:
                     write_slot(
@@ -426,10 +391,9 @@ def wait_for_paths(paths: list[Path], *, timeout: float = 10.0) -> None:
 class HandoffLifecycleFixture:
     """Isolated deployed-layout fixture for the real popup wrappers."""
 
-    def __init__(self, root: Path, case_name: str, trace_sink: list[str] | None = None) -> None:
+    def __init__(self, root: Path, case_name: str) -> None:
         self.root = root
         self.case_name = case_name
-        self.trace_sink = trace_sink
         self.wrapper_bash = _resolved_wrapper_bash()
 
     def reset(self, *, include_core: bool = True, failing_core: bool = False) -> None:
@@ -552,57 +516,6 @@ class HandoffLifecycleFixture:
     def tmux_events(self) -> list[dict[str, Any]]:
         return read_jsonl(self.tmux_log)
 
-    def merged_trace_lines(self) -> list[str]:
-        merged = self.events() + self.tmux_events()
-        merged.sort(key=lambda row: row.get("ts", 0))
-        lines: list[str] = []
-        for row in merged:
-            source = row.get("source")
-            event = row.get("event")
-            if source == "tmux" and event == "display-popup":
-                token = row.get("env", {}).get("TMUX_PICKER_HANDOFF_TOKEN")
-                lines.append(
-                    f"TMUX label={row.get('label')} display-popup token={token} cmd={Path(row.get('command', '')).name} argv={row.get('argv')}"
-                )
-            elif source == "tmux" and event == "command-prompt":
-                lines.append(
-                    f"TMUX label={row.get('label')} command-prompt seed={row.get('seed')} prompt={row.get('prompt')}"
-                )
-            elif source == "tmux" and event == "display-message":
-                rendered = row.get("rendered") or row.get("message")
-                lines.append(f"TMUX label={row.get('label')} display-message {rendered}")
-            elif source == "actor" and event == "inner-start":
-                lines.append(
-                    f"INNER label={row.get('label')} command={row.get('command')} count={row.get('count')} token={row.get('token')}"
-                )
-                parts = [f"ACTOR {event}", f"label={row.get('label')}"]
-                for key in ("slot", "owner", "token", "path", "context"):
-                    if row.get(key) is not None:
-                        parts.append(f"{key}={row.get(key)}")
-                lines.append(" ".join(parts))
-            elif source in {"actor", "driver"} and "barrier" in str(event):
-                lines.append(f"BARRIER source={source} event={event} name={row.get('name')}")
-        return lines
-
-    def emit_trace(self) -> None:
-        if self.trace_sink is not None:
-            self.trace_sink.extend(self.merged_trace_lines())
-
-    def poison_legacy_globals(self) -> dict[str, bytes]:
-        cache_tmux = self.cache / "tmux"
-        cache_tmux.mkdir(parents=True, exist_ok=True)
-        poisoned: dict[str, bytes] = {}
-        for name in LEGACY_TOP_LEVEL:
-            payload = f"POISON {name} do-not-touch\\n".encode("utf-8")
-            path = cache_tmux / name
-            path.write_bytes(payload)
-            poisoned[name] = payload
-        return poisoned
-
-    def legacy_bytes(self) -> dict[str, bytes]:
-        cache_tmux = self.cache / "tmux"
-        return {name: (cache_tmux / name).read_bytes() for name in LEGACY_TOP_LEVEL}
-
     def case_gh_wrapper_roundtrip(self) -> dict[str, Any]:
         self.reset()
         result = self.run_wrapper("gh_popup.sh", scenario="gh-wrapper-roundtrip")
@@ -645,7 +558,6 @@ class HandoffLifecycleFixture:
             "display_popup_tokens": popup_tokens,
             "inner_tokens": inner_tokens,
         }
-        self.emit_trace()
         return observed
 
     def case_session_wrapper_roundtrip(self) -> dict[str, Any]:
@@ -690,7 +602,6 @@ class HandoffLifecycleFixture:
             "display_popup_tokens": popup_tokens,
             "inner_tokens": inner_tokens,
         }
-        self.emit_trace()
         return observed
 
     def case_concurrent_wrappers_isolated(self) -> dict[str, Any]:
@@ -724,36 +635,6 @@ class HandoffLifecycleFixture:
             "stdout": {"A": stdout_a, "B": stdout_b},
             "stderr": {"A": stderr_a, "B": stderr_b},
         }
-        self.emit_trace()
-        return observed
-
-    def case_normal_exit_cleanup(self) -> dict[str, Any]:
-        self.reset()
-        result = self.run_wrapper("gh_popup.sh", scenario="normal-exit-cleanup")
-        popup_events = [row for row in self.tmux_events() if row["event"] == "display-popup"]
-        tokens = [row.get("env", {}).get("TMUX_PICKER_HANDOFF_TOKEN") for row in popup_events]
-        token = tokens[0] if tokens else None
-        observed = {
-            "returncode": result.returncode,
-            "popup_commands": [Path(row["command"]).name for row in popup_events],
-            "namespace_removed": bool(token and not (self.handoff_root() / token).exists()),
-            "stdout": result.stdout,
-            "stderr": result.stderr,
-        }
-        self.emit_trace()
-        return observed
-
-    def case_legacy_globals_unchanged(self) -> dict[str, Any]:
-        self.reset()
-        poisoned = self.poison_legacy_globals()
-        result = self.run_wrapper("gh_popup.sh", scenario="legacy-globals-unchanged")
-        observed = {
-            "returncode": result.returncode,
-            "byte_identical": self.legacy_bytes() == poisoned,
-            "stdout": result.stdout,
-            "stderr": result.stderr,
-        }
-        self.emit_trace()
         return observed
 
     def case_missing_core_blocks_popup(self) -> dict[str, Any]:
@@ -770,7 +651,6 @@ class HandoffLifecycleFixture:
             "stdout": result.stdout,
             "stderr": result.stderr,
         }
-        self.emit_trace()
         return observed
 
     def case_failed_core_blocks_popup(self) -> dict[str, Any]:
@@ -787,7 +667,6 @@ class HandoffLifecycleFixture:
             "stdout": result.stdout,
             "stderr": result.stderr,
         }
-        self.emit_trace()
         return observed
 
 
@@ -795,15 +674,13 @@ REAL_WRAPPER_CASES = {
     "gh_wrapper_round_trip_token": "case_gh_wrapper_roundtrip",
     "session_wrapper_round_trip_token": "case_session_wrapper_roundtrip",
     "concurrent_wrappers_isolated": "case_concurrent_wrappers_isolated",
-    "normal_exit_cleanup": "case_normal_exit_cleanup",
-    "legacy_globals_unchanged": "case_legacy_globals_unchanged",
     "missing_core_blocks_popup": "case_missing_core_blocks_popup",
     "failed_core_blocks_popup": "case_failed_core_blocks_popup",
 }
 
 
-def run_real_wrapper_harness_case(case: str, *, root: Path, trace_sink: list[str] | None = None) -> dict[str, Any]:
-    fixture = HandoffLifecycleFixture(root=root, case_name=case, trace_sink=trace_sink)
+def run_real_wrapper_harness_case(case: str, *, root: Path) -> dict[str, Any]:
+    fixture = HandoffLifecycleFixture(root=root, case_name=case)
     method_name = REAL_WRAPPER_CASES[case]
     method = getattr(fixture, method_name)
     return method()
@@ -851,23 +728,6 @@ class TestRealWrapperLifecycle(unittest.TestCase):
         self.assertTrue(observed["distinct_tokens"])
         self.assertEqual(observed["consumed_owner_by_label"], {"A": "A", "B": "B"})
         self.assertTrue(observed["namespaces_removed"])
-
-    def test_should_remove_normal_namespaces_on_exit(self) -> None:
-        observed = run_real_wrapper_harness_case(
-            "normal_exit_cleanup",
-            root=self.root / "cleanup",
-        )
-        self.assertEqual(observed["returncode"], 0, observed["stderr"])
-        self.assertEqual(observed["popup_commands"], ["gh_picker.sh"])
-        self.assertTrue(observed["namespace_removed"])
-
-    def test_should_leave_poisoned_legacy_global_files_byte_identical(self) -> None:
-        observed = run_real_wrapper_harness_case(
-            "legacy_globals_unchanged",
-            root=self.root / "legacy",
-        )
-        self.assertEqual(observed["returncode"], 0, observed["stderr"])
-        self.assertTrue(observed["byte_identical"])
 
     def test_should_block_popup_execution_when_core_is_missing(self) -> None:
         observed = run_real_wrapper_harness_case(

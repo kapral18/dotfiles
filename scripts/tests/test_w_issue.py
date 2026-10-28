@@ -55,10 +55,6 @@ class TestWIssueCommand(unittest.TestCase):
                 'case " $* " in\n'
                 "  *' has-session '*) [[ -f \"$TMUX_SESSION_FILE\" ]] ;;\n"
                 "  *' new-session '*)\n"
-                "    if [[ -n ${TMUX_FAIL_ONCE_FILE:-} && -f $TMUX_FAIL_ONCE_FILE ]]; then\n"
-                '      rm -f "$TMUX_FAIL_ONCE_FILE"\n'
-                "      exit 1\n"
-                "    fi\n"
                 '    : > "$TMUX_SESSION_FILE"\n'
                 "    ;;\n"
                 "  *' list-clients '*) printf 'fixture-client\\n' ;;\n"
@@ -82,7 +78,6 @@ class TestWIssueCommand(unittest.TestCase):
                 "COMMA_W_PRUNE": "0",
                 "TMUX_LOG": str(tmux_log),
                 "TMUX_SESSION_FILE": str(tmux_session),
-                "TMUX_FAIL_ONCE_FILE": str(root / "tmux-fail-once"),
             }
             for key in ("TMUX", "TMUX_PANE", "OUTER_TMUX_SOCKET", "OUTER_TMUX_CLIENT"):
                 env.pop(key, None)

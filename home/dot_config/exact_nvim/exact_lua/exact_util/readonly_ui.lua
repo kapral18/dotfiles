@@ -1,5 +1,3 @@
---- UI utilities (icons, lualine helpers)
-
 local M = {}
 
 ---@class UtilConfig
@@ -75,10 +73,8 @@ M.config = {
   },
 }
 
---- Lualine utilities
 M.lualine = {}
 
---- Get pretty path for lualine
 function M.lualine.pretty_path()
   return function()
     local path = vim.fn.expand("%:~:.")
@@ -95,7 +91,6 @@ function M.lualine.pretty_path()
   end
 end
 
---- Get root dir for lualine
 ---@param opts? table
 function M.lualine.root_dir(opts)
   opts = opts or {}

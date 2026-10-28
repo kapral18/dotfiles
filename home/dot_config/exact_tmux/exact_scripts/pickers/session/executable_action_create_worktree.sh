@@ -25,12 +25,10 @@ branch_file="${2:-}"
 trap 'rm -f "$sel_file" "$branch_file" 2>/dev/null || true' EXIT
 
 branch="$(cat "$branch_file" 2> /dev/null || true)"
-# Trim surrounding whitespace.
 branch="${branch#"${branch%%[![:space:]]*}"}"
 branch="${branch%"${branch##*[![:space:]]}"}"
 [ -n "$branch" ] || exit 0
 
-# Shared helpers: resolve_path, worktree_root_dir_for_path.
 # shellcheck source=lib/session_naming.sh
 # shellcheck disable=SC1091
 . "$HOME/.config/tmux/scripts/pickers/session/lib/session_naming.sh"
@@ -40,7 +38,6 @@ notify() {
   tmux display-message -d 3000 "pick_session: $1" 2> /dev/null || true
 }
 
-# Read the first selected row; worktree creation acts on a single repo.
 line="$(head -n 1 "$sel_file" 2> /dev/null || true)"
 [ -n "$line" ] || exit 0
 IFS=$'\t' read -r _disp kind path _meta target _mk <<< "$line"
@@ -91,7 +88,6 @@ else
   exit 0
 fi
 
-# Reindex + reload so the new worktree/session appears without a manual ctrl-r.
 update_cmd="$HOME/.config/tmux/scripts/pickers/session/index_update.sh"
 [ -x "$update_cmd" ] && "$update_cmd" --force --quiet --quick-only > /dev/null 2>&1 || true
 

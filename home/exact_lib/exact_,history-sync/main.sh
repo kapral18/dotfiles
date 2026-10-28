@@ -15,7 +15,6 @@ op_err="$tmp_dir/op_err"
 cleanup() { rm -rf "$tmp_dir"; }
 trap cleanup EXIT
 
-# Check if op CLI is available and authenticated
 if ! command -v op &> /dev/null; then
   echo "1Password CLI not found. Install with: brew install 1password-cli"
   exit 1
@@ -26,15 +25,12 @@ if ! op account get > /dev/null 2>&1; then
   exit 1
 fi
 
-# Pull remote history from 1Password
 if op document get "$item_name" --out-file "$temp_file" 2> "$op_err"; then
-  # Verify remote file integrity
   if [ ! -s "$temp_file" ] || ! grep -q "^- cmd:" "$temp_file"; then
     echo "Remote history appears corrupted, skipping sync"
     exit 1
   fi
 
-  # Merge histories using external Python script
   merge_script="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/fish-history-merge.py"
   if ! "$merge_script" "$history_file" "$temp_file" "$merged_file"; then
     echo "Failed to merge histories"
@@ -55,7 +51,6 @@ if op document get "$item_name" --out-file "$temp_file" 2> "$op_err"; then
     exit 1
   fi
 
-  # Snapshot the current local history before replacing it.
   if [ -s "$history_file" ]; then
     cp -p "$history_file" "$history_file.bak"
   fi
@@ -74,7 +69,6 @@ else
   echo "No remote history found, will create new sync item"
 fi
 
-# Push updated history back to 1Password
 if op document edit "$item_name" "$history_file" 2> /dev/null; then
   echo "History synced to 1Password"
 elif op document create "$history_file" --title "$item_name" > /dev/null 2>&1; then

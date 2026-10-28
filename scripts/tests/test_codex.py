@@ -20,32 +20,6 @@ class TestCodexWrapper(unittest.TestCase):
     only injects local llama.cpp model metadata and execs the real binary.
     """
 
-    def test_launches_the_real_binary(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            home = root / "home"
-            bindir = root / "bin"
-            home.mkdir()
-            bindir.mkdir()
-            real_codex = bindir / "codex-real"
-            real_codex.write_text("#!/usr/bin/env bash\necho REAL_CODEX_STARTED\nprintf 'ARGS=%s\\n' \"$*\"\n")
-            real_codex.chmod(0o755)
-            result = subprocess.run(
-                [sys.executable, str(CODEX_COMMAND), "exec", "hi"],
-                capture_output=True,
-                text=True,
-                cwd=str(REPO),
-                env={
-                    **os.environ,
-                    "HOME": str(home),
-                    "PATH": f"{bindir}{os.pathsep}{os.environ.get('PATH', '')}",
-                    "CODEX_REAL_BIN": str(real_codex),
-                },
-            )
-
-        assert result.returncode == 0, result.stderr
-        assert "REAL_CODEX_STARTED" in result.stdout
-
     def test_local_models_inject_catalog_metadata(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

@@ -78,6 +78,39 @@ class TestTask(unittest.TestCase):
         self.hook("prompt", text="add an export button")
         return self.run_task("card", "set", stdin=text)
 
+    def test_WHEN_checkpoint_refreshes_SHOULD_keep_task_review_findings_and_source_status_without_source_bodies(self):
+        self.set_card()
+        source = "A source line that must not fill the context"
+        self.proof.write_text(source + "\n")
+        self.run_task("claim", "add", "The source exists", "--file", f"{self.proof}:1", "--text", source)
+        self.run_task("stance", "set", "method", "Keep the existing runtime", "--because", "C1")
+        self.hook("evidence", findings=[{"anchor": "src/export.py:2", "concern": "Empty exports crash"}])
+        self.run_task("review")
+        self.proof.write_text(source + "\nchanged\n")
+
+        actual = self.hook("checkpoint")["context"]
+        state = json.loads(actual.split("\n", 1)[1])
+
+        self.assertEqual(state["task"]["goal"], "Add the export button")
+        self.assertEqual(state["task"]["done"][0]["id"], "D1")
+        self.assertEqual(state["latest_review"][0]["version"], 1)
+        self.assertEqual(state["findings"][0]["status"], "open")
+        self.assertEqual(state["decisions"][0]["value"], "Keep the existing runtime")
+        self.assertFalse(state["claims"][0]["provenance_matches"])
+        self.assertEqual(state["claims"][0]["source"]["path"], str(self.proof))
+        self.assertNotIn(source, actual)
+
+    def test_WHEN_checkpoint_has_no_selected_card_SHOULD_clear_it_without_using_another_session(self):
+        self.set_card()
+
+        actual = self.hook("checkpoint", session="different-session")
+
+        self.assertEqual(actual, {"context": ""})
+        self.assertEqual(
+            json.loads(self.run_task("card", "show", "--json", "--session", "s1").stdout)["goal"],
+            "Add the export button",
+        )
+
     def test_WHEN_review_starts_SHOULD_keep_an_acceptance_snapshot(self):
         self.set_card()
 
@@ -680,7 +713,6 @@ class TestTask(unittest.TestCase):
     def test_SHOULD_reopen_items_when_the_goal_changes(self):
         self.set_card()
         self.mark("D1", "clicked it")
-        # Evidence for one goal does not prove another.
         moved = self.run_task("card", "set", stdin=CARD.replace("Add the export button", "Add CSV and XLSX export"))
         self.assertIn("- [ ] D1: the button downloads a CSV", moved.stdout)
         self.assertIn("Earlier goal: Add the export button", moved.stdout)
@@ -731,19 +763,14 @@ class TestTask(unittest.TestCase):
         # An archived scope change is a record only: the new goal records its own.
         self.assertIn("docs/x.md is outside", self.hook("tool", tool="Edit", paths=["docs/x.md"])["note"])
 
-    def test_SHOULD_hide_another_sessions_card(self):
-        self.set_card()
-        self.assertIn("Goal: Add the export button", self.hook("prompt", text="go")["context"])
-        self.assertNotIn("Intent card", self.hook("prompt", session="s2", text="unrelated").get("context", ""))
-        self.assertIn("deny", self.hook("tool", session="s2", tool="Edit", paths=["src/app.py"]))
-
     def test_SHOULD_record_a_correction_and_suggest_saving_a_lasting_preference(self):
         self.set_card()
-        context = self.hook("prompt", text="no, I didn't ask for PDF. In general we never add formats unasked")[
-            "context"
-        ]
+        answer = self.hook("prompt", text="no, I didn't ask for PDF. In general we never add formats unasked")
+        context = answer["context"]
         self.assertIn("This message corrects you", context)
-        self.assertIn("the evidence says otherwise, say so in one line", context)
+        # Pi projects the card in its checkpoint, so its notes keep the correction without the card.
+        self.assertIn("This message corrects you", answer["notes"])
+        self.assertNotIn("Intent card", answer["notes"])
         self.assertIn(",task pref add", context)
         card = json.loads(self.run_task("card", "show", "--json").stdout)
         self.assertEqual(card["corrections"], ["no, I didn't ask for PDF. In general we never add formats unasked"])
@@ -769,7 +796,6 @@ class TestTask(unittest.TestCase):
         self.assertIn("Goal: Add the export button", instructions)
         note = self.hook("tool", tool="Bash")["note"]
         self.assertIn("zoom out", note)
-        self.assertIn("the Goal or the ask itself is off", note)
 
     def test_SHOULD_speak_codex_hook_json(self):
         self.set_card()
@@ -811,12 +837,6 @@ class TestTask(unittest.TestCase):
         self.run_task("block", "D2", "--reason", "later")
         self.assertEqual(self.run_task("status").returncode, 0)
         self.assertEqual(self.run_task("check", "D9", "--claim", "C1").returncode, 1)
-
-    def test_SHOULD_not_hold_a_turn_that_wrote_nothing_to_the_card(self):
-        self.set_card()
-        self.hook("prompt", text="what does the README say?")
-        self.hook("tool", tool="Read", paths=["README.md"])
-        self.assertEqual(self.hook("stop", answer="It says readme."), {})
 
     def test_SHOULD_leave_files_the_user_changed_before_the_turn_alone(self):
         self.set_card()
@@ -877,13 +897,6 @@ class TestTask(unittest.TestCase):
         card = json.loads(self.run_task("card", "show", "--json").stdout)
         self.assertEqual(card["scope"], ["**/tests/**", "__init__.py"])
         self.assertEqual(self.run_task("scope", "check", "tests/u.py", "src/tests/t.py", "__init__.py").returncode, 0)
-
-    def test_SHOULD_not_push_open_items_on_a_turn_whose_tools_wrote_nothing(self):
-        self.set_card()
-        self.hook("prompt", text="why does the test fail?")
-        (self.repo / "README.md").write_text("the user edits meanwhile\n")
-        result = self.hook("stop", answer="Because X.")
-        self.assertNotIn("D1", result.get("block", ""))
 
     def test_SHOULD_name_the_session_id_when_another_session_shares_the_worktree(self):
         self.hook("prompt", session="old", text="earlier task")

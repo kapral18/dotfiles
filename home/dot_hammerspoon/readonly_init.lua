@@ -5,13 +5,11 @@ end)
 
 Hyper = { "ctrl", "alt", "cmd" }
 
--- require("gridmouse")
 require("window")
 
 local search = require("search")
 require("double_command").start(search.show)
 
--- config reload
 hs.hotkey.bind(Hyper, "r", function()
   hs.reload()
 end)

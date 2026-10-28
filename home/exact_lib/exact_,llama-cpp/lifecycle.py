@@ -36,8 +36,6 @@ class Terminated(Exception):
 
 @dataclass(frozen=True)
 class Config:
-    """Resolved lifecycle configuration."""
-
     host: str
     port: int
     api_key: str

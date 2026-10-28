@@ -108,7 +108,6 @@ def iter_diff_added_lines(diff_text: str) -> Iterator[tuple[str, int, str]]:
         if not current_file or new_line is None or old_line is None:
             continue
 
-        # Ignore "no newline" markers.
         if raw.startswith("\\"):
             continue
 

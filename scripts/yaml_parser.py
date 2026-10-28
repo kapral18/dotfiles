@@ -16,7 +16,6 @@ from __future__ import annotations
 
 
 def parse_scalar(raw: str):
-    """Parse a YAML scalar value into a Python type."""
     raw = raw.strip()
     if raw.startswith('"') and raw.endswith('"'):
         return raw[1:-1].replace('\\"', '"')

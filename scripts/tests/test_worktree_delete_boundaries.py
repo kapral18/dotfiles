@@ -375,12 +375,9 @@ class TestWorktreeDeleteBoundaries(unittest.TestCase):
             )
 
             assert result.returncode == 0, result.stderr
-            # Outside worktree refused and untouched.
             assert outside.exists()
             assert (outside / "keep.txt").read_text() == "keep\n"
-            # In-HOME main worktree really removed (valid behavior preserved).
             assert not root.exists()
-            # rm was never asked to remove the outside target.
             rm_calls = rm_log.read_text() if rm_log.exists() else ""
             assert str(outside.resolve()) not in rm_calls, rm_calls
 

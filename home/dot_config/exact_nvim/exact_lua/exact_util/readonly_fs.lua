@@ -1,10 +1,5 @@
---- Filesystem and path utilities (from utils/common.lua)
-
 local M = {}
 
---- show confirm input
---@param message string
---@param callback function
 M.confirm = function(message, callback)
   local opts = {
     prompt = message .. " y/n: ",
@@ -14,7 +9,6 @@ M.confirm = function(message, callback)
   end)
 end
 
---- Get the current visual selection as a string
 ---@return string?, number?, number?
 function M.get_visual()
   local start_pos = vim.fn.getpos("v")
@@ -39,7 +33,6 @@ function M.get_visual()
   return table.concat(lines, "\n"), start_row, end_row
 end
 
---- Check if the current mode is visual or select mode
 ---@return boolean
 function M.in_visual()
   local modes = {
@@ -65,7 +58,6 @@ function M.is_absolute_path(path)
   return type(path) == "string" and (path:match("^/") ~= nil or path:match("^%a:[/\\]") ~= nil)
 end
 
---- Normalize a filesystem path, optionally resolving relative to a base directory
 ---@param path string|nil
 ---@param base_dir string|nil
 ---@return string|nil
@@ -81,7 +73,6 @@ function M.normalize_path(path, base_dir)
   return vim.fn.fnamemodify(path, ":p")
 end
 
---- Check if a file exists
 ---@param file_path string
 ---@return boolean
 function M.file_exists(file_path)
@@ -89,7 +80,6 @@ function M.file_exists(file_path)
   return stat and stat.type == "file" or false
 end
 
---- Safely read file contents
 ---@param path string File path
 ---@return string|nil content File content or nil
 ---@return string|nil error Error message if failed
@@ -103,7 +93,6 @@ function M.safe_file_read(path)
   return content, nil
 end
 
---- Safely write content to file
 ---@param path string File path
 ---@param content string Content to write
 ---@param mode string|nil File mode (default: "w")
@@ -120,7 +109,6 @@ function M.safe_file_write(path, content, mode)
   return true, nil
 end
 
---- Safely get user input with pcall protection
 ---@param prompt string|table Prompt string or options table
 ---@param callback fun(input: string|nil) Callback function
 function M.safe_input(prompt, callback)
@@ -131,7 +119,6 @@ function M.safe_input(prompt, callback)
   end
 end
 
---- Get the plugin source directory path
 ---@return string
 function M.get_plugin_src_dir()
   return vim.fn.stdpath("config") .. "/lua/plugins_local_src"
@@ -142,7 +129,6 @@ end
 function M.glob_to_lua_pattern(glob)
   local escaped_glob = vim.pesc(glob)
 
-  -- Handle [! character class negation first
   local partial_pattern = escaped_glob:gsub("%%%[!", "NEGATE_CLASS")
 
   partial_pattern = partial_pattern:gsub(vim.pesc("%*%*/%*"), "TRIPLE_ASTERISK")
@@ -151,7 +137,6 @@ function M.glob_to_lua_pattern(glob)
   partial_pattern = partial_pattern:gsub(vim.pesc("%*"), "SINGLE_ASTERISK")
   partial_pattern = partial_pattern:gsub(vim.pesc("%?"), "QUESTION_MARK")
 
-  -- Replace placeholders with Lua patterns
   partial_pattern = partial_pattern:gsub("TRIPLE_ASTERISK", ".*") -- *** matches anything
   partial_pattern = partial_pattern:gsub("DOUBLE_ASTERISK_SLASH", ".*/") -- **/ matches zero or more chars including /
   partial_pattern = partial_pattern:gsub("DOUBLE_ASTERISK", ".*") -- ** matches anything
@@ -163,19 +148,16 @@ function M.glob_to_lua_pattern(glob)
   return pattern
 end
 
---- Get the root directory of the current git repository
 ---@return string|nil
 function M.get_git_root()
   return vim.fs.root(0, ".git")
 end
 
---- Get project root directory
 ---@return string|nil
 function M.get_project_root()
   return vim.fs.root(0, ".git") or vim.env.PWD
 end
 
---- Escape a string for shell argument
 ---@param str string
 ---@return string
 function M.escape_shell_arg(str)

@@ -18,7 +18,6 @@ if ! command -v opencode >/dev/null 2>&1; then
   exit 127
 fi
 
-# Qualify a bare model id to the provider form (llama-cpp/<id>).
 qualify_model() {
   local id="$1"
   case "$id" in

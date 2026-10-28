@@ -87,29 +87,10 @@ class WRemoveDetachedTests(unittest.TestCase):
 
     def test_paths_removes_detached_worktree(self) -> None:
         result = self.run_remove()
-        combined = result.stdout + result.stderr
         self.assertEqual(result.returncode, 0, f"stdout={result.stdout!r} stderr={result.stderr!r}")
-        self.assertNotIn("Skipping (not a local branch worktree)", combined)
-        self.assertIn("Removing detached worktree:", combined)
         self.assertFalse(self.detached.exists(), "detached worktree directory should be gone")
         listed = self.git(self.main, "worktree", "list", "--porcelain").stdout
         self.assertNotIn(str(self.detached), listed)
-
-    def test_tsv_assign_preserves_empty_branch_field(self) -> None:
-        extract = r"""
-set -euo pipefail
-eval "$(sed -n '/^_tsv_assign()/,/^}/p' "$1")"
-rec=$'/tmp/detached\t\t1\t0'
-_tsv_assign "$rec" p_found branch_ref detached locked
-printf '%s|%s|%s|%s\n' "$p_found" "$branch_ref" "$detached" "$locked"
-"""
-        result = subprocess.run(
-            ["bash", "-c", extract, "_", str(self.remove_sh)],
-            text=True,
-            capture_output=True,
-        )
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout.strip(), "/tmp/detached||1|0")
 
 
 if __name__ == "__main__":

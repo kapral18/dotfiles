@@ -41,7 +41,6 @@ def _resolve(p):
 
 
 def _decay(age_seconds):
-    """zoxide-style aging buckets applied as a multiplier on rank."""
     if age_seconds < _HOUR:
         return 4.0
     if age_seconds < _DAY:

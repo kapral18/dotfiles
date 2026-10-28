@@ -11,7 +11,6 @@ local test_patterns = {
     tsx = { "ts", "jsx", "js" },
     js = { "jsx", "ts", "tsx" },
     jsx = { "js", "tsx", "ts" },
-    -- Add other extension mappings as needed
   },
 }
 
@@ -37,7 +36,6 @@ local function get_alternate_file(current_file)
     if vim.fn.filereadable(source_file) == 1 then
       return source_file
     else
-      -- Check alternate extensions for the source file
       local current_ext = ext
       local alternates = test_patterns.extensions[current_ext]
       if alternates then
@@ -51,20 +49,17 @@ local function get_alternate_file(current_file)
       end
     end
   else
-    -- Generate potential test files with the same extension
     local potential_files = {}
     for _, pattern in ipairs(test_patterns.test) do
       table.insert(potential_files, base_file .. pattern:gsub("%%", "") .. ext)
     end
 
-    -- Check existing files with the same extension
     for _, file in ipairs(potential_files) do
       if vim.fn.filereadable(file) == 1 then
         return file
       end
     end
 
-    -- Generate potential test files with alternate extensions
     local alternates = test_patterns.extensions[ext]
     if alternates then
       for _, alt_ext in ipairs(alternates) do

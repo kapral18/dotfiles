@@ -32,7 +32,7 @@ complete -c ,task -n '__fish_seen_subcommand_from pref; and not __fish_seen_subc
 complete -c ,task -n '__fish_seen_subcommand_from pref; and __fish_seen_subcommand_from add' -l global -d 'Apply in every repo'
 complete -c ,task -n '__fish_seen_subcommand_from steering' -l days -x -d 'Days to report'
 complete -c ,task -n '__fish_seen_subcommand_from steering' -l recent -x -d 'Recent entries to print'
-complete -c ,task -n '__fish_seen_subcommand_from hook; and not __fish_seen_subcommand_from prompt tool compact stop evidence user codex' -a 'prompt tool compact stop evidence user codex'
+complete -c ,task -n '__fish_seen_subcommand_from hook; and not __fish_seen_subcommand_from prompt tool compact stop evidence checkpoint user codex' -a 'prompt tool compact stop evidence checkpoint user codex'
 complete -c ,task -n '__fish_seen_subcommand_from hook' -l harness -x -d 'Harness name'
 complete -c ,task -n '__fish_seen_subcommand_from hook' -l input -x -d 'JSON input'
 complete -c ,task -n '__fish_seen_subcommand_from review check block reopen status scope correct' -l session -x -d 'Harness session id'

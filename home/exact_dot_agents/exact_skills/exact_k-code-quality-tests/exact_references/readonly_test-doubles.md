@@ -27,8 +27,8 @@ Use the first option that works:
   or when the collaborator is too slow, nondeterministic, or unavailable to observe its state.
 - Do not verify calls to query-only methods (reads, lookups); assert the result they feed instead.
 - When verifying a call, pin only the arguments the test is about and match the rest with the framework's wildcard (`expect.anything()`, `ANY`, `any()`).
-  Give each other relevant argument its own test.
+  Another argument needs a case only when it protects a distinct material failure not covered already.
 - For a captured argument object, assert the fields that define the outcome named in the test;
-  give independently wrong fields their own tests.
+  do not turn each independently wrong field into another test.
 
 Done when every double is justified by the order above and every interaction verification names a state-changing call.

@@ -25,9 +25,6 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "lib"))
 from gh_ci_state import extract_ci_state  # noqa: E402
 
-# I/O-bound work (gh subprocess + network): use a generous fan-out so every
-# section/repo issues its own request in one round-trip; capped to avoid
-# hammering the API on large configs.
 IO_FANOUT_CAP = 32
 
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)
@@ -39,7 +36,6 @@ def c(code: str, text: str) -> str:
     return f"\033[{code}m{text}{RESET}"
 
 
-# Nerd Font Octicons (matches session picker + docs)
 ICON_PR_OPEN = c("38;5;42", "\uf407")
 ICON_PR_MERGED = c("38;5;141", "\uf407")
 ICON_PR_CLOSED = c("38;5;196", "\uf4dc")
@@ -47,10 +43,6 @@ ICON_PR_DRAFT = c("38;5;242", "\uf407")
 ICON_ISSUE_OPEN = c("38;5;42", "\uf41b")
 ICON_ISSUE_CLOSED = c("38;5;141", "\uf41d")
 ICON_ISSUE_NOT_PLANNED = c("38;5;244", "\uf41d")
-# Tree-parent icons. Used by `format_lines` when `_tree_role=parent` so the
-# row visually anchors the family beneath it. The leaf icons above keep
-# representing item state (open/merged/closed); these only replace the
-# leading glyph when a row is the root of a family.
 ICON_EPIC = c("38;5;141", "⬢")
 ICON_PR_FAMILY = c("38;5;81", "◇")
 
@@ -83,7 +75,6 @@ def short_repo(nwo: str) -> str:
 
 
 def resolve_repo_path(nwo: str, repo_paths: dict[str, str]) -> str | None:
-    """Resolve a repo (owner/name) to a local path using gh-dash repoPaths patterns."""
     if nwo in repo_paths:
         return os.path.expanduser(repo_paths[nwo])
 
@@ -103,7 +94,6 @@ _ISSUE_SUFFIX_RE = re.compile(r"[-/](\d+)$")
 
 
 def _find_git_dir(repo_path: str) -> str | None:
-    """Find a usable git working directory under repo_path."""
     for candidate in [repo_path, os.path.join(repo_path, "main")]:
         if os.path.isdir(candidate) and (
             os.path.exists(os.path.join(candidate, ".git")) or os.path.exists(os.path.join(candidate, "HEAD"))
@@ -113,7 +103,6 @@ def _find_git_dir(repo_path: str) -> str | None:
 
 
 def _git_worktree_entries(repo_path: str) -> list[tuple[str, str]]:
-    """Return (worktree_path, branch) pairs from git worktree list --porcelain."""
     git_dir = _find_git_dir(repo_path)
     if not git_dir:
         return []
@@ -248,7 +237,6 @@ def _linked_issue_numbers_from_pick_session_cache() -> dict[str, set[int]]:
             if len(parts) < 4:
                 continue
             kind = parts[1]
-            # Only trust session/worktree rows where meta is present.
             if kind not in ("session", "worktree"):
                 continue
             meta = parts[3]
@@ -263,7 +251,6 @@ def _linked_issue_numbers_from_pick_session_cache() -> dict[str, set[int]]:
                     continue
                 out.setdefault(nwo, set()).add(num)
 
-        # Prefer ordered snapshot when available (first path in list).
         if p.endswith("pick_session_items_ordered.tsv") and out:
             break
 
@@ -272,13 +259,9 @@ def _linked_issue_numbers_from_pick_session_cache() -> dict[str, set[int]]:
 
 _PR_METADATA_CHUNK = 5
 
-# Tuple layout returned by `_graphql_pr_metadata_chunk`. Kept as a positional
-# tuple (rather than a NamedTuple) because the downstream unpacking site in
-# `main` is a tight loop; positional access is one less attribute lookup.
 # Indices: 0=headRefName, 1=reviewDecision, 2=ciState, 3=mergeable,
 #          4=title, 5=body, 6=baseRefName,
 #          7=closing_issues (list[(repo, num, state)], optional).
-#
 # `_PR_META_LEN` covers fields 0..6 which every backport-grouping path needs.
 # `_PR_META_CLOSES` is checked explicitly at its single consumer because the
 # trailing closing-issues field was added later and is optional in synthetic
@@ -289,11 +272,6 @@ _PR_META_BODY = 5
 _PR_META_BASE = 6
 _PR_META_CLOSES = 7
 
-# Cap GraphQL `closingIssuesReferences` / `closedByPullRequestsReferences`
-# fetches to a small first-N. The picker only ever displays one badge per
-# row; deeper history goes through the preview pane. Five is plenty of head-
-# room for the rare "1 PR closes 3 issues" case while keeping the GraphQL
-# alias size flat.
 _CROSS_LINK_FETCH_LIMIT = 5
 
 
@@ -424,9 +402,6 @@ def _graphql_pr_metadata(pr_numbers: dict[str, set[int]]) -> dict[str, dict[int,
     return out
 
 
-# Backport detection patterns. Patterns are intentionally tight to avoid false
-# positives — generic PRs can have titles with brackets or mention `#NNN` in
-# their body without being backports.
 _BACKPORT_TITLE_RE = re.compile(r"^\[([^\]]+)\]\s+.*?\(#(\d+)\)\s*$")
 _BACKPORT_TITLE_LOOSE_RE = re.compile(r"^\[([^\]]+)\]\s+")
 _BACKPORT_BODY_RE = re.compile(r"\bBackports?(?:\s+of)?\s+#(\d+)", re.IGNORECASE)
@@ -695,7 +670,6 @@ def _group_pr_families(
 
 
 def _sorted_children(pairs: list[tuple[dict, str]]) -> list[tuple[dict, str]]:
-    """Return children sorted by tree_branch then PR number for stability."""
     return sorted(
         pairs,
         key=lambda pair: (
@@ -1158,7 +1132,6 @@ def _section_scopes(section: dict[str, Any]) -> list[str]:
 
 
 def parse_config(config_path: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, str]]:
-    """Parse gh-dash YAML config using yq. Returns (pr_sections, issue_sections, repo_paths)."""
     pr_sections: list[dict[str, Any]] = []
     issue_sections: list[dict[str, Any]] = []
     repo_paths: dict[str, str] = {}
@@ -1254,10 +1227,6 @@ def _filter_lines_for_scope(lines: list[str], scope: str, scope_map: dict[str, s
     return out
 
 
-# TSV column indices (0-based). Kept in sync with `format_lines`. Header rows
-# leave the per-item columns empty; family rows fill `parent_id`, `tree_role`,
-# and `tree_branch` so the picker, sorter, and offsets writer can reason about
-# parent/child blocks without re-parsing the display string.
 _COL_DISPLAY = 0
 _COL_KIND = 1
 _COL_REPO = 2
@@ -1284,11 +1253,6 @@ SORT_KEYS = ("created-desc", "updated-desc", "age-asc", "repo-asc")
 
 
 def _parent_identity_of(parts: list[str]) -> str:
-    """Return the `kind:repo:num` identity for a row, or empty if incomplete.
-
-    Used by sort + collapse + mark-subtree paths to match children back to
-    their parent. Real section headers (empty repo) never produce an identity.
-    """
     kind = parts[_COL_KIND] if len(parts) > _COL_KIND else ""
     repo = parts[_COL_REPO] if len(parts) > _COL_REPO else ""
     num = parts[_COL_NUM] if len(parts) > _COL_NUM else ""
@@ -1354,8 +1318,6 @@ def _sort_within_sections(lines: list[str], sort_key: str) -> list[str]:
     def close_pending() -> None:
         nonlocal pending, pending_key, pending_identity
         if pending is not None and pending_key is not None:
-            # Re-sort children inside the block by the same key. The parent
-            # row stays in slot 0; everything after it is children.
             if len(pending) > 1:
                 head = pending[0]
                 tail = pending[1:]
@@ -1372,7 +1334,6 @@ def _sort_within_sections(lines: list[str], sort_key: str) -> list[str]:
         role = _tree_role_of(parts)
 
         if kind == "header" and _parent_identity_of(parts) == "":
-            # Real section header. Close everything before it.
             close_pending()
             flush()
             out.append(line)
@@ -1389,7 +1350,6 @@ def _sort_within_sections(lines: list[str], sort_key: str) -> list[str]:
             pending.append(line)
             continue
 
-        # Loose row, orphan child, or anything else: own block.
         close_pending()
         blocks.append((key_for(parts), [line]))
 
@@ -1512,12 +1472,6 @@ def _apply_collapsed_state(lines: list[str], collapsed: set[str]) -> list[str]:
                 suffix = c("2;38;5;81", "  ▸") + (c("2;38;5;244", f" ({hidden} hidden)") if hidden else "")
                 parts[_COL_DISPLAY] = parts[_COL_DISPLAY] + suffix
                 line = "\t".join(parts)
-            else:
-                # Only annotate expanded parents that actually have visible
-                # children — otherwise the glyph is misleading. Visible
-                # children are any row beneath the parent with matching
-                # parent_id that we will keep.
-                pass
 
         out.append(line)
     return out
@@ -1592,9 +1546,6 @@ def _annotate_section_counts(items: list[dict[str, Any]]) -> None:
 
 
 def _section_reason(filters: str, source: str = "") -> str:
-    # Only treat tokens as positive when they are not negated. GitHub Search
-    # uses `-token` to negate; we mirror that by walking whitespace-split tokens
-    # and keeping the leading `-` out of any positive token set.
     positive: set[str] = set()
     for token in filters.split():
         if token.startswith("-"):
@@ -1696,7 +1647,6 @@ def _read_prior_pr_badges(cache_file: str) -> dict[tuple[str, int], tuple[str, s
         if len(parts) >= 8 and parts[7]:
             mergeable = parts[7]
         else:
-            # Backward-compatible fallback: infer conflict from display.
             pos = display.find("⚡")
             if 0 <= pos:
                 mergeable = "CONFLICTING"
@@ -1708,7 +1658,6 @@ def _read_prior_pr_badges(cache_file: str) -> dict[tuple[str, int], tuple[str, s
 
 
 def _read_prior_sections(cache_file: str) -> dict[str, list[str]]:
-    """Read previous TSV and group lines by section id (e.g. 'pr:0', 'issue:3')."""
     try:
         raw = Path(cache_file).read_text(encoding="utf-8", errors="replace")
     except Exception:
@@ -1846,7 +1795,6 @@ def _matches_current_search_filters(
 
 
 def _review_request_actor_keys(pr: dict[str, Any]) -> set[str]:
-    """Return stable user/team keys from a pull request's review requests."""
     actors: set[str] = set()
     requests = pr.get("reviewRequests") or {}
     for request in requests.get("nodes") or []:
@@ -1906,7 +1854,6 @@ def fetch_review_request_section(
     limit: int = 30,
     viewer_login: str = "",
 ) -> list[dict[str, Any]]:
-    """Fetch a section whose review-request actor is exactly the configured user or team."""
     header: dict[str, Any] = {"_header": True, "kind": kind, "idx": idx, "title": title, "_fetch_error": False}
     target = _review_request_target(source, viewer_login)
     if not target:
@@ -1987,7 +1934,6 @@ def fetch_section(
     limit: int = 30,
     viewer_login: str = "",
 ) -> list[dict[str, Any]]:
-    """Fetch a single section from GitHub Search API. Returns item dicts."""
     header: dict[str, Any] = {"_header": True, "kind": kind, "idx": idx, "title": title, "_fetch_error": False}
     jq_expr = (
         "[.items[] | {"
@@ -2161,7 +2107,6 @@ _MANUAL_BACKPORT_CHUNK = 3
 def _search_manual_backports_chunk(
     parents: list[tuple[str, str, int]],
 ) -> dict[str, dict[str, tuple[int, str, str, str]]]:
-    """Run a small batch of per-parent title-search aliases in one GraphQL call."""
     if not parents:
         return {}
 
@@ -2262,7 +2207,6 @@ def fetch_backport_failures(kind: str, idx: int, title: str, filters: str, limit
     if not items:
         return [header]
 
-    # Phase 1: fetch comments to find backport status
     by_repo: dict[str, list[dict[str, Any]]] = {}
     for item in items:
         by_repo.setdefault(item["repo"], []).append(item)
@@ -2285,9 +2229,6 @@ def fetch_backport_failures(kind: str, idx: int, title: str, filters: str, limit
     if not aliases:
         return []
 
-    # Phase 1: comments+labels (per parent) and manual-backport search run in
-    # parallel — both only need the parent PR list, so there is no dependency
-    # between them. Halves the wall-clock spent in this section's GraphQL chain.
     query = "query { " + " ".join(aliases) + " }"
 
     def _run_comments_labels() -> dict[str, Any]:
@@ -2315,7 +2256,6 @@ def fetch_backport_failures(kind: str, idx: int, title: str, filters: str, limit
     if not data:
         return []
 
-    # Build per-item backport state and collect backport PR numbers to check.
     # Filter branches by current labels: a branch whose ``v<X>.<Y>.*`` label was
     # removed is no longer a needed target (e.g. team decided not to backport).
     item_branches: dict[str, dict[str, int | None]] = {}
@@ -2365,8 +2305,6 @@ def fetch_backport_failures(kind: str, idx: int, title: str, filters: str, limit
                 branches[branch] = mb_num
             bp_info[(nwo, mb_num)] = (mb_state, mb_title, mb_url)
 
-    # Phase 2: batch-check state for any comment-derived PR numbers we don't
-    # already have from the title search.
     bp_aliases: list[str] = []
     bp_alias_map: dict[str, tuple[str, int]] = {}
     for nwo, nums in bp_pr_nums.items():
@@ -2404,7 +2342,6 @@ def fetch_backport_failures(kind: str, idx: int, title: str, filters: str, limit
         except Exception:
             pass
 
-    # Phase 3: filter and build grouped output (keep parent + its sub-rows together)
     grouped: list[tuple[dict[str, Any], list[dict[str, Any]]]] = []
     for alias, branches in item_branches.items():
         item = alias_map[alias]
@@ -2472,7 +2409,6 @@ def fetch_backport_failures(kind: str, idx: int, title: str, filters: str, limit
     result_items: list[dict[str, Any]] = []
     for parent, subs in grouped:
         result_items.append(parent)
-        # Keep a deterministic order for sub-rows: branch name then PR number (0 last).
         subs.sort(
             key=lambda s: (
                 str(s.get("branch") or "").lower(),
@@ -2545,7 +2481,6 @@ def _annotate_is_last_child(items: list[dict[str, Any]]) -> None:
     for i, item in enumerate(items):
         if item.get("_tree_role") != "child":
             continue
-    # Two-pass: now stamp each child.
     section_idx = -1
     for i, item in enumerate(items):
         if item.get("_header"):
@@ -2576,7 +2511,6 @@ def format_lines(
     wt_index: dict[str, dict[int, _ItemInfo]],
     prior_pr_badges: dict[tuple[str, int], tuple[str, str, str]] | None = None,
 ) -> list[str]:
-    """Format item dicts into TSV lines for fzf, with worktree + review markers."""
     cols = _terminal_columns()
     visible = int(cols * 0.45)
     # Fixed: icon(1) + marker(1) + review(1) + ci(1) + conflict(1) + spaces(~8) + #number(~8) + repo(~17) + author(~20) + date(~6) + padding(~6)
@@ -2732,9 +2666,6 @@ def format_lines(
         else:
             icon = ICON_PR_OPEN
 
-        # Family root icon override: epics and PR families get a distinct
-        # leading glyph so the user sees the parent's role at a glance. Leaf
-        # state stays accessible via the icon's color hue (open/merged/etc).
         if tree_role == "parent":
             if kind == "issue" and int(item.get("_sub_total") or 0) > 0:
                 icon = ICON_EPIC
@@ -2777,10 +2708,6 @@ def format_lines(
         comment_col = f" {COMMENT_ICON}{c('38;5;244', str(comments))}" if comments > 0 else ""
 
         num_col = c("38;5;81", f"#{num}")
-        # Child rows dim repo + author because they almost always match the
-        # parent's; keeping them full-brightness adds visual noise without
-        # adding info. The leading tree glyph + parent row already anchor
-        # the family identity.
         is_child = tree_role == "child"
         repo_color = "2;38;5;244" if is_child else "38;5;244"
         repo_col = c(repo_color, short_repo(repo))
@@ -2803,18 +2730,12 @@ def format_lines(
         who_col = (c(who_color, who) + who_extra) if who else c(who_color, "@—")
         date_col = c("38;5;244", relative_date(item["updated"]))
 
-        # Epic completion badge: epics with sub-issues annotate their title
-        # with `N/M done` in dim cyan. Goes inside the title-area space so
-        # the column alignment stays intact for non-epic rows.
         epic_badge = ""
         if tree_role == "parent" and int(item.get("_sub_total") or 0) > 0:
             sc = int(item.get("_sub_completed") or 0)
             st = int(item.get("_sub_total") or 0)
             epic_badge = "  " + c("2;38;5;81", f"{sc}/{st} done")
 
-        # PR \u2194 Issue cross-link badge: surfaces the closing PR on an issue
-        # row (`\u21b3 #271562`) and the closed-by issue on a PR row
-        # (`\u21b3 closes #239902`). One badge per row, OPEN partner preferred.
         # Suppressed on a child whose parent already IS the cross-link partner
         # (avoids redundancy when same-section nesting has run): the parent
         # row directly above already shows the partner identity via the tree.
@@ -2966,7 +2887,6 @@ def main():
             sys.stdout.flush()
         return
 
-    # Full-fetch path genuinely needs the parsed sections.
     pr_sections, issue_sections, repo_paths = parse_config(args.config)
     scope_map = _section_scope_map(pr_sections, issue_sections)
 
@@ -2989,7 +2909,6 @@ def main():
         "backport-failures": fetch_backport_failures,
     }
 
-    # Phase 1: fetch all sections concurrently
     results: dict[int, list[dict[str, Any]]] = {}
     section_workers = max(1, min(IO_FANOUT_CAP, len(tasks)))
     with concurrent.futures.ThreadPoolExecutor(max_workers=section_workers) as pool:
@@ -3067,7 +2986,6 @@ def main():
                     except (ValueError, TypeError):
                         pass
 
-    # Phase 2: local worktree scan + GraphQL review data (concurrent)
     resolved_repos: dict[str, str] = {}
     for nwo in wt_repos:
         local = resolve_repo_path(nwo, repo_paths)
@@ -3112,7 +3030,6 @@ def main():
     all_nwos |= set(linked_issues.keys())
     for nwo in all_nwos:
         wt_nums, branches, branch_num_source = local_data.get(nwo, (set(), set(), {}))
-        # Include issue numbers linked from the sessions/worktrees picker cache.
         wt_nums |= linked_issues.get(nwo, set())
         gql_prs = gql_data.get(nwo, {})
         info: dict[int, _ItemInfo] = {}
@@ -3128,8 +3045,6 @@ def main():
             if dunder >= 0:
                 branch_heads.add(b[dunder + 2 :])
 
-        # Track which branches are claimed by a PR via GraphQL head matching,
-        # so we can remove false-positive wt_nums extracted from those branches.
         claimed_branches: set[str] = set()
 
         for num, meta in gql_prs.items():
@@ -3174,20 +3089,12 @@ def main():
         if info:
             wt_index[nwo] = info
 
-    # Detect PR backport families across all sections (Maintenance pre-groups
-    # itself and is left alone). This mutates `all_items` to reorder children
-    # under their parents and to inject phantom parents when the merged parent
-    # is not in any section.
     _group_pr_families(all_items, gql_data)
     # Detect issue epic families. Runs after PR grouping so a section that
     # already got tree_roles from `_group_pr_families` is skipped (a single
     # section can in principle hold both PRs and issues but `_group_*` keep
     # to their own kind).
     _group_issue_families(all_items, issue_meta)
-    # PR \u2194 Issue cross-linking. `_attach_cross_links` annotates every item
-    # with its best partner so `format_lines` can render the inline badge;
-    # `_group_cross_link_pairs` then promotes any same-section, both-loose
-    # pair into a parent/child nesting (issue parent, PR child).
     _attach_cross_links(all_items, gql_data, issue_meta)
     _group_cross_link_pairs(all_items)
 

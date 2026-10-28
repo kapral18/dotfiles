@@ -9,7 +9,6 @@ return {
     opts = function()
       local icons = ui.config.icons.git
       return {
-        -- visuals
         signs = {
           add = { text = icons.added },
           change = { text = icons.modified },
@@ -27,12 +26,10 @@ return {
         },
         signs_staged_enable = true,
 
-        -- highlights and word diff
         numhl = true,
         linehl = false,
         word_diff = false,
 
-        -- blame
         current_line_blame = true,
         current_line_blame_opts = {
           virt_text = true,
@@ -41,18 +38,15 @@ return {
         },
         current_line_blame_formatter = "<author>, <author_time> . <summary>",
 
-        -- core behavior
         attach_to_untracked = false,
         update_debounce = 500,
 
-        -- buffer-local mappings
         on_attach = function(buffer)
           local gs = package.loaded.gitsigns
           local function map(mode, lhs, rhs, desc)
             vim.keymap.set(mode, lhs, rhs, { buffer = buffer, desc = desc })
           end
 
-          -- navigation
           map("n", "]h", function()
             if vim.wo.diff then
               vim.cmd.normal({ "]c", bang = true })
@@ -74,14 +68,12 @@ return {
             gs.nav_hunk("first")
           end, "First Hunk")
 
-          -- actions
           map({ "n", "v" }, "<leader>ghs", ":Gitsigns stage_hunk<CR>", "Stage Hunk")
           map({ "n", "v" }, "<leader>ghr", ":Gitsigns reset_hunk<CR>", "Reset Hunk")
           map("n", "<leader>ghS", gs.stage_buffer, "Stage Buffer")
           map("n", "<leader>ghu", gs.undo_stage_hunk, "Undo Stage Hunk")
           map("n", "<leader>ghR", gs.reset_buffer, "Reset Buffer")
 
-          -- previews
           map("n", "<leader>ghp", gs.preview_hunk_inline, "Preview Hunk Inline")
           map("n", "<leader>ghP", gs.preview_hunk, "Preview Hunk Popup")
 
@@ -90,13 +82,11 @@ return {
             gs.diffthis("~")
           end, "Diff This ~")
 
-          -- text object
           map({ "o", "x" }, "ih", ":<C-U>Gitsigns select_hunk<CR>", "Select Hunk")
         end,
       }
     end,
 
-    -- global UI toggles
     keys = {
       { "<leader>ghtn", "<Cmd>Gitsigns toggle_numhl<CR>", desc = "Toggle Num Highlight" },
       { "<leader>ghtl", "<Cmd>Gitsigns toggle_linehl<CR>", desc = "Toggle Line Highlight" },
@@ -147,22 +137,17 @@ return {
       { "<leader>gal", ":AdvancedGitSearch checkout_reflog<CR>", desc = "AGS Checkout reflog" },
     },
     opts = {
-      -- diff_plugin = "diffview",
       show_builtin_git_pickers = true,
       entry_default_author_or_date = "date", -- one of "author" or "date"
     },
     config = function(_, opts)
-      -- optional: setup telescope before loading the extension
       require("telescope").setup({
-        -- move this to the place where you call the telescope setup function
         extensions = {
           advanced_git_search = opts,
         },
       })
 
       require("telescope").load_extension("advanced_git_search")
-
-      -- require("advanced_git_search.fzf").setup(opts)
 
       require("which-key").add({
         { "<leader>ga", group = "Advanced Git Search", mode = { "n", "v" } },

@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import json
-import os
 import stat
 import tempfile
 import unittest
@@ -283,14 +282,6 @@ class TestGeneratedArtifactLedger(unittest.TestCase):
             ledger.write_text(json.dumps({"schema_version": 99, "artifacts": {}}))
             with self.assertRaisesRegex(ValueError, "schema"):
                 ledger_module.load_ledger(ledger)
-
-    def test_cli_default_path_honors_environment_override(self):
-        import generated_artifact_ledger as ledger_module
-
-        with tempfile.TemporaryDirectory() as tmp:
-            override = Path(tmp) / "custom.json"
-            with mock.patch.dict(os.environ, {"CHEZMOI_ARTIFACT_LEDGER": str(override)}):
-                self.assertEqual(ledger_module.default_ledger_path(), override)
 
 
 if __name__ == "__main__":

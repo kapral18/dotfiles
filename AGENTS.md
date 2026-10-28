@@ -18,7 +18,8 @@ Name prefixes: `exact_` exact directory (apply deletes untracked files), `readon
 
 - Run `make fmt` after editing, and `make check` once on the finished change. `make check` covers only affected paths.
 - Never run `make check-full`, `bin/check --full`, or `make test`; those are for the human.
-- New code needs a test that `scripts/check.py` maps to it: `scripts/foo.py` → `scripts/tests/test_foo.py`, `home/exact_lib/exact_,name/` → `scripts/tests/test_name.py`, or add a `TEST_RULES` row.
+- Ensure minimum sufficient test protection under `~/AGENTS.md` §3.
+  Map each justified test to its production paths in `scripts/check.py`: `scripts/foo.py` → `scripts/tests/test_foo.py`, `home/exact_lib/exact_,name/` → `scripts/tests/test_name.py`, or a `TEST_RULES` row.
 
 ## Docs
 

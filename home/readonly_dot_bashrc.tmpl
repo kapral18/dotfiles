@@ -1,37 +1,23 @@
-# ====================================
-# Bash Interactive Shell Configuration
-# ====================================
-
-# Source .profile for login shell settings
 [ -f ~/.profile ] && source ~/.profile
 
-# Source .bash_profile for login shell settings
 [ -f ~/.bash_profile ] && source ~/.bash_profile
 
-# Source shared interactive shell configurations
 [ -f ~/.shellrc ] && source ~/.shellrc
-
-# Bash-specific configurations
 
 # HISTCONTROL=ignoreboth combines:
 # - ignorespace: don't save lines starting with space
 # - ignoredups: don't save duplicate commands
 HISTCONTROL=ignoreboth
 
-# Append to history file instead of overwriting
 shopt -s histappend
 
-# Automatically adjust line wrapping on window resize
 shopt -s checkwinsize
 
-# History size limits
 HISTSIZE=50000      # 50k commands in memory
 HISTFILESIZE=500000 # 500k commands in file
 
-# Sync history across multiple terminal sessions
 PROMPT_COMMAND='history -a'
 
-# Initializations
 command -v starship >/dev/null && eval "$(starship init bash)"
 command -v zoxide >/dev/null && eval "$(zoxide init bash)"
 command -v navi >/dev/null && eval "$(navi widget bash)"
@@ -40,7 +26,6 @@ if command -v mise >/dev/null; then
   eval "$(mise activate --shims bash)"
 fi
 
-# Deduplicate PATH entries while preserving order
 dedup_path() {
   if [ -n "$PATH" ]; then
     local old_PATH="$PATH:"
@@ -48,7 +33,6 @@ dedup_path() {
     declare -A seen
 
     while IFS= read -r -d: entry; do
-      # Skip empty entries and process only unseen valid entries
       if [ -n "$entry" ] && [ -z "${seen[$entry]:-}" ]; then
         new_PATH+="${new_PATH:+:}${entry}"
         seen[$entry]=1
@@ -61,7 +45,6 @@ dedup_path() {
 
 dedup_path
 
-# Clean up
 unset -f dedup_path
 
 # Machine-local extras (not in git). Missing file is a no-op.

@@ -3,12 +3,6 @@
 # unique cache path (dropping header rows), then runs the batch worktree
 # creator on that snapshot.
 #
-# The snapshot helper is shared with the session picker's dispatch primitive
-# (see pickers/lib/snapshot_fzf_selection.sh and
-# pickers/lib/dispatch_async.sh) so the same per-binding mktemp lifecycle
-# applies: dispatches are fully isolated across rapid keypresses and
-# concurrent pickers. The batch worktree creator's background phase is the
-# last consumer and is responsible for unlinking the snapshot.
 #
 # Dispatch is synchronous (`exec`) because gh_batch_worktree.sh's foreground
 # phase opens `$EDITOR` for issue branch naming and needs the user's TTY.

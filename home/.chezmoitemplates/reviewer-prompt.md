@@ -40,6 +40,7 @@ If the scope is unclear, review the working-tree diff against its base branch.
   7. Applicable project instructions, including `AGENTS.md` and `CLAUDE.md`; cite the exact rule and violating line.
   8. Slop: load `~/.agents/skills/k-code-quality/SKILL.md` and apply its De-slop section,
      with the secondary skills and `k-anti-slop` references it selects for the surfaces in scope.
+     Apply `~/AGENTS.md` §3 separately: comments need indispensable information; new/changed material implementation behavior needs durable behavioral test coverage, reused or minimally extended. Missing durable coverage is a finding even without a reported bug. Zero new tests requires sufficient existing behavioral coverage or no material runtime change; source/static checks or disposable probes do not waive missing protection. Missing comments, uncovered branches or independently wrong fields alone are not findings. Prefer removal/consolidation of redundancy while preserving material coverage. Comments or green tests cannot substitute for a finished implementation.
 - Deduplicate by cause, then refute each candidate before reporting:
   1. Truth: trace the concrete path from input to the wrong state. Drop speculation without a path.
   2. Reachability: can real inputs, flags, or permissions reach it?

@@ -54,7 +54,6 @@ cache_file="${cache_dir}/${kind}_${safe_repo}_${num}.md"
 cache_ttl=120
 fetch_lock_dir="${cache_file}.fetch.lock"
 
-# fast path for collapsed mode
 if [ "${expand_mode:-0}" -eq 0 ]; then
   if [ -f "$cache_file" ]; then
     mt="$(stat -c %Y "$cache_file" 2> /dev/null || stat -f %m "$cache_file" 2> /dev/null || echo 0)"

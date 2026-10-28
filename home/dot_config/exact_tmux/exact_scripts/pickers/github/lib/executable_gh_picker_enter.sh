@@ -8,12 +8,6 @@
 # as "the user marked items", which matches the documented "enter=checkout
 # (batch if marked)" contract advertised in the picker header, keyhelp, and
 # docs/topics/workflow/tmux/pickers.md.
-#
-# Snapshotting goes through the shared `snapshot_fzf_selection.sh` helper so
-# the per-binding mktemp lifecycle is consistent with gh ctrl-t and the
-# session picker's dispatch primitive. The batch worktree creator's
-# background phase unlinks the snapshot when it's done.
-#
 # Usage: gh_picker_enter.sh <kind> <selection_file> <batch_wt_cmd>
 #
 # Outputs an fzf action string to stdout (consumed by `--bind enter:transform`).

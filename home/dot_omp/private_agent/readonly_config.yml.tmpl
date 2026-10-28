@@ -1,15 +1,6 @@
 # schema: https://raw.githubusercontent.com/opspec-io/omp/main/schema/config.schema.json
 # Managed by chezmoi (source: home/dot_omp/private_agent/readonly_config.yml.tmpl).
 # Keep OMP native guidance/features as the base; this file only pins user policy.
-#
-# Every built-in omp role is pinned explicitly (default/smol/slow/vision/plan/commit/
-# tiny/task/advisor/web per `omp config get modelRoles`); nothing falls through to the
-# harness default or the @smol fallback. Root, slow, plan, and task use Anthropic; the advisor uses the Codex subscription.
-# k-agent-reviewer uses @default.
-# - default/slow/plan: Claude Opus 5.5 :medium; task: Claude Sonnet 5.5 :medium
-# - advisor: GPT-6 Astra :xhigh, so the advisor uses another model family than the root
-# - vision/smol: Claude Sonnet 5.5 :medium; tiny/commit: Claude Haiku 5.5 :medium
-# - web: Claude Haiku 5.5 :medium as primary; legacy provider settings below supply fallbacks.
 modelRoles:
   default: anthropic/claude-opus-5-5:medium
   smol: anthropic/claude-sonnet-5-5:medium

@@ -485,8 +485,6 @@ class TestInstallPnpmPkgs(unittest.TestCase):
             assert (old / "sentinel").read_text() == "keep"
 
     def test_SHOULD_skip_update_for_unpinned_packages_already_at_latest(self):
-        # 2026-09-14: a one-package list edit ran `pnpm update -g --latest` on every unpinned global; pnpm
-        # rebuilt each package's directory at the same version and stranded a running Pi session.
         with tempfile.TemporaryDirectory() as tmp:
             home, bindir, log, state = self._fixture(
                 tmp,
@@ -525,7 +523,6 @@ class TestInstallPnpmPkgs(unittest.TestCase):
                 assert result.returncode == 1
                 assert "pnpm outdated -g" in result.stderr
                 assert self._actions(log) == []
-                # links are still refreshed to the live inventory after the failure
                 assert os.readlink(self._link(home, "current")) == self._state_path(state, "current")
 
     def _fake_lsof(self, tmp: str, pnpm_home: Path, *, marker: Path) -> Path:

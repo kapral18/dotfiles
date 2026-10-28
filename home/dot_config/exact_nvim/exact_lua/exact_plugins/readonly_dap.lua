@@ -1,11 +1,9 @@
 local ui = require("util.ui")
--- Minimal DAP setup for osv.lua (Lua debugging)
 return {
   {
     "mfussenegger/nvim-dap",
     version = false,
     config = function()
-      -- Set DAP icons
       local icons = ui.config.icons.dap
 
       vim.api.nvim_set_hl(0, "DapStoppedLine", { default = true, link = "Visual" })

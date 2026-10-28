@@ -16,7 +16,8 @@ For one-at-a-time work, the selected thread is the batch; do not silently drain 
 
 ## Fix and verify
 
-1. Implement the authorized fixes inside `~/.agents/skills/k-review/references/review_fixes.md` Fix Scope, with regression tests and docs.
+1. Implement the authorized fixes inside `~/.agents/skills/k-review/references/review_fixes.md` Fix Scope.
+   Ensure minimum sufficient test protection under `~/AGENTS.md` §3 and update affected docs.
 2. Run the combined checks once on the finished batch. No per-thread test runs.
 3. Re-read the fix diff once against each thread's concern.
    Do not start another review round, except the `~/AGENTS.md` §3 steps 5–6 review that step 5 requires for the fix.

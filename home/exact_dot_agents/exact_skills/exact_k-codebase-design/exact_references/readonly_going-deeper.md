@@ -8,9 +8,10 @@ Assumes the vocabulary in `~/.agents/skills/k-codebase-design/SKILL.md` — **mo
 Classify a candidate's dependencies first; the category determines how the deepened module is tested across its seam.
 
 1. **In-process** — pure computation, in-memory state, no I/O.
-   Always deepenable: merge the modules, test through the new interface directly. No adapter needed.
+   Always deepenable: merge the modules, verify through the new interface directly. No adapter needed.
 2. **Local-substitutable** — dependencies with local test stand-ins (PGLite for Postgres, in-memory filesystem).
-   Deepenable if the stand-in exists; test with it running in the suite. The seam is internal; no port at the external interface.
+   Deepenable if the stand-in exists; reuse it when a justified behavioral check needs it.
+   The seam is internal; no port at the external interface.
 3. **Remote but owned (ports & adapters)** — your own services across a network boundary.
    Define a **port** at the seam; the deep module owns the logic, the transport is an injected **adapter**.
    Tests use an in-memory adapter; production uses HTTP/gRPC/queue.
@@ -26,8 +27,10 @@ Classify a candidate's dependencies first; the category determines how the deepe
 
 ### Testing strategy: replace, don't layer
 
-- Old unit tests on the shallow modules become waste once tests at the deepened interface exist — delete them.
-- Write new tests at the deepened module's interface; the **interface is the test surface**.
+- Consolidate or remove redundant shallow-module tests while preserving material behavioral coverage;
+  add replacement cases only where remaining coverage is insufficient.
+- Ensure minimum sufficient test protection under `~/AGENTS.md` §3 through the deepened module's interface.
+  The **interface is the test surface**.
 - Tests assert observable outcomes through the interface, not internal state, so they survive internal refactors.
 
 ## Branch B — Design it twice (alternative interfaces)

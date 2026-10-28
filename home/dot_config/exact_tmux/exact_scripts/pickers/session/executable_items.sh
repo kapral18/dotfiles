@@ -145,7 +145,6 @@ if [ "$cache_was_present" -eq 1 ]; then
   exit 0
 fi
 
-# Kick off a background refresh if we're inside tmux.
 if command -v tmux > /dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
   # If the cache is missing, prefer a full refresh in the background so the
   # next open (or a ctrl-r) has complete data.
@@ -191,7 +190,6 @@ if command -v tmux > /dev/null 2>&1; then
   rm -f "$tmp_sessions"
 fi
 
-# Add zoxide recent dirs (if available) for snappy discovery like tmux-session-wizard.
 if command -v zoxide > /dev/null 2>&1; then
   zoxide query -l 2> /dev/null | while IFS= read -r path; do
     [ -n "$path" ] || continue

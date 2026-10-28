@@ -11,7 +11,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-import _test_support  # noqa: F401
 from _test_support import REPO
 
 LAUNCHER = REPO / "home" / "exact_bin" / "executable_,tg"

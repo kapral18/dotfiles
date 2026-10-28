@@ -84,6 +84,16 @@ Steps for each change; skip one that does not apply and say why:
    In a repo, run the `k-behavior-map` skill (before a change): it writes that list, checks it against the map, and maps an unmapped area you will edit in first.
 2. **Change.** Debug against logs and reproductions, not guesses.
 3. **Check.**
+   Comments are not default deliverables.
+   Add comments/docstrings only for required legal/tooling text or a critical non-obvious constraint that clearer code cannot express;
+   never use them as plans, progress notes, or substitutes for finished code.
+   New or changed material implementation behavior MUST have durable behavioral test coverage.
+   Reuse or extend existing tests; add the smallest missing cases with independent behavioral oracles alongside the implementation.
+   Zero new tests is justified only when existing behavioral coverage is sufficient or there is no material runtime change.
+   Source inspection, types/static checks and disposable probes do not replace missing durable behavioral coverage.
+   Never add tests merely to raise coverage, enumerate branches/fields, pin trivial wiring or prose wording, or verify the implementation's own mocks.
+   In the changed scope, remove or consolidate redundant comments/tests and their unused scaffolding.
+   Preserve required directives and material behavioral protection; never delete a test merely to hide a failure.
    Run the project's unit and static checks for what the change touches once on the finished change, each under a time limit (step 4);
    one that step 4 makes a live check waits for the user's ask (step 4).
    After a fix, rerun only failed and affected checks.
@@ -92,9 +102,8 @@ Steps for each change; skip one that does not apply and say why:
 4. **Verify statically.** Keep verification and review short, so feedback reaches the user and any orchestrating agent quickly.
    Prefer evidence you control: read the source (the change, its callers, and each system it relies on), run static checks,
    and run local code that ends on its own (unit tests, the change's own command on a temp copy, a fake for an external command), scoped to what the change touches.
-   Test each operation it adds or changes against the others on the same object:
-   both sides change it, remove then re-add, the same name twice.
-   Test edge inputs: a deleted path, a symlink, a non-ASCII name, empty input.
+   Check interacting operations and edge inputs only where the changed behavior creates a concrete material risk;
+   use source evidence or existing checks first.
    Where a fake replaces an external command, check the fake against that command's source or docs.
    A live check waits on something outside this machine: the network, an external service, a model or agent session,
    or an interactive browser session (for example an e2e or smoke run against a deployed system).

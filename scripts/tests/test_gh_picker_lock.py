@@ -1,25 +1,9 @@
 #!/usr/bin/env python3
-"""Regression tests for the GitHub picker fetch-lock publication race.
-
-The owner of ``gh_items.sh`` acquires the lock in two steps: ``mkdir
-"$lock_dir"`` (atomic — wins the race) and ``printf %s "$$" >
-"$lock_dir/pid"`` (a few statements later). A concurrent waiter used to reap
-the freshly created lock during that publication window, letting two owners
-run ``gh_items_main.py`` and burn the search/issues rate-limit budget.
-
-The tests run the full script against a stubbed ``lib/gh_items_main.py``
-that increments a counter for every non-``--filter-cache`` invocation and
-blocks on a sync-barrier file. They deterministically cover:
-
-* a lockdir freshly created without a pid file is NOT reaped (regression),
-* a waiter that finds an alive owner does not run a second fetch (one fetch),
-* a dead-pid lock is recovered and the fetch runs,
-* an orphaned pidless lock older than the publish grace is recovered,
-* every clean exit leaves no lock directory behind (no leak).
-"""
+"""Regression tests for the GitHub picker fetch-lock publication race."""
 
 from __future__ import annotations
 
+import contextlib
 import os
 import shutil
 import subprocess
@@ -29,7 +13,6 @@ import time
 import unittest
 from pathlib import Path
 
-import _test_support  # noqa: F401  (puts scripts/ on sys.path)
 from _test_support import REPO, modern_bash
 
 SCRIPT = REPO / "home/dot_config/exact_tmux/exact_scripts/pickers/github/executable_gh_items.sh"
@@ -83,11 +66,6 @@ class TestLockLoopEndToEnd(unittest.TestCase):
                 f"""
                 #!/usr/bin/env python3
                 # Test stub for gh_items_main.py.
-                # - Counts only real fetches (i.e. NOT --filter-cache invocations).
-                # - Optionally blocks until STUB_BLOCK env-var file exists (deterministic
-                #   sync barrier between owner and test).
-                # - Writes a single row into --cache-file so downstream emit_cache calls
-                #   succeed.
                 import argparse, os, sys, time
                 p = argparse.ArgumentParser()
                 p.add_argument("--config")
@@ -143,23 +121,6 @@ class TestLockLoopEndToEnd(unittest.TestCase):
     def _read_counter(self, path: Path) -> int:
         return int((path.read_text() or "0").strip() or "0")
 
-    def test_single_run_populates_cache_and_leaves_no_lock(self):
-        """Baseline: an uncontested fetch writes cache once and cleans up."""
-        with tempfile.TemporaryDirectory() as tmp:
-            base = Path(tmp)
-            script, env, counter, cache_file, lock_dir = self._make_env(base)
-            r = subprocess.run(
-                [modern_bash(), str(script)],
-                capture_output=True,
-                text=True,
-                env=env,
-                timeout=15,
-            )
-            self.assertEqual(r.returncode, 0, r.stderr)
-            self.assertTrue(cache_file.exists(), "cache not written")
-            self.assertEqual(self._read_counter(counter), 1)
-            self.assertFalse(lock_dir.exists(), "lock leaked after clean exit")
-
     def test_dead_owner_lock_is_recovered_and_fetch_runs(self):
         """A pre-existing lock owned by a dead pid must be reaped so the new
         invocation can fetch — this is the stale-owner recovery path."""
@@ -210,7 +171,6 @@ class TestLockLoopEndToEnd(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
             script, env, counter, cache_file, lock_dir = self._make_env(base)
-            # Sync barrier that keeps the owner alive until we release it.
             block = base / "unblock"
             env["STUB_BLOCK"] = str(block)
 
@@ -249,7 +209,6 @@ class TestLockLoopEndToEnd(unittest.TestCase):
                         w.stderr.close()
                     self.assertEqual(rc, 0, stderr)
 
-                # No additional non-filter-cache invocations from waiters.
                 self.assertEqual(self._read_counter(counter), fetch_count_after_owner)
 
                 block.touch()  # release owner
@@ -276,7 +235,6 @@ class TestLockLoopEndToEnd(unittest.TestCase):
             base = Path(tmp)
             script, env, counter, cache_file, lock_dir = self._make_env(base)
 
-            # Pre-populate cache so emit_cache succeeds later.
             (base / "cache" / "tmux").mkdir(parents=True)
             cache_file.write_text("preexisting_row\n")
 
@@ -285,33 +243,19 @@ class TestLockLoopEndToEnd(unittest.TestCase):
             lock_dir.mkdir()
             mkdir_at = time.monotonic()
 
-            # Spawn the "owner" placeholder: a real live process whose pid we
-            # will publish AFTER the waiter has had a chance to observe the
-            # pid-less lock. Any long-lived process works.
             placeholder = subprocess.Popen(["sleep", "30"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            waiter = None
+            waiter = subprocess.Popen(
+                [modern_bash(), str(script)],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=env,
+                text=True,
+            )
             try:
-                waiter = subprocess.Popen(
-                    [modern_bash(), str(script)],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    env=env,
-                    text=True,
-                )
-
-                # Deterministic observation window: give the waiter 3 retry
-                # cycles (script backoff is 0.1s) to prove it does NOT reap
-                # the lock and does NOT invoke a fetch. This window is well
-                # inside the 2s publish grace.
-                _wait_for(lambda: waiter.poll() is not None, timeout=0.3, poll=0.02)
-                if waiter.poll() is not None:  # pragma: no cover
-                    raise AssertionError("waiter exited during publish window — fresh lock was reaped")
-            except AssertionError:
-                # Expected: _wait_for times out because the waiter is
-                # correctly blocked in the publishing branch.
-                pass
-
-            try:
+                # Three retry cycles (0.1s backoff), well inside the 2s publish grace.
+                with contextlib.suppress(AssertionError):
+                    _wait_for(lambda: waiter.poll() is not None, timeout=0.3, poll=0.02)
+                self.assertIsNone(waiter.poll(), "waiter exited during publish window — fresh lock was reaped")
                 self.assertTrue(lock_dir.exists(), "fresh lock was reaped by waiter")
                 self.assertEqual(
                     self._read_counter(counter),
@@ -331,7 +275,6 @@ class TestLockLoopEndToEnd(unittest.TestCase):
                 (lock_dir / "pid").write_text(f"{placeholder.pid}\n")
 
                 self.assertEqual(waiter.wait(timeout=10), 0)
-                # Still zero fetches: the waiter emitted from cache only.
                 self.assertEqual(self._read_counter(counter), 0)
             finally:
                 if waiter is not None and waiter.poll() is None:

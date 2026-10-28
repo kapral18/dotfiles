@@ -11,8 +11,7 @@ If the question is "what should this look like", wrong branch — use `~/.agents
 
 ### 1. State the question
 
-Before writing code, write down what state model and what question you are prototyping —
-one paragraph, in a top-of-file comment or a `NOTES.md`.
+Before writing code, record the state model and the question in the task card, not a code comment or a separate planning file.
 A logic prototype that answers the wrong question is pure waste; make the question explicit so it can be checked later.
 
 ### 2. Pick the language
@@ -51,7 +50,7 @@ The whole frame fits on one screen.
 
 Add a script to the project's existing task runner.
 The user runs `pnpm run <name>` or equivalent — always a task-runner entry, never a remembered path.
-If there is no task runner, put the command at the top of the prototype's `NOTES.md`.
+If there is no task runner, give the exact command in the handover.
 
 ### 6. Hand it over
 
@@ -62,7 +61,7 @@ Add actions if they ask; prototypes evolve.
 ### 7. Capture the answer
 
 When it has done its job, the answer is the only thing worth keeping.
-Ask what it taught them, or leave a `NOTES.md` so the answer can be filled in before the prototype is deleted.
+Record the conclusion in the task record before deleting the prototype.
 
 ## Anti-patterns
 

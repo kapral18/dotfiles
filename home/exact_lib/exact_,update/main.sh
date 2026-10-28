@@ -4,8 +4,6 @@
 
 set -euo pipefail
 
-# ── ANSI helpers ─────────────────────────────────────────────────────────────
-
 C_PASS=$'\033[38;5;42m'
 C_WARN=$'\033[38;5;214m'
 C_FAIL=$'\033[38;5;196m'
@@ -20,8 +18,6 @@ ICON_FAIL="${C_FAIL}✗${C_R}"
 ICON_SKIP="${C_DIM}–${C_R}"
 ICON_RUN="${C_HEAD}→${C_R}"
 
-# ── State ────────────────────────────────────────────────────────────────────
-
 dry_run=0
 verbose=0
 only=""
@@ -30,8 +26,6 @@ total_updated=0
 total_skipped=0
 total_failed=0
 step_timings=()
-
-# ── CLI ──────────────────────────────────────────────────────────────────────
 
 show_usage() {
   cat << 'EOF'
@@ -81,8 +75,6 @@ while [ $# -gt 0 ]; do
   esac
   shift
 done
-
-# ── Helpers ──────────────────────────────────────────────────────────────────
 
 has_cmd() { command -v "$1" > /dev/null 2>&1; }
 
@@ -195,8 +187,6 @@ run_timed() {
   return "$rc"
 }
 
-# ── Parallel execution via native dekit ───────────────────────────────────────
-
 _tmpdir=""
 
 _cleanup() {
@@ -278,8 +268,6 @@ _parallel_signal() {
   wait "$helper_pid" || true
   exit "$2"
 }
-
-# ── Update steps ─────────────────────────────────────────────────────────────
 
 update_dotfiles() {
   should_run "dotfiles" || return 0
@@ -460,8 +448,6 @@ update_manual() {
   rm -f "$rendered"
 }
 
-# ── Main ─────────────────────────────────────────────────────────────────────
-
 printf '%s,update%s — dotfiles ecosystem update' "$C_HEAD" "$C_R"
 if [ "$dry_run" -eq 1 ]; then
   printf ' %s[dry-run]%s' "$C_WARN" "$C_R"
@@ -473,7 +459,6 @@ overall_start=$(date +%s)
 # Phase 1: dotfiles must run first (pulls new package/runtime definitions)
 update_dotfiles
 
-# Phase 2: package managers in parallel
 parallel_rc=0
 run_parallel update_brew update_gh update_mise update_uv \
   update_cargo update_pnpm update_gems update_go || parallel_rc=$?
@@ -486,8 +471,6 @@ fi
 
 overall_end=$(date +%s)
 overall_elapsed=$((overall_end - overall_start))
-
-# ── Summary ──────────────────────────────────────────────────────────────────
 
 printf '\n%s── Summary%s  %s(%ds total)%s\n' "$C_HEAD" "$C_R" "$C_DIM" "$overall_elapsed" "$C_R"
 printf '  %s %s updated' "$ICON_PASS" "$total_updated"

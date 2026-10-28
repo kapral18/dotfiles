@@ -127,7 +127,6 @@ ICON_DIR = ""
 
 
 def _pr_is_review_meta(meta: str) -> bool:
-    """True when index_main tagged this row as a PR-review worktree."""
     return "prrole=review" in (meta or "").split("|")
 
 

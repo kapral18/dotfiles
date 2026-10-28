@@ -31,7 +31,7 @@ The floating bottom bar is identical in both sub-shapes.
 ### 1. State the question and pick N
 
 Default to **3 variants**; more than 5 stops being radically different and becomes noise — cap there.
-Write the plan in one line in a top-of-file comment: "Three variants of the settings page, switchable via `?variant=`, on the existing `/settings` route."
+Record the variants and host route in the task card; do not add a planning comment to the code.
 
 ### 2. Generate radically different variants
 

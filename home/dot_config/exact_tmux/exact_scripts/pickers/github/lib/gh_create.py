@@ -90,7 +90,6 @@ def _section_title_body(lines: List[str]) -> Tuple[str, str]:
 
 
 def parse_issue(text: str) -> Tuple[str, str]:
-    """Parse a single-issue buffer into `(title, body)`."""
     return _section_title_body(_normalize_lines(text))
 
 
@@ -123,7 +122,6 @@ def parse_epic(text: str) -> Tuple[str, str, List[Tuple[str, str]]]:
 
 
 def _create_issue(repo: str, title: str, body: str) -> Tuple[int, str, str]:
-    """Create one issue via the REST API. Returns `(number, html_url, node_id)`."""
     rc, out, err = _run_gh(
         [
             "api",
@@ -149,7 +147,6 @@ def _create_issue(repo: str, title: str, body: str) -> Tuple[int, str, str]:
 
 
 def _link_sub_issue(parent_node_id: str, child_node_id: str) -> None:
-    """Attach a child issue to its parent via the sub-issues GraphQL mutation."""
     rc, out, err = _run_gh(
         [
             "api",

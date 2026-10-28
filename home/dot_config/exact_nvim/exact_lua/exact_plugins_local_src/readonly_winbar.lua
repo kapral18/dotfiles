@@ -1,10 +1,8 @@
 local M = {}
 
--- Constants
 local MAX_BUFFERLINE_COMPONENTS = 3
 local FALLBACK_DISPLAY = " "
 
--- Cache for strdisplaywidth results
 local width_cache = setmetatable({}, {
   __mode = "k",
   __index = function(t, str)
@@ -14,14 +12,13 @@ local width_cache = setmetatable({}, {
   end,
 })
 
----Get the relative path from current working directory
 ---@return string|nil relative_path The path relative to CWD, or nil if no path
 ---@return boolean is_in_cwd Whether the file is within the current working directory
 local function get_path_from_cwd()
   local full_path = vim.fn.expand("%:p")
   if full_path == "" then
     return nil, false
-  end -- No path
+  end
 
   local cwd = vim.fn.getcwd()
   local path_sep = package.config:sub(1, 1) -- '/' or '\'
@@ -36,16 +33,13 @@ local function get_path_from_cwd()
     relative_path = full_path:sub(#cwd + 1)
     if relative_path == "" then
       relative_path = "."
-    end -- Is CWD root
+    end
   else
-    -- Outside CWD: Use path relative to root/drive as default
     relative_path = vim.fn.fnamemodify(full_path, ":.")
-    -- Optional: Could fallback to filename if relative-to-root is still absolute
   end
   return relative_path, is_in_cwd
 end
 
----Calculate how many path components bufferline will display
 ---@param num_total_components integer Total number of path components
 ---@param is_in_cwd boolean Whether the file is in the current working directory
 ---@return integer count Number of components that bufferline will show
@@ -61,7 +55,7 @@ local function get_bufferline_component_count(num_total_components, is_in_cwd)
   else
     -- If outside CWD, assume bufferline shows only filename effectively
     -- Adjust this assumption if your bufferline logic differs for non-CWD files
-    count = math.min(num_total_components, 1) -- Just filename assumption
+    count = math.min(num_total_components, 1)
   end
   return count
 end
@@ -71,7 +65,6 @@ end
 ---@field num_total_components integer Total number of path components
 ---@field path_sep string Path separator character ('/' or '\')
 
----Get path information and validate basic conditions
 ---@return PathInfo|nil path_info Path information object, or nil if invalid
 ---@return boolean is_in_cwd Whether the file is in the current working directory
 local function get_path_info()
@@ -96,7 +89,6 @@ local function get_path_info()
     is_in_cwd
 end
 
----Extract winbar-specific components (excluding what bufferline will show)
 ---@param path_info PathInfo Path information object
 ---@param is_in_cwd boolean Whether the file is in the current working directory
 ---@return string[] winbar_components Array of path components for winbar display
@@ -116,7 +108,6 @@ local function calculate_winbar_components(path_info, is_in_cwd)
   return winbar_components
 end
 
----Handle cases where content doesn't fit and needs truncation
 ---@param available_width integer Available width for display
 ---@param ellipsis string Ellipsis string to use for truncation
 ---@param trailing_sep string Trailing separator string
@@ -134,7 +125,6 @@ local function handle_truncation_fallback(available_width, ellipsis, trailing_se
   end
 end
 
----Build truncated content that fits within available space
 ---@param winbar_components string[] Array of winbar path components
 ---@param max_content_width integer Maximum width available for content
 ---@param path_sep string Path separator character
@@ -160,7 +150,6 @@ local function build_truncated_content(winbar_components, max_content_width, pat
   return truncated_content
 end
 
----Format the final winbar path with truncation logic
 ---@param winbar_components string[] Array of winbar path components
 ---@param path_info PathInfo Path information object
 ---@return string formatted_path Final formatted path string for winbar display
@@ -179,7 +168,6 @@ local function format_winbar_path(winbar_components, path_info)
     return FALLBACK_DISPLAY
   end
 
-  -- Check if full content fits without truncation
   local full_winbar_string = table.concat(winbar_components, path_info.path_sep)
   local full_winbar_width = width_cache[full_winbar_string]
 
@@ -187,7 +175,6 @@ local function format_winbar_path(winbar_components, path_info)
     return full_winbar_string .. trailing_sep
   end
 
-  -- Handle truncation
   local max_content_width = available_width - ellipsis_width - trailing_sep_width
 
   if max_content_width < 0 then
@@ -203,7 +190,6 @@ local function format_winbar_path(winbar_components, path_info)
   end
 end
 
----Get the winbar remainder path (path components not shown in bufferline)
 ---@return string winbar_path Formatted path string for winbar display
 function M.get_winbar_remainder_path()
   local ok, result = pcall(function()

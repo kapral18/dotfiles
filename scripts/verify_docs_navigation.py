@@ -207,7 +207,6 @@ def check_reference_map_scripts(repo_root: Path) -> list[str]:
 
 
 def check_docs_navigation(repo_root: Path) -> list[str]:
-    """Return human-readable docs navigation failures."""
 
     discovered_docs = discover_docs(repo_root)
     failures: list[str] = []

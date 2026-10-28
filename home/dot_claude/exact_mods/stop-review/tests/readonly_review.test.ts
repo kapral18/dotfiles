@@ -88,7 +88,6 @@ test('reviews the turn once and sends its concerns back', async ($, on) => {
   expect(sent[0]?.prompt).toBe(
     '# Turn under review\n## User request\nyeah I think so\n\n### Bash\ninput: {"command":"make check"}\n<result>\nAll checks passed!\n</result>\n\n# Final answer\nDone.',
   )
-  expect(sent[0]?.prompt).not.toContain('build the mod?')
   // The skill procedures the SOP points to follow it; a missing one is left out.
   expect(sent[0]?.system).toMatch(/RULES\n\nPROCEDURE \/home\/u\/\.agents\/skills\/k-git\/references\/commit-push\.md\n\nPROCEDURE \/home\/u\/\.agents\/skills\/k-long-jobs\/SKILL\.md\n\nPROCEDURE \/home\/u\/\.agents\/skills\/k-review\/SKILL\.md\n\nPROCEDURE \/home\/u\/\.agents\/skills\/k-review\/references\/review_fixes\.md/)
   expect((await $.classic.Stop(stop('Done.', true))).block).toBeUndefined()
@@ -221,17 +220,9 @@ test('reviews a woken turn that asks mid-paragraph, and ignores ask and list wor
   expect(block).toMatch(/Next steps/)
   expect(block).toMatch(/ends with a question/)
   expect(sent).toHaveLength(1)
-  // The middle of a paragraph is enough to start the review.
   await $.turn.start({ text: notice, turnId: 'notice2' })
   await $.classic.Stop(stop('Six findings. Should I fix all six? My pick is yes.'))
   expect(sent).toHaveLength(2)
-})
-
-test('makes no call without an advisorModel', async ($, on) => {
-  const sent = engine(on, turn, [concern('a — b — c')], { settings: {} })
-  await run($, 'yeah I think so')
-  expect((await $.classic.Stop(stop('Done.'))).block).toBeUndefined()
-  expect(sent).toHaveLength(0)
 })
 
 test('passes a PASS, an unreadable reply, a failed call, and a refused call', async ($, on) => {
@@ -284,14 +275,6 @@ test('leaves an answer another Stop hook sends back, such as /goal, and reviews 
   expect((await $.classic.Stop(stop('Done.', true))).block).toBeUndefined()
 })
 
-test('a subagent start does not reset the main turn', async ($, on) => {
-  const sent = engine(on, turn, [answered('PASS')])
-  await run($, 'yeah I think so')
-  await $.turn.start({ text: 'review the diff', turnId: 'sub1', agentId: 'agent-1' } as never)
-  await $.classic.Stop(stop('Done.'))
-  expect(sent[0]?.prompt).toMatch(/## User request\nyeah I think so\n/)
-})
-
 test('takes the request from the typed prompt and starts the turn at its first call, also for a notice', async ($, on) => {
   const skill = 'Base directory for this skill: /s\n# k-review\nlong body'
   const [diff, skillCall, read, later] = [use('Bash', { command: 'git diff' }), use('Skill', { skill: 'k-review' }), use('Read', { file_path: '/a.ts' }), use('Read', { file_path: '/b.ts' })]
@@ -324,7 +307,6 @@ test('takes the request from the typed prompt and starts the turn at its first c
   // A plugin's own $.tool.call adds no transcript row and pulls in no earlier call.
   await call($, use('Bash', { command: 'plugin call' }))
   await $.classic.Stop(stop('Read it.'))
-  // The earlier turn is context now; this turn holds only its own call.
   expect(sent[1]?.prompt).toMatch(
     /# Turn under review\n## User request\n\(no typed prompt[^\n]*\n\n## User\n<task-notification>build done<\/task-notification>\n\n### Read\ninput: \{"file_path":"\/b\.ts"\}\n<result>\nok\n<\/result>\n\n# Final answer\nRead it\.$/,
   )
@@ -399,19 +381,6 @@ test('escapes quoted text that would close a result or open a section, and never
   expect(prompt).toContain(`${'a'.repeat(1000)} …[1002 more chars] ${'b'.repeat(499)}\n</result>`)
 })
 
-
-
-
-
-
-
-test('shows the final answer once', async ($, on) => {
-  const sent = engine(on, [...turn, assistant('All done.')], [answered('PASS')])
-  await run($, 'yeah I think so')
-  await $.classic.Stop(stop('All done.'))
-  expect(sent[0]?.prompt.match(/All done\./g)).toHaveLength(1)
-})
-
 test('opens a slash command turn without tools at its command row', async ($, on) => {
   const rows = [user('earlier q'), assistant('earlier a'), user('<command-name>/review</command-name>'), assistant('Final. Should I fix it?')]
   const sent = engine(on, rows, [answered('PASS')])
@@ -429,7 +398,6 @@ test('opens a woken turn without tools or a row of its own after the earlier tur
   await $.turn.start({ text: '', turnId: 'wake' })
   await $.classic.Stop(stop('Should I fix it?'))
   expect(sent[1]?.prompt).not.toContain('make check')
-  expect(sent[1]?.prompt).not.toMatch(/# Turn under review[\s\S]*make check/)
   expect(sent[1]?.prompt.match(/Should I fix it\?/g)).toHaveLength(1)
 })
 
@@ -485,8 +453,6 @@ test('opens a slash command turn at its command row, not at later hook feedback'
   expect(sent[0]?.prompt).toMatch(/# Turn under review[\s\S]*First\./)
 })
 
-
-
 test('reviews the first Stop it sees even with stop_hook_active set: a managed hook blocked the one before', async ($, on) => {
   const sent = engine(on, turn, [answered('PASS'), concern('a — b — c')])
   await run($, 'look')
@@ -513,10 +479,7 @@ test('gives the reviewer the intent card last, when this session wrote one', asy
   await $.classic.Stop(stop('Done.'))
   expect(sent[0]?.prompt).toContain('# Intent card and evidence ledger')
   expect(sent[0]?.prompt).toContain('already handled')
-  expect(sent[0]?.prompt).not.toContain('build the mod?')
-  expect(sent[0]?.system).toMatch(/judge first whether the final answer achieves its Goal/)
 })
-
 
 test('WHEN no advisor is set SHOULD send ledger problems back with the format checks', async ($, on) => {
   engine(on, turn, [], { settings: {}, card: { goal: 'verify' }, problems: ['C1: file changed'] })

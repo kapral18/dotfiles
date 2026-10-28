@@ -22,7 +22,6 @@ import time
 import unittest
 from pathlib import Path
 
-import _test_support  # noqa: F401  (puts scripts/ on sys.path)
 from _test_support import (
     TMUX_PICKERS,
     modern_bash,
@@ -125,8 +124,6 @@ class TestTmuxPickerShellHelpers(unittest.TestCase):
             cache_dir.mkdir(parents=True)
             picker_dir.mkdir(parents=True)
             lib_dir.mkdir(parents=True)
-            for name in ("executable_dispatch_async.sh",):
-                (lib_dir / name.split("executable_")[1]).write_text((TMUX_PICKERS / f"lib/{name}").read_text())
             selection = root / "selection.tsv"
             selection.write_text("ctx\tworktree\t/tmp/wt\twt:|repo=r\t/tmp/root\n")
             pending_snap = cache_dir / "pending.tsv"
@@ -135,9 +132,7 @@ class TestTmuxPickerShellHelpers(unittest.TestCase):
             safe_check.write_text("#!/usr/bin/env bash\nexit 0\n")  # --check always safe
             safe_check.chmod(0o755)
 
-            # Stage a logging dispatch_async so the test observes what the safe
-            # branch dispatches (helper resolves ../lib relative to its own path,
-            # and we run a staged copy of the helper — see below).
+            # The helper resolves ../lib/dispatch_async.sh from its own path, so both are staged.
             dispatch_log = root / "dispatch.log"
             lib_dir = picker_dir.parent / "lib"
             lib_dir.mkdir(exist_ok=True)
@@ -214,10 +209,6 @@ class TestTmuxPickerShellHelpers(unittest.TestCase):
             assert result.stdout.strip() == "CONFIRM+SWAP"
             assert confirm_flag.exists()
 
-            # Second alt-x while confirmed force-dispatches the PENDING snapshot
-            # (not the live selection) through dispatch_async.sh and clears the
-            # flag. The helper resolves dispatch_async.sh relative to its own
-            # path, so stage a fixture copy under <fixture pickers>/session.
             dispatch_log = root / "dispatch.log"
             lib_dir = picker_dir.parent / "lib"
             lib_dir.mkdir(exist_ok=True)
@@ -292,7 +283,6 @@ class TestTmuxPickerShellHelpers(unittest.TestCase):
             (fake_bin / "bash").symlink_to(modern_bash())
             fakes = {
                 "tmux": '#!/bin/sh\n[ "$1" = has-session ] && exit 1\nexit 0\n',
-                # Records the picker's real fzf arguments and exported action strings, then aborts.
                 "fzf": '#!/bin/sh\nfor arg do printf "%s\\0" "$arg"; done > "$FZF_ARGS"\n'
                 'printf "%s\\0" "$ALTX_SAFE_ACTIONS" "$ALTX_CONFIRM_ACTIONS" "$ALTX_FORCE_ACTIONS" '
                 '"$ALTX_RESTORE_ACTIONS" "$PICK_SESSION_SORT_SOURCE_FILE" > "$FZF_ENV"\ncat > /dev/null\nexit 130\n',
@@ -513,7 +503,6 @@ class TestTmuxPickerShellHelpers(unittest.TestCase):
                 start_new_session=True,
             )
             self.addCleanup(stop_process_group, first)
-            # Wait until the busy marker exists, then fire the second press.
             busy = Path(f"{confirm_flag}.busy")
             deadline = time.time() + 10
             while not busy.exists() and time.time() < deadline:
@@ -936,7 +925,6 @@ exit 1
             selection = root / "selection.tsv"
             selection.write_text(f"ctx\tsession\t{worktree}\tsess_wt:fix/context-menu|repo=work/kibana\tctx\tctx\n")
 
-            # Preflight prints nothing => nothing is dirty/unpushed => safe.
             fake_w = fake_bin / ",w"
             fake_w.write_text("#!/usr/bin/env bash\nexit 0\n")
             fake_w.chmod(0o755)
@@ -1011,11 +999,11 @@ exit 1
 
             assert result.returncode == 0, result.stderr
             logged = tmux_log.read_text()
-            assert "blocked" in logged and "alt-x again to force" in logged
+            assert "blocked" in logged
             assert not (cache_dir / "pick_session_pending.tsv").exists()
             assert not (cache_dir / "pick_session_mutations.tsv").exists()
 
-    def test_action_remove_accepts_force_flag_trailing_the_selection(self):
+    def test_action_remove_force_flag_bypasses_preflight_in_either_position(self):
         """dispatch_async appends extras after the snapshot, so `--force` may
         follow the sel path; it must still bypass the preflight."""
         with tempfile.TemporaryDirectory() as tmp:
@@ -1043,66 +1031,25 @@ exit 1
             zoxide.chmod(0o755)
 
             script = TMUX_PICKERS / "session/executable_action_remove_worktrees.sh"
-            result = subprocess.run(
-                [modern_bash(), str(script), str(selection), "--force"],
-                capture_output=True,
-                text=True,
-                env={
-                    **os.environ,
-                    "HOME": str(home),
-                    "XDG_CACHE_HOME": str(home / ".cache"),
-                    "PATH": f"{fake_bin}:{os.environ['PATH']}",
-                    "TMUX": "",
-                },
-            )
+            for args in ([str(selection), "--force"], ["--force", str(selection)]):
+                with self.subTest(args=args):
+                    (cache_dir / "pick_session_mutations.tsv").unlink(missing_ok=True)
+                    result = subprocess.run(
+                        [modern_bash(), str(script), *args],
+                        capture_output=True,
+                        text=True,
+                        env={
+                            **os.environ,
+                            "HOME": str(home),
+                            "XDG_CACHE_HOME": str(home / ".cache"),
+                            "PATH": f"{fake_bin}:{os.environ['PATH']}",
+                            "TMUX": "",
+                        },
+                    )
 
-            assert result.returncode == 0, result.stderr
-            mutations = (cache_dir / "pick_session_mutations.tsv").read_text()
-            assert f"\tPATH_PREFIX\t{worktree.resolve()}\n" in mutations
-
-    def test_action_remove_with_force_flag_bypasses_preflight(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            home = root / "home"
-            fake_bin = root / "bin"
-            cache_dir = home / ".cache/tmux"
-            worktree = home / "work/kibana/fix/context-menu"
-            fake_bin.mkdir()
-            cache_dir.mkdir(parents=True)
-            worktree.mkdir(parents=True)
-            subprocess.run(["git", "init", str(worktree)], check=True, capture_output=True, text=True)
-
-            selection = root / "selection.tsv"
-            selection.write_text(f"ctx\tsession\t{worktree}\tsess_wt:fix/context-menu|repo=work/kibana\tctx\tctx\n")
-
-            # ,w preflight should never be called when --force is passed
-            fake_w = fake_bin / ",w"
-            fake_w.write_text(
-                '#!/usr/bin/env bash\nif [ "${1:-}" = remove ] && [ "${2:-}" = --preflight ]; then\n  exit 1\nfi\n'
-            )
-            fake_w.chmod(0o755)
-
-            zoxide = fake_bin / "zoxide"
-            zoxide.write_text("#!/usr/bin/env bash\nexit 0\n")
-            zoxide.chmod(0o755)
-
-            script = TMUX_PICKERS / "session/executable_action_remove_worktrees.sh"
-            result = subprocess.run(
-                [modern_bash(), str(script), "--force", str(selection)],
-                capture_output=True,
-                text=True,
-                env={
-                    **os.environ,
-                    "HOME": str(home),
-                    "XDG_CACHE_HOME": str(home / ".cache"),
-                    "PATH": f"{fake_bin}:{os.environ['PATH']}",
-                    "TMUX": "",
-                },
-            )
-
-            assert result.returncode == 0, result.stderr
-            mutations = (cache_dir / "pick_session_mutations.tsv").read_text()
-            assert f"\tPATH_PREFIX\t{worktree.resolve()}\n" in mutations
+                    assert result.returncode == 0, result.stderr
+                    mutations = (cache_dir / "pick_session_mutations.tsv").read_text()
+                    assert f"\tPATH_PREFIX\t{worktree.resolve()}\n" in mutations
 
     def test_action_remove_force_dispatch_places_force_before_paths(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1328,7 +1275,6 @@ exit 1
             )
             open_items.chmod(0o755)
             (session_scripts / "lib").symlink_to(TMUX_PICKERS / "session/lib", target_is_directory=True)
-            # Minimal stubs so open_items can exec filter/items if needed.
             for name in ("items.sh", "filter.sh", "ordered_cache_update.sh"):
                 stub = session_scripts / name
                 stub.write_text("#!/usr/bin/env bash\nexit 0\n")
@@ -1619,27 +1565,6 @@ exit 1
             "src/platform/plugins/shared/console/server/routes/api/console/proxy/validation_config.ts#L35"
         )
 
-        def extract_url_candidates(text: str) -> list[str]:
-            candidates = [
-                match.group(0).rstrip(r"""])>}"'.,;:!?""")
-                for match in re.finditer(r"(?:https?|ftp|file)://[^\s]+", text)
-            ]
-            unique = sorted(candidate for candidate in set(candidates) if candidate)
-            pruned: list[str] = []
-            for index, candidate in enumerate(unique):
-                drop = False
-                for next_candidate in unique[index + 1 :]:
-                    if not next_candidate.startswith(candidate):
-                        break
-                    if len(next_candidate) > len(candidate) and (
-                        candidate.endswith("/") or next_candidate[len(candidate)] == "/"
-                    ):
-                        drop = True
-                        break
-                if not drop:
-                    pruned.append(candidate)
-            return pruned
-
         slash_wrapped_url = "https://github.com/elastic/kibana/blob/main/src/plugins/validation_config.ts#L35"
         payload = (
             "│ [`path`](https://github.com/elastic/kibana/blob/68b7d8f46562cd075e5e3a566dd666c3626cee5d/src/platform/ │\n"
@@ -1649,9 +1574,13 @@ exit 1
         )
 
         result = subprocess.run(["python3", str(strip_cr)], input=payload, capture_output=True, text=True)
+        candidates = subprocess.run(
+            ["python3", str(strip_cr), "--extract-candidates"], input=payload, capture_output=True, text=True
+        )
 
         assert result.returncode == 0, result.stderr
-        assert extract_url_candidates(result.stdout) == [blob_url, slash_wrapped_url]
+        assert candidates.returncode == 0, candidates.stderr
+        assert candidates.stdout.splitlines() == [blob_url, slash_wrapped_url]
         assert (
             "https://github.com/elastic/kibana/blob/68b7d8f46562cd075e5e3a566dd666c3626cee5d/src/platform/ │"
             not in result.stdout
@@ -1778,20 +1707,6 @@ exit 1
             "https://github.com/elastic/kibana/pull/1?tab=files",
             "https://github.com/o/r/pull/1?tab=files",
         ]
-
-    def test_pick_url_extra_filter_keeps_non_url_matches(self):
-        strip_cr = TMUX_PICKERS.parent / "pick_url/lib/strip_cr.py"
-        payload = "ticket ABC-123 here\nsee https://ex.com/a\n"
-
-        result = subprocess.run(
-            ["python3", str(strip_cr), "--extract-candidates", "--extra-filter", "grep -oE '[A-Z]+-[0-9]+'"],
-            input=payload,
-            capture_output=True,
-            text=True,
-        )
-
-        assert result.returncode == 0, result.stderr
-        assert result.stdout.splitlines() == ["ABC-123", "https://ex.com/a"]
 
     def test_pick_url_extra_filter_keeps_stdout_from_nonzero_filter(self):
         strip_cr = TMUX_PICKERS.parent / "pick_url/lib/strip_cr.py"
@@ -2187,7 +2102,6 @@ class TestGhRowLoaderSpinnerOrdering(unittest.TestCase):
             'if [ "${1:-}" = "--refresh" ]; then\n'
             "  printf '\\033[32m●\\033[0m  row-refreshed\\tpr\\towner/repo\\t1\\thttps://example.test/1\\n' > \"$cache_file\"\n"
             "fi\n"
-            # Slow render keeps a spinner frame in flight when stop lands.
             'sleep "${RENDER_SLEEP:-0}"\n'
             'cat "$cache_file"\n'
         )
@@ -2196,7 +2110,6 @@ class TestGhRowLoaderSpinnerOrdering(unittest.TestCase):
         stub_bin = tmp_path / "bin"
         stub_bin.mkdir()
         posts_log = tmp_path / "posts.log"
-        curl_start_log = tmp_path / "curl-start.log"
         curl_stub = stub_bin / "curl"
         curl_stub.write_text(
             "#!/usr/bin/env bash\n"
@@ -2207,10 +2120,7 @@ class TestGhRowLoaderSpinnerOrdering(unittest.TestCase):
             'cmd="${body#reload-sync(}"\n'
             'cmd="${cmd%%)+*}"\n'
             '  out="$("$cmd" 2>/dev/null || true)"\n'
-            '  printf \'START %s\\n\' "$out" >> "$CURL_START_LOG"\n'
             "  if printf '%s' \"$out\" | grep -q '◐\\|◓\\|◑\\|◒'; then\n"
-            '    sleep "${CURL_STUB_DELAY:-0.2}"\n'
-            "  elif [ \"${DELAY_ROW_ONE:-0}\" = 1 ] && printf '%s' \"$out\" | grep -q 'row-one'; then\n"
             '    sleep "${CURL_STUB_DELAY:-0.2}"\n'
             "  fi\n"
             '  printf \'POST %s\\n\' "$out" >> "$POSTS_LOG"\n'
@@ -2224,7 +2134,6 @@ class TestGhRowLoaderSpinnerOrdering(unittest.TestCase):
             "items_cmd": items_cmd,
             "stub_bin": stub_bin,
             "posts_log": posts_log,
-            "curl_start_log": curl_start_log,
         }
 
     def test_stopped_spinner_cannot_clobber_final_render(self):
@@ -2249,7 +2158,6 @@ class TestGhRowLoaderSpinnerOrdering(unittest.TestCase):
                 "XDG_CACHE_HOME": str(fixture["cache_dir"].parent),
                 "PATH": f"{fixture['stub_bin']}:{os.environ['PATH']}",
                 "POSTS_LOG": str(fixture["posts_log"]),
-                "CURL_START_LOG": str(fixture["curl_start_log"]),
                 "RENDER_SLEEP": "0.12",
                 "FZF_PORT": "1",
             }

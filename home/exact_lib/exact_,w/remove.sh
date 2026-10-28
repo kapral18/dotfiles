@@ -219,8 +219,6 @@ if [ "$preflight_mode" -eq 1 ]; then
     wp="$(realpath "$p" 2> /dev/null || printf '%s' "$p")"
     [ -d "$wp" ] || continue
     # Match removal semantics: detached HEAD skips the unpushed-commit check.
-    # Hardcoding detached=0 here falsely blocked detached worktrees whose commits
-    # are not on any remote (picker alt-x then hid the row and resurrected it).
     det=0
     if ! git -C "$wp" symbolic-ref -q HEAD > /dev/null 2>&1; then
       det=1
@@ -396,8 +394,6 @@ for worktree in "${worktrees[@]}"; do
     # cleans the .git/worktrees/<name>/ metadata before the on-disk delete, so
     # a failure here typically means the dir is leftover (Permission denied,
     # ENOTEMPTY race on macOS, etc.) while git's own bookkeeping is consistent.
-    # Keeping the rest of the cleanup (rm -rf, branch -D, tmux/zoxide) avoids
-    # the symptom where alt-x kills the session but leaves the worktree dir.
   fi
 
   # `git worktree remove` can refuse to delete the directory if there are

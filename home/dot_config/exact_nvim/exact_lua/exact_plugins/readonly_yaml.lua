@@ -13,7 +13,6 @@ return {
       return opts
     end,
   },
-  -- Schema companion: auto-detect k8s schemas from apiVersion/kind, CRD support
   {
     "cenk1cenk2/schema-companion.nvim",
     version = false,
@@ -31,7 +30,6 @@ return {
       { "cenk1cenk2/schema-companion.nvim" },
     },
     opts = function(_, opts)
-      -- Wrap yamlls config with schema-companion
       local sc = require("schema-companion")
       -- Let yamlls apply its own associations. Reapplying LSP matches through
       -- schema-companion replaces shared filename patterns with one buffer URI.
@@ -39,9 +37,7 @@ return {
 
       local adapter = sc.adapters.yamlls.setup({
         sources = {
-          -- Auto-detect Kubernetes resources from apiVersion/kind
           sc.sources.matchers.kubernetes.setup({ version = "master" }),
-          -- Allow selecting from LSP-provided schemas
           lsp_source,
         },
       })
@@ -58,7 +54,6 @@ return {
           if vim.fs.root(bufnr, "Chart.yaml") then
             return
           end
-          -- Otherwise use standard root detection
           on_dir(vim.fs.root(bufnr, { ".git", "compose.yaml", "docker-compose.yaml" }))
         end,
         settings = {
@@ -67,7 +62,6 @@ return {
             keyOrdering = false,
             validate = true,
             schemaStore = { enable = false, url = "" },
-            -- Custom tags for GitLab CI and other tools
             customTags = {
               "!reference sequence",
               "!include scalar",
@@ -76,25 +70,20 @@ return {
             schemas = vim.tbl_extend("force", require("schemastore").yaml.schemas(), {
               -- Kubernetes handled by schema-companion matchers
               kubernetes = "",
-              -- GitHub
               ["https://www.schemastore.org/github-workflow.json"] = ".github/workflows/*.{yml,yaml}",
               ["https://www.schemastore.org/github-action.json"] = ".github/action.{yml,yaml}",
               ["https://www.schemastore.org/dependabot-2.0.json"] = ".github/dependabot.{yml,yaml}",
-              -- GitLab
               ["https://gitlab.com/gitlab-org/gitlab/-/raw/master/app/assets/javascripts/editor/schema/ci.json"] = {
                 ".gitlab-ci.yml",
                 ".gitlab-ci.yaml",
                 "*.gitlab-ci.yml",
                 ".gitlab/**/*.{yml,yaml}",
               },
-              -- Docker Compose
               ["https://raw.githubusercontent.com/compose-spec/compose-spec/master/schema/compose-spec.json"] = {
                 "docker-compose*.{yml,yaml}",
                 "compose*.{yml,yaml}",
               },
-              -- Helm Chart.yaml (not templates)
               ["https://www.schemastore.org/chart.json"] = "Chart.{yml,yaml}",
-              -- Ansible
               ["https://raw.githubusercontent.com/ansible/ansible-lint/main/src/ansiblelint/schemas/ansible.json#/$defs/playbook"] = {
                 "**/playbooks/**/*.{yml,yaml}",
                 "**/*playbook*.{yml,yaml}",
@@ -104,18 +93,13 @@ return {
                 "**/tasks/**/*.{yml,yaml}",
                 "**/handlers/**/*.{yml,yaml}",
               },
-              -- Kustomization
               ["https://www.schemastore.org/kustomization.json"] = "kustomization.{yml,yaml}",
-              -- Prettier
               ["https://www.schemastore.org/prettierrc.json"] = ".prettierrc.{yml,yaml}",
-              -- Argo Workflows
               ["https://raw.githubusercontent.com/argoproj/argo-workflows/master/api/jsonschema/schema.json"] = {
                 "**/workflows/**/*.{yml,yaml}",
                 "**/*-workflow.{yml,yaml}",
               },
-              -- Pre-commit
               ["https://www.schemastore.org/pre-commit-config.json"] = ".pre-commit-config.{yml,yaml}",
-              -- Renovate
               ["https://docs.renovatebot.com/renovate-schema.json"] = {
                 "renovate.json",
                 ".renovaterc.json",
@@ -139,16 +123,13 @@ return {
       return opts
     end,
   },
-  -- Linting: actionlint for GitHub Actions (much better than schema validation alone)
   {
     "mfussenegger/nvim-lint",
     opts = function(_, opts)
       opts.linters_by_ft = vim.tbl_deep_extend("force", opts.linters_by_ft or {}, {
-        -- actionlint only runs on GitHub workflow files (has built-in path detection)
         yaml = { "actionlint" },
       })
 
-      -- Configure actionlint to only run on GitHub workflow files
       opts.linters = opts.linters or {}
       opts.linters.actionlint = {
         condition = function(ctx)

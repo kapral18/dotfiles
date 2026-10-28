@@ -58,7 +58,6 @@ return {
 
       local format = require("util.format")
 
-      -- Toggle mappings
       Snacks.toggle.option("spell", { name = "Spelling" }):map("<leader>us")
       Snacks.toggle.option("wrap", { name = "Wrap" }):map("<leader>uw")
       Snacks.toggle.option("relativenumber", { name = "Relative Number" }):map("<leader>uL")
@@ -84,7 +83,6 @@ return {
       format.snacks_toggle(true):map("<leader>uF")
     end,
     keys = {
-      -- Notifier
       {
         "<leader>nh",
         function()
@@ -99,7 +97,6 @@ return {
         end,
         desc = "Dismiss All Notifications",
       },
-      -- Profiler
       {
         "<leader>dps",
         function()
@@ -107,7 +104,6 @@ return {
         end,
         desc = "Profiler Scratch Buffer",
       },
-      -- Lazygit
       {
         "<leader>gg",
         function()
@@ -122,7 +118,6 @@ return {
         end,
         desc = "Lazygit (cwd)",
       },
-      -- Scooter (search & replace)
       {
         "<leader>sr",
         function()
@@ -149,7 +144,6 @@ return {
         desc = "Scooter (Selection)",
         mode = { "x" },
       },
-      -- Lasr (search & replace)
       {
         "<leader>srr",
         function()
@@ -158,7 +152,6 @@ return {
         end,
         desc = "Lasr (Root Dir)",
       },
-      -- Git pickers
       {
         "<leader>gL",
         function()
@@ -187,7 +180,6 @@ return {
         end,
         desc = "Git Log (Root Dir)",
       },
-      -- Gitbrowse
       {
         "<leader>go",
         function()
@@ -209,7 +201,6 @@ return {
         desc = "Git Browse (copy)",
         mode = { "n", "x" },
       },
-      -- Bufdelete
       {
         "<leader>bd",
         function()
@@ -224,7 +215,6 @@ return {
         end,
         desc = "Delete Other Buffers",
       },
-      -- Terminal
       {
         "<leader>fT",
         function()

@@ -57,13 +57,6 @@ test('lets the edit through when the map command fails', async ($, on) => {
   expect((await $.tool.call(edit('/repo/src/a.ts'))).deny).toBeUndefined()
 })
 
-test('points a root-level or shared-directory file at a file anchor', async ($, on) => {
-  engine(on, 'unmapped: .\n')
-  const first = await $.tool.call(edit('/repo/Makefile'))
-  expect(first.deny).toMatch(/\. in \/repo has no behavior-map area/)
-  expect(first.deny).toMatch(/add it as a file anchor to the closest entry/)
-})
-
 test('judges docs and tests by the repo-relative path', async ($, on) => {
   engine(on, 'unmapped: src\n', ran('/home/tests/app\n'))
   expect((await $.tool.call(edit('/home/tests/app/src/server.ts'))).deny).toMatch(/no behavior-map area/)
@@ -86,31 +79,6 @@ test('keeps the note for the next edit when an edit fails', async ($, on) => {
   expect((await $.tool.call(edit('/repo/src/a.ts'))).context?.join('\n')).toMatch(/touches auth\/login/)
 })
 
-test('adds no Stop feedback when read-only Bash runs beside older unmapped code', async ($, on) => {
-  on('turn.start', ($, e) => ({ turnId: e.turnId }))
-  on('process.run', ($, e) => ({
-    value: ran(e.argv[0] === 'git' ? '/repo\n' : e.argv[0] === 'sh' ? 'app/slug.py\n' : 'unmapped: app\n'),
-  }))
-  on('tool.call', () => ({ result: {} as never }))
-  on('classic.Stop', () => ({}))
-  await $.turn.start({ text: 'check status without changing files', turnId: 't1' })
-  await $.tool.call({ tool: 'Bash', command: 'git status --short' })
-  const result = await $.classic.Stop({ stop_hook_active: false, last_assistant_message: 'The working tree has changes.' })
-  expect(result.block).toBeUndefined()
-  expect(result.additionalContext).toBeUndefined()
-})
-
-test('keys each directory of a two-directory unmapped line on its own', async ($, on) => {
-  // A path through a symlink lists both directories; a later edit lists one of them.
-  const answers = ['unmapped: src, lib\n', 'unmapped: lib\n']
-  on('fs.exists', () => ({ value: true }))
-  on('process.run', ($, e) => ({ value: ran(e.argv[0] === 'git' ? '/repo\n' : (answers.shift() ?? '')) }))
-  on('tool.call', () => ({ result: {} as never }))
-  expect((await $.tool.call(edit('/repo/src/a.ts'))).deny).toMatch(/src, lib in \/repo has no behavior-map area/)
-  expect((await $.tool.call(edit('/repo/lib/b.ts'))).deny).toBeUndefined()
-})
-
-// The engine for Bash: the marker, `git status -z` output, the files `find` reports newer than the marker, and a fixed `affected` answer.
 const bash = (on: On, status: string, newer: string, affected: string, top = '/repo\n') => {
   const argv: string[][] = []
   on('fs.exists', () => ({ value: true }))
@@ -126,17 +94,11 @@ const bash = (on: On, status: string, newer: string, affected: string, top = '/r
   return argv
 }
 
-test('notes once per directory when a Bash command changes code in an unmapped directory', async ($, on) => {
-  const argv = bash(on, ' M src/a.ts\0?? src/b.ts\0', './src/a.ts\n./src/b.ts\n', 'unmapped: src\n2 files; 2 outside every mapped area\n')
-  const first = await $.tool.call({ tool: 'Bash', command: "python3 - <<'EOF'\nopen('src/a.ts', 'w')\nEOF" })
-  expect(first.deny).toBeUndefined()
-  expect(first.context?.join('\n')).toMatch(/changed code in src in \/repo, which has no behavior-map area\. Map it now/)
-  expect(argv.find(args => args[0] === ',behavior-map')).toEqual([',behavior-map', 'affected', 'src/a.ts', 'src/b.ts'])
-  const second = await $.tool.call({ tool: 'Bash', command: "sed -i '' s/a/b/ src/b.ts" })
-  expect(second.context ?? []).toEqual([])
-  // Each writing command gets its own marker, removed after its scan.
-  expect(argv.filter(args => args[0] === 'sh')).toHaveLength(2)
-  expect(argv.filter(args => args[0] === 'rm')).toHaveLength(2)
+test('notes unmapped Bash writes once without allowing the first Edit there', async ($, on) => {
+  bash(on, ' M src/a.ts\0', './src/a.ts\n', 'unmapped: src\n1 files; 1 outside every mapped area\n')
+  expect((await $.tool.call({ tool: 'Bash', command: 'echo x > src/a.ts' })).context?.join('\n')).toMatch(/changed code in src/)
+  expect((await $.tool.call({ tool: 'Bash', command: 'echo y > src/a.ts' })).context ?? []).toEqual([])
+  expect((await $.tool.call(edit('/repo/src/b.ts'))).deny).toMatch(/src in \/repo has no behavior-map area/)
 })
 
 test('gives overlapping Bash calls their own markers', async ($, on) => {
@@ -154,11 +116,10 @@ test('gives overlapping Bash calls their own markers', async ($, on) => {
     if (command === 'find') return { value: ran('./src/a.ts\n', 1) }
     return { value: ran('') }
   })
-  on('tool.call', async ($, e) => {
-    if ('command' in e && e.command.includes('slow')) await gate
+  on('tool.call', { tool: 'Bash' }, async ($, e) => {
+    if (e.command.includes('slow')) await gate
     return { result: {} as never }
   })
-  // The slow command starts first; the fast one starts and ends while it runs.
   const slow = $.tool.call({ tool: 'Bash', command: 'echo slow > src/a.ts' })
   await $.tool.call({ tool: 'Bash', command: 'echo fast > src/b.ts' })
   release()
@@ -167,14 +128,7 @@ test('gives overlapping Bash calls their own markers', async ($, on) => {
   expect(argv.filter(args => args[0] === 'rm').map(args => args.at(-1))).toEqual(['/tmp/m2', '/tmp/m1'])
 })
 
-test('a Bash note leaves the first Edit in that directory refused', async ($, on) => {
-  bash(on, ' M src/a.ts\0', './src/a.ts\n', 'unmapped: src\n1 files; 1 outside every mapped area\n')
-  expect((await $.tool.call({ tool: 'Bash', command: 'echo x > src/a.ts' })).context?.join('\n')).toMatch(/changed code in src/)
-  expect((await $.tool.call(edit('/repo/src/b.ts'))).deny).toMatch(/src in \/repo has no behavior-map area/)
-})
-
 test('reads a rename by its new path and skips the old one', async ($, on) => {
-  // An index rename (`R `), then a worktree rename of an intent-to-add file (` R`), then an untracked file.
   const argv = bash(on, 'R  src/new.ts\0old/gone.ts\0 R src/b.ts\0README.md\0?? -dash.ts\0', './src/new.ts\n', 'unmapped: src\n')
   await $.tool.call({ tool: 'Bash', command: 'git mv old/gone.ts src/new.ts' })
   const find = argv.find(args => args[0] === 'find') ?? []

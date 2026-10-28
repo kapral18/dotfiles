@@ -98,7 +98,6 @@ return {
     opts = function(_, opts)
       opts = opts or {}
 
-      -- Define base configuration
       local base = {
         inlay_hints = { enabled = false },
         diagnostics = {
@@ -108,8 +107,6 @@ return {
             spacing = 4,
             source = "if_many",
             prefix = "●",
-            -- this will set set the prefix to a function that returns the diagnostics icon based on the severity
-            -- prefix = "icons",
           },
           severity_sort = true,
           signs = {
@@ -231,7 +228,6 @@ return {
         },
         setup = {},
       }
-      -- Deep merge base with incoming opts
       local extra_star_keys = nil
       if type(opts) == "table" and type(opts.servers) == "table" and type(opts.servers["*"]) == "table" then
         extra_star_keys = opts.servers["*"].keys
@@ -251,10 +247,8 @@ return {
     config = function(_, opts)
       vim.diagnostic.config(opts.diagnostics or {})
 
-      -- Register LSP formatting
       format.register(lsp.formatter())
 
-      -- Setup LSP keymaps using Snacks without plugin-manager internals
       local function key_opts_from_spec(spec)
         local opts_local = {
           desc = spec.desc,
@@ -323,11 +317,8 @@ return {
       end
 
       -- Delete native Neovim LSP mappings that conflict with our custom ones.
-      -- Native mappings include: grr (references), gri (implementation),
-      -- grt (type_definition), gra (code_action), grn (rename).
       vim.api.nvim_create_autocmd("LspAttach", {
         callback = function(args)
-          -- Force disable inlay hints
           if vim.lsp.inlay_hint then
             vim.lsp.inlay_hint.enable(false, { bufnr = args.buf })
           end
@@ -349,7 +340,6 @@ return {
         capabilities = cmp_nvim_lsp.default_capabilities(capabilities)
       end
 
-      -- Get all servers available through mason-lspconfig
       local have_mason = pcall(require, "mason-lspconfig")
       local mason_all = have_mason
           and vim.tbl_keys(require("mason-lspconfig.mappings").get_mason_map().lspconfig_to_package)

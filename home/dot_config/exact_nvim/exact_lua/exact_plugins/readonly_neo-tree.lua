@@ -109,27 +109,15 @@ return {
       filesystem = {
         async_directory_scan = "always",
         filtered_items = {
-          visible = true, -- when true, they will just be displayed differently than normal items
+          visible = true,
           hide_dotfiles = false,
           hide_gitignored = false,
-          hide_hidden = false, -- only works on Windows for hidden files/directories
-          hide_by_name = {
-            --"node_modules",
-          },
-          hide_by_pattern = {
-            --"*.meta",
-            --"*/src/*/tsconfig.json",
-          },
-          always_show = { -- remains visible even if other settings would normally hide it
-            --".gitignored",
-          },
-          never_show = { -- remains hidden even if visible is toggled to true, this overrides always_show
-            --".DS_Store",
-            --"thumbs.db",
-          },
-          never_show_by_pattern = { -- uses glob style patterns
-            --".null-ls_*",
-          },
+          hide_hidden = false,
+          hide_by_name = {},
+          hide_by_pattern = {},
+          always_show = {},
+          never_show = {},
+          never_show_by_pattern = {},
         },
         follow_current_file = {
           enabled = true,
@@ -157,13 +145,11 @@ return {
         find_in_dir = function(state)
           local node = state.tree:get_node()
           local path = node:get_id()
-          -- close neo-tree
           require("fzf-lua").files({ cwd = path, winopts = winopts.large.vertical })
         end,
         grep_in_dir = function(state)
           local node = state.tree:get_node()
           local path = node:get_id()
-          -- close neo-tree
           require("fzf-lua").live_grep({ cwd = path, winopts = winopts.large.vertical })
         end,
         focus_parent = function(state)
@@ -174,7 +160,6 @@ return {
           local node = state.tree:get_node()
           local path = node:get_id()
 
-          -- make sure it's a directory
           if vim.fn.isdirectory(path) == 0 then
             return
           end
@@ -213,7 +198,6 @@ return {
               desc = "Clear diff and close tab",
             })
 
-            -- Clear the diff source
             state.clipboard[node.id] = nil
             state.clipboard[state.__current_diff_node__.id] = nil
             state.__current_diff_node__ = nil
@@ -229,7 +213,6 @@ return {
     "mikavilpas/yazi.nvim",
     version = false,
     keys = {
-      -- 👇 in this section, choose your own keymappings!
       {
         "<leader>ye",
         function()
@@ -238,7 +221,6 @@ return {
         desc = "Open the file manager",
       },
       {
-        -- Open in the current working directory
         "<leader>yw",
         function()
           require("yazi").yazi(nil, vim.fn.getcwd())
@@ -248,7 +230,6 @@ return {
     },
     ---@type YaziConfig
     opts = {
-      -- if you want to open yazi instead of netrw, see below for more info
       open_for_directories = false,
     },
   },

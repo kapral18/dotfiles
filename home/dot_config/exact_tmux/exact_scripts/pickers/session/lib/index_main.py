@@ -64,8 +64,6 @@ ICON_WORKTREE = ""
 ICON_DIR = ""
 
 
-# Worktrees holding a PR we are *reviewing* (someone else's PR) get a standout
-# magenta label so they pop out from our own sessions/worktrees in the picker.
 # Kept in sync with items_full_rehydrate.py via REVIEW_NAME_COLOR below.
 REVIEW_NAME_COLOR = "1;38;5;213"
 REVIEW_PATH_COLOR = "38;5;213"
@@ -110,7 +108,6 @@ def tildefy(p):
 
 
 def home_rel(p: str) -> str:
-    """Return a stable home-relative identifier without the leading '~/'."""
     if not p:
         return ""
     try:
@@ -205,7 +202,6 @@ def origin_url_for_root(root: str) -> str:
 
 
 def nwo_from_url(url: str) -> str:
-    """Extract owner/repo (name-with-owner) from a git remote URL."""
     url = (url or "").strip().rstrip("/")
     if not url:
         return ""
@@ -270,7 +266,6 @@ def default_branch_for_repo(repo_root: str) -> str:
             if out:
                 return out
 
-    # Fallback: get all refs once and check candidates
     try:
         out = subprocess.run(
             ["git", "-C", repo_root, "show-ref"],
@@ -293,7 +288,6 @@ def default_branch_for_repo(repo_root: str) -> str:
 
 
 def repo_display_for_root(root: str) -> str:
-    # `root` is the computed repo id (home-relative path).
     return (root or "").strip()
 
 
@@ -739,7 +733,6 @@ _gh_picker_ci_index: dict[str, dict[int, tuple[str, str]]] | None = None
 
 
 def _get_gh_picker_meta(nwo: str, pr_number: int) -> tuple[str, str]:
-    """Look up (review, ci) for a PR from the gh picker cache. Zero-cost local read."""
     global _gh_picker_ci_index
     if _gh_picker_ci_index is None:
         _gh_picker_ci_index = _load_gh_picker_ci_index()
@@ -756,7 +749,6 @@ def _gh_cache_load() -> dict[str, Any]:
 
 
 def _gh_cache_save(data: dict[str, Any]) -> None:
-    """Atomic write: temp file + os.replace so a crash never corrupts the cache."""
     try:
         GH_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
         fd, tmp = tempfile.mkstemp(dir=GH_CACHE_FILE.parent, suffix=".tmp")
@@ -783,7 +775,6 @@ _TERMINAL_ISSUE = frozenset({"CLOSED", "COMPLETED", "NOT_PLANNED"})
 
 
 def _gh_cache_fresh(entry: dict[str, Any], branch: str, nwo: str, now: float) -> bool:
-    """Return True if a cache entry is still valid."""
     if not entry or entry.get("branch") != branch or entry.get("nwo") != nwo:
         return False
     age = now - entry.get("ts", 0)
@@ -828,7 +819,6 @@ def _wt_issue_number(wt_path: str) -> str:
 
 
 def _wt_issue_repo(wt_path: str) -> str:
-    """Read repo NWO from worktree-local git config (comma.w.issue.repo)."""
     try:
         r = subprocess.run(
             ["git", "-C", wt_path, "config", "--worktree", "--get", "comma.w.issue.repo"],
@@ -1226,7 +1216,6 @@ def pr_is_review(gh_info: dict[str, Any] | None) -> bool:
 
 
 def pr_is_terminal(gh_info: dict[str, Any] | None) -> bool:
-    """True when the associated upstream pull request is merged or closed."""
     pr = (gh_info or {}).get("pr")
     return bool(pr and (pr.get("state") or "").upper() in {"MERGED", "CLOSED"})
 
@@ -1315,7 +1304,6 @@ def ensure_group(repo_id: str, root_checkout: str, repo_path: str):
 
 wt_status: dict[str, set[str]] = {}
 
-# 1. Discover worktrees
 if not quick and not sessions_only and shutil.which("fd"):
     for wt_dir in scan_for_git_repos(scan_roots, int(os.environ.get("PICK_SESSION_SCAN_DEPTH", 6)), ignore_file):
         info = worktree_info(wt_dir)
@@ -1331,7 +1319,6 @@ if not quick and not sessions_only and shutil.which("fd"):
             if flags:
                 wt_status[info["path"]] = flags
 
-# 1b. Parallel dirty scan for worktrees that aren't already stale/gone.
 _dirty_candidates = [p for rid in groups for p in groups[rid]["wt_map"] if p not in wt_status]
 if _dirty_candidates and skip_dirty:
     _cached_statuses = _cached_status_flags_by_path()
@@ -1350,7 +1337,6 @@ elif _dirty_candidates:
             except Exception:
                 pass
 
-# 2. Add sessions
 _tmux_session = subprocess.run(["tmux", "display-message", "-p", "#S"], check=False, stdout=subprocess.PIPE, text=True)
 current_session = (_tmux_session.stdout or "").strip()
 _tmux_sessions = subprocess.run(
@@ -1468,8 +1454,6 @@ if _gh_all:
     # disk cache that normal scans maintain.
     _gh_save_pending = not skip_gh
 
-# 2c. Enrich PR entries with CI + review from the gh picker cache first,
-# then batch-fetch remaining PRs via a single GraphQL call.
 _prs_needing_ci: dict[str, set[int]] = {}
 if wt_gh_info:
     for wt_path, gh in wt_gh_info.items():
@@ -1491,7 +1475,6 @@ if wt_gh_info:
         if not pr.get("ci") and upstream_nwo and (pr.get("state", "").upper() == "OPEN"):
             _prs_needing_ci.setdefault(upstream_nwo, set[int]()).add(pr["number"])
 
-# 2c-ii. Batch GraphQL for PRs still missing CI (not in gh picker cache).
 if _prs_needing_ci and not quick and not sessions_only and not skip_gh and shutil.which("gh"):
     _gql_ci = _batch_ci_graphql(_prs_needing_ci)
     if _gql_ci:
@@ -1514,7 +1497,6 @@ if _prs_needing_ci and not quick and not sessions_only and not skip_gh and shuti
                     if review_gql and not pr.get("review"):
                         pr["review"] = review_gql
 
-# 2d. Save the GH disk cache after CI enrichment is included.
 if _gh_save_pending:
     for p, gh in wt_gh_info.items():
         if p in _gh_pruned and gh.get("pr"):
@@ -1523,7 +1505,6 @@ if _gh_save_pending:
                 cached_pr["ci"] = gh["pr"]["ci"]
     _gh_cache_save({"version": 1, "entries": _gh_pruned})
 
-# 3. Output results
 exclude_exact = set()
 exclude_worktree_roots = set()
 
@@ -1537,7 +1518,6 @@ def emit_sessions_and_worktrees():
         wt_map = groups[rid]["wt_map"]
         sessions_by_wt = groups[rid]["sessions_by_wt"]
 
-        # Sessions first
         for wt_path in sorted(wt_map.keys()):
             for sess_name in sorted(sessions_by_wt.get(wt_path, [])):
                 br = wt_map.get(wt_path, {}).get("branch", "")
@@ -1565,7 +1545,6 @@ def emit_sessions_and_worktrees():
                 exclude_exact.add(wt_path)
                 exclude_worktree_roots.add(wt_path)
 
-        # Worktrees second (skip entirely in sessions-only mode).
         if not sessions_only:
             for wt_path in sorted(wt_map.keys()):
                 if wt_path in sessions_by_wt:
@@ -1631,12 +1610,7 @@ def emit_sessions_and_worktrees():
 
 emit_sessions_and_worktrees()
 
-# 5. Directories
 if not sessions_only:
-    # Directory output combines:
-    # - configured scan roots (e.g. ~/work, ~/code)
-    # - wrapper directories for detected repos
-    # - depth-limited home directories (fd scan under $HOME)
     wrapper_dirs = set()
     for rid in groups.keys():
         rp = (groups.get(rid, {}) or {}).get("repo_path", "")

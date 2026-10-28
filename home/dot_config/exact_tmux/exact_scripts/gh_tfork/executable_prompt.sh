@@ -44,7 +44,6 @@ while IFS= read -rsn 1 ch < /dev/tty; do
   printf "\r%b%s\033[K" "$prompt_prefix" "$buf"
 done
 
-# trim whitespace
 repo_spec="$buf"
 repo_spec="${repo_spec#"${repo_spec%%[![:space:]]*}"}"
 repo_spec="${repo_spec%"${repo_spec##*[![:space:]]}"}"

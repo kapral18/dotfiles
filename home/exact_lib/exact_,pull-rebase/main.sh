@@ -3,7 +3,6 @@
 
 set -euo pipefail
 
-# Source the utility library
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$script_dir/../shared/bash_utils_lib.sh"
 
@@ -49,7 +48,6 @@ if [ -z "$upstream_remote" ] || [ -z "$upstream_branch" ]; then
   exit 1
 fi
 
-# ask for confirmation
 echo "Pulling the latest changes from $upstream_remote/$upstream_branch and rebasing on top of it"
 
 if ! _confirm; then

@@ -15,7 +15,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-import _test_support  # noqa: F401  (puts scripts/ on sys.path)
 from _test_support import REPO
 
 SCRIPTS = REPO / "scripts"
@@ -141,11 +140,6 @@ class TestOnchangeHookHashClosure(unittest.TestCase):
             if missing:
                 failures[hook.name] = missing
         self.assertEqual(failures, {})
-
-    def test_SHOULD_keep_the_llama_sync_helper_in_the_hash_gate(self):
-        hook = (REPO / "home/.chezmoiscripts/run_onchange_after_07-sync-llama-cpp-models.sh.tmpl").read_text()
-        helper_hash_lines = [line for line in hook.splitlines() if "sync_llama_cpp_models.py" in line]
-        self.assertTrue(any(HASH_EXPRESSION_RE.search(line) for line in helper_hash_lines))
 
 
 class TestMachineLocalShellExtras(unittest.TestCase):

@@ -30,11 +30,9 @@ map({ "n", "t" }, "<C-S-Down>", "<cmd>resize +2<cr>", { desc = "Decrease window 
 map({ "n", "t" }, "<C-S-Left>", "<cmd>vertical resize +2<cr>", { desc = "Increase window width" })
 map({ "n", "t" }, "<C-S-Right>", "<cmd>vertical resize -2<cr>", { desc = "Decrease window width" })
 
--- Jump 10 lines up and down with Alt-j and Alt-k
 map({ "n", "v" }, "<A-k>", "10k", { desc = "Jump 10 lines up" })
 map({ "n", "v" }, "<A-j>", "10j", { desc = "Jump 10 lines down" })
 
--- Move lines with Ctrl-Alt-j and Ctrl-Alt-k
 map("n", "<C-A-j>", "<cmd>m .+1<cr>==", { desc = "Move Down" })
 map("n", "<C-A-k>", "<cmd>m .-2<cr>==", { desc = "Move Up" })
 map("i", "<C-A-j>", "<esc><cmd>m .+1<cr>==gi", { desc = "Move Down" })
@@ -120,7 +118,6 @@ map("n", "[e", diagnostic_goto(false, "ERROR"), { desc = "Prev Error" })
 map("n", "]w", diagnostic_goto(true, "WARN"), { desc = "Next Warning" })
 map("n", "[w", diagnostic_goto(false, "WARN"), { desc = "Prev Warning" })
 
--- Tab management
 map("n", "<leader><tab>l", "<cmd>tablast<cr>", { desc = "Last Tab" })
 map("n", "<leader><tab>o", "<cmd>tabonly<cr>", { desc = "Close Other Tabs" })
 map("n", "<leader><tab>f", "<cmd>tabfirst<cr>", { desc = "First Tab" })

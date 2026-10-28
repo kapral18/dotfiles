@@ -4,7 +4,7 @@ sidebar_position: 5
 
 # Memory and Handoffs
 
-Three plain CLIs. Nothing is injected into a session automatically.
+These three CLIs keep knowledge and progress across sessions. They do not inject their records automatically. Pi separately maintains a same-session [task checkpoint](tool-configs/pi.md#task-checkpoints-and-output-retention), with retrievable raw history; it does not replace cross-harness handoffs.
 
 ## `,handoff` — task progress across sessions and harnesses
 

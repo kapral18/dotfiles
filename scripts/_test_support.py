@@ -23,7 +23,6 @@ import unittest
 import zlib
 from pathlib import Path
 
-# _test_support.py lives in scripts/, so SCRIPTS is its parent directory.
 SCRIPTS = Path(__file__).resolve().parent
 REPO = SCRIPTS.parent
 FIXTURES = SCRIPTS / "tests" / "fixtures"

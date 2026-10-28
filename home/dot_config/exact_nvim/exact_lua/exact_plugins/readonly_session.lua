@@ -14,7 +14,6 @@ return {
     keys = {
       { "<localleader>ss", "<cmd>AutoSession save<CR>", desc = "Save session" },
     },
-    ---enables autocomplete for opts
     ---@module "auto-session"
     ---@type AutoSession.Config
     opts = {

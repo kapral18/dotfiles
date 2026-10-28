@@ -10,7 +10,6 @@ from pathlib import Path
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 cache_file = sys.argv[1]
 mutations_file = os.environ.get("MUTATIONS_FILE", "")
-pending_file = os.environ.get("PENDING_FILE", "")
 mutation_ttl = int(os.environ.get("MUTATION_TTL", "300") or "300")
 live_grace = int(os.environ.get("SESSION_TOMBSTONE_LIVE_GRACE_S", "2") or "2")
 
@@ -178,13 +177,6 @@ def worktree_meta_for_path(p: str) -> str:
     return f"wt_root:{br}" if br else ""
 
 
-if pending_file and os.path.exists(pending_file):
-    # Pending removals should not hide *live sessions*.
-    # This light path only runs when the cache has sessions only, so pending
-    # worktree suppression is not relevant here.
-    pass
-
-
 def path_tombstoned(kind, p):
     if kind not in ("dir", "worktree", "session") or not p:
         return False
@@ -214,13 +206,11 @@ with open(cache_file, "r", encoding="utf-8", errors="ignore") as f:
         if path_tombstoned(kind, rpath):
             continue
         if kind == "session" and session_tombstoned(target) and target not in live_session_names:
-            # Keep the path selectable even when the session is killed/hidden.
             if rpath:
                 base = os.path.basename(rpath.rstrip("/")) or rpath
                 meta = worktree_meta_for_path(rpath)
                 br = meta.split(":", 1)[1] if ":" in meta else ""
                 mk = f"{base}|{br} {base} {rpath}" if br else f"{base} {rpath}"
-                # Prefer a "worktree-like" entry when it's a git checkout.
                 if os.path.exists(os.path.join(rpath, ".git")):
                     print(f"  {rpath}\tworktree\t{rpath}\t{meta}\t{rpath}\t{mk}")
                 else:

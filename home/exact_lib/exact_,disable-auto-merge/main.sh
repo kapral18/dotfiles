@@ -3,7 +3,6 @@
 
 set -euo pipefail
 
-# Source the utility library
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$script_dir/../shared/bash_utils_lib.sh"
 
@@ -26,7 +25,6 @@ if ! prs=$(_safe_exec_cmd gh pr list --base "$base_branch" --state open --json n
 fi
 
 for pr_number in $prs; do
-  # Check if PR should be skipped
   skip=false
   for skip_pr in "${skip_prs[@]}"; do
     if [ "$pr_number" = "$skip_pr" ]; then

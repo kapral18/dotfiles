@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Worktree helper functions library
 
 # Sanitize a branch name for use as a filesystem path component.
 # Replaces characters that break URL-based path resolution (e.g. Node.js
@@ -63,7 +62,6 @@ _comma_w_prune_stale_worktrees() {
   git worktree prune 2>&1 || true
 }
 
-# Print created worktree message
 _print_created_worktree_message() {
   local quiet_mode="${1:-0}"
   local branch_name="$2"
@@ -122,7 +120,6 @@ _comma_w_tmux_parent_name_from_dir() {
   printf '%s\n' "$(basename "$rp")"
 }
 
-# Add worktree tmux session
 _add_worktree_tmux_session() {
   local quiet_mode="${1:-0}"
   local parent_name="$2"
@@ -165,7 +162,6 @@ At Path: $worktree_path
   return 0
 }
 
-# Remove worktree tmux session
 _remove_worktree_tmux_session() {
   if [ -n "${TMUX:-}" ] || [ -n "${OUTER_TMUX_SOCKET:-}" ]; then
     local quiet_mode="${1:-0}"
@@ -375,19 +371,15 @@ _comma_w_parse_owner_repo_from_remote_url() {
   url="${url%.git}"
   case "$url" in
     git@*:*/*)
-      # git@<host>:owner/repo
       path="${url#git@*:}"
       ;;
     ssh://git@*/*/*)
-      # ssh://git@<host>/owner/repo
       path="${url#ssh://git@*/}"
       ;;
     https://*/*/*)
-      # https://<host>/owner/repo
       path="${url#https://*/}"
       ;;
     http://*/*/*)
-      # http://<host>/owner/repo
       path="${url#http://*/}"
       ;;
     *)

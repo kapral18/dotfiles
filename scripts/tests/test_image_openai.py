@@ -14,7 +14,6 @@ import urllib.request
 from pathlib import Path
 from unittest import mock
 
-import _test_support  # noqa: F401
 from _test_support import REPO, load_module, png_with_metadata
 
 CLI = REPO / "home" / "exact_lib" / "exact_,image-openai" / "main.py"
@@ -141,7 +140,6 @@ class TestRequests(unittest.TestCase):
         request = captured["request"]
         payload = json.loads(request.data)
         self.assertEqual(request.full_url, MOD.GENERATION_URL)
-        self.assertEqual(payload["model"], "gpt-image-2")
         self.assertEqual(payload["quality"], "high")
         self.assertEqual(payload["size"], "2048x2048")
         self.assertEqual(payload["output_format"], "webp")

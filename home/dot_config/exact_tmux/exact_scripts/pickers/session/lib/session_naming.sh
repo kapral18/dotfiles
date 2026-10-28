@@ -2,32 +2,8 @@
 # session_naming.sh -- sourceable helpers shared between pick_session.sh and
 # action_send_command.sh for computing canonical tmux session names from picker
 # rows.
-#
-# The picker (`enter` handler in pick_session.sh) and the send-command action
-# (`ctrl-s` consumer in action_send_command.sh) both need to convert a row
-# `(kind, path, meta, target)` plus the configured `@pick_session_mode` into a
-# tmux session name. Keeping the logic here is the only sane way to guarantee
-# both code paths produce identical names; otherwise a `ctrl-s` spawn would
-# create a session that the next `enter` on the same row treats as foreign and
-# either renames or shadows.
-#
-# Functions (all defined unconditionally; safe to re-source):
-#   picker_row_parse ROW                           -> sets PICKER_ROW_FIELDS[0..5]
-#   resolve_path PATH                              -> realpath fallback
-#   normalize                                      -> stdin -> stdout (kebab)
-#   tildefy_to_reply PATH                          -> sets REPLY
-#   tmux_sanitize_session_name NAME                -> stdout
-#   session_name --directory|--full-path|--short-path INPUT...
-#   login_shell                                    -> stdout (cached)
-#   worktree_root_dir_for_path PATH                -> stdout
-#   has_linked_worktrees_for_root_checkout ROOT    -> rc 0 if any linked wt
-#   default_branch_for_root_checkout ROOT          -> stdout (branch name)
-#   session_name_for_entry KIND PATH META TARGET MODE -> stdout
-#
 # Callers must run under bash 4+ (re-exec themselves on macOS bash 3.2). This
 # file uses `${var,,}` lowercase expansion which requires bash 4.
-#
-# This file is intentionally idempotent: sourcing it twice is harmless.
 
 # Guard against duplicate sourcing causing readonly redefinitions.
 if [ "${__PICK_SESSION_NAMING_LOADED:-0}" = "1" ]; then

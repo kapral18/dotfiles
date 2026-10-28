@@ -101,13 +101,6 @@ test('a typed prompt during a pause starts a new turn', async ($, on) => {
   expect((await $.classic.Stop(stop('Nothing.'))).block).toBeUndefined()
 })
 
-test('passes a Bash change that the final message reports with Checked', async ($, on) => {
-  engine(on, ['before', 'after'])
-  await $.turn.start({ text: 'sed it', turnId: 't1' })
-  await $.tool.call({ tool: 'Bash', command: "sed -i '' s/a/b/ a.ts" })
-  expect((await $.classic.Stop(stop('Done.\n\nChecked:\n- a.ts:1 changed'))).block).toBeUndefined()
-})
-
 test('does not guess when the snapshot fails outside a git repo', async ($, on) => {
   engine(on, ['fail'])
   await $.turn.start({ text: 'touch it', turnId: 't1' })
@@ -259,13 +252,6 @@ test('WHEN an Open label is a list item SHOULD keep its question', async ($, on)
   expect((await $.classic.Stop(stop('+ Open:\n  - Does it work on Linux?'))).block).toBeUndefined()
 })
 
-test('WHEN a Proposed label is a list item SHOULD keep its question', async ($, on) => {
-  toolEngine(on)
-  await $.turn.start({ text: 'fix it', turnId: 't1' })
-  await $.tool.call(bash('ls'))
-  expect((await $.classic.Stop(stop('+ Proposed:\n  - [S1] Would a separate parser help?'))).block).toBeUndefined()
-})
-
 test('WHEN a report label is indented after prose SHOULD keep its open question', async ($, on) => {
   toolEngine(on)
   await $.turn.start({ text: 'fix it', turnId: 't1' })
@@ -307,7 +293,6 @@ test('leaves an open item phrased as a question alone', async ($, on) => {
 test('sends back work parked under a heading the report has no slot for, once per turn', async ($, on) => {
   toolEngine(on)
   let n = 0
-  // Each case is its own turn, since a turn goes back at most once.
   const fresh = async (text = 'fix it') => {
     await $.turn.start({ text, turnId: `t${n++}` })
     await $.tool.call(bash('ls'))

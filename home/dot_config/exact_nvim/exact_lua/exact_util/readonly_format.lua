@@ -1,13 +1,10 @@
---- Formatting utilities
 vim.g.autoformat = true
 
 local M = {}
 
---- Registered formatters, sorted by priority (highest first)
 ---@type table[]
 M._formatters = {}
 
---- Register a formatter descriptor
 ---@param formatter table {name, priority, primary, format(buf), sources(buf)}
 function M.register(formatter)
   formatter.name = formatter.name or "formatter"
@@ -21,7 +18,6 @@ function M.register(formatter)
   end)
 end
 
---- Format the current buffer
 ---@param opts? {force?: boolean, buf?: number}
 function M.format(opts)
   opts = opts or {}
@@ -75,7 +71,6 @@ function M.format(opts)
   vim.b[buf].format_changedtick = vim.api.nvim_buf_get_changedtick(buf)
 end
 
---- Toggle autoformat via Snacks
 ---@param buf? boolean|number
 ---@return table
 function M.snacks_toggle(buf)
@@ -106,12 +101,10 @@ function M.snacks_toggle(buf)
   })
 end
 
---- Format expression for gq
 function M.formatexpr()
   return vim.lsp.formatexpr({ timeout_ms = 3000 })
 end
 
---- Get first available formatter from conform
 ---@param bufnr integer
 ---@param ... string
 ---@return string

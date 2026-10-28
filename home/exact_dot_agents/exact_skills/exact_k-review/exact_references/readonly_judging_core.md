@@ -81,7 +81,8 @@ Evidence is the snapshot's present checks: PR CI checks (`~/.agents/skills/k-rev
 ## State-Machine Verification Gate
 
 Apply to reviewed behavior that is stateful, parser-like, branch-heavy, or dependent on ordered conditions:
-plan explicit transition cases, and compare pure input-to-output behavior against an independent table in a disposable oracle harness when tests cannot express the cases.
+assess correctness from source/contracts and existing checks, and separately enforce minimum sufficient test protection under `~/AGENTS.md` §3.
+Missing durable coverage for new/changed material behavior is a finding; an uncovered branch alone is not a test quota.
 
 Examples include parsers, tokenizers, formatters, routing/matching logic, retry/workflow loops, permission matrices, compatibility-sensitive branching, multi-flag control flow.
 
@@ -154,5 +155,5 @@ Required reference: `~/.agents/skills/k-review/references/judging_product.md` (m
 
 - CRITICAL: security vulnerability, data loss/corruption, authz/authn bypass, crash, or unsafe migration.
 - HIGH: user-visible bug, broken invariant, serious performance regression, or high operational risk.
-- MEDIUM: maintainability risk, unclear behavior, missing tests for a risky change, or non-trivial tech debt.
+- MEDIUM: maintainability risk, unclear behavior, an unprotected concrete material failure, or non-trivial tech debt.
 - LOW: small improvements, clarity, naming/style consistency (true nits).

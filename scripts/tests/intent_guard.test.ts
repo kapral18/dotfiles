@@ -16,14 +16,15 @@ const adapters = {
   omp: "home/dot_omp/private_agent/extensions/intent-guard.ts.tmpl",
   opencode: "home/dot_config/opencode/plugins/readonly_intent-guard.ts.tmpl",
 } as const
-// OpenCode's host provides `@opencode/plugin`; the test stands in for it.
+// The hosts provide `@opencode/plugin` and Pi's schema builder; the test stands in for them.
 mock.module("@opencode/plugin", () => ({ Plugin: { define: (plugin: unknown) => plugin } }))
+mock.module("@earendil-works/pi-ai", () => ({ Type: { Object: (shape: unknown) => shape, String: () => ({}), Integer: () => ({}), Optional: (type: unknown) => type } }))
 // Materialize every adapter before the first import, as chezmoi does before runtime startup.
 for (const [name, source] of Object.entries(adapters)) {
   writeFileSync(join(temp, `${name}.ts`), readFileSync(join(root, source), "utf8").replace(
     "{{ .chezmoi.homeDir }}/lib/shared/intent_guard.ts",
     join(root, "home/exact_lib/exact_shared/intent_guard.ts"),
-  ))
+  ).replace("{{ .chezmoi.homeDir }}/lib/shared/task_context.ts", join(root, "home/exact_lib/exact_shared/task_context.ts")))
 }
 
 type Handler = (event: any, ctx: any) => Promise<any>
@@ -33,20 +34,23 @@ async function load(name: "pi" | "omp", answers: Record<string, unknown> = {}) {
   const handlers = new Map<string, Handler>()
   const calls: { event: string; input: Record<string, unknown>; cwd?: string }[] = []
   const messages: unknown[] = []
+  const tools: { name: string; execute: (id: string, params: { entryId: string; offset?: number }, signal: AbortSignal | undefined, update: undefined, ctx: unknown) => Promise<unknown> }[] = []
   const pi = {
+    registerTool: (tool: typeof tools[number]) => { tools.push(tool) },
     on: (event: string, handler: Handler) => { handlers.set(event, handler) },
     sendMessage: (message: unknown, options: unknown) => { messages.push({ message, options }) },
     exec: async (command: string, args: string[], options?: { cwd?: string }) => {
       expect(command).toBe(",task")
       calls.push({ event: args[1], input: JSON.parse(args[5]), cwd: options?.cwd })
-      return { stdout: JSON.stringify(answers[args[1]] ?? {}), stderr: "", code: 0, killed: false }
+      const answer = answers[args[1]]
+      return { stdout: JSON.stringify(typeof answer === "function" ? await answer() : answer ?? {}), stderr: "", code: 0, killed: false }
     },
   }
   const module = await import(join(temp, `${name}.ts`))
   module.default(pi)
-  const ctx = { cwd: "/repo", sessionManager: { getSessionId: () => "s1" }, agent: { kind: "main" } }
-  const fire = (event: string, payload: unknown, agent = "main") => handlers.get(event)!(payload, { ...ctx, agent: { kind: agent } })
-  return { calls, fire, handlers, messages }
+  const ctx = { cwd: "/repo", sessionManager: { getSessionId: () => "s1", getLeafId: () => "leaf", getBranch: () => [] }, agent: { kind: "main" }, hasPendingMessages: () => false }
+  const fire = (event: string, payload: unknown, agent = "main", overrides = {}) => handlers.get(event)!(payload, { ...ctx, agent: { kind: agent }, ...overrides })
+  return { calls, fire, handlers, messages, tools }
 }
 
 describe("shared intent guard", () => {
@@ -77,11 +81,103 @@ describe("shared intent guard", () => {
 })
 
 describe("pi adapter", () => {
-  it("adds the card to a typed prompt only", async () => {
-    const { calls, fire } = await load("pi", { prompt: { context: "Intent card for this task" } })
-    const result = await fire("before_agent_start", { messageType: "user", prompt: "add the button" })
-    expect(result).toEqual({ message: { customType: "intent-guard", content: "Intent card for this task", display: false } })
-    expect(calls[0]).toEqual({ event: "prompt", input: { text: "add the button", cwd: "/repo", session: "s1" }, cwd: "/repo" })
+  it("SHOULD checkpoint completed tool turns once and reuse it for the next provider call", async () => {
+    const { fire, calls } = await load("pi", { checkpoint: { context: "Goal: continue working" }, stop: { block: "Do not stop" } })
+
+    const actual = await fire("turn_end", { outcome: "completed", entries: [], context: { contextEntries: [] } })
+    const projected = await fire("context", { messages: [] })
+
+    expect(actual.entries).toEqual([{ type: "custom", customType: "task-context", data: "Goal: continue working" }])
+    expect(actual).not.toHaveProperty("continue")
+    expect(projected.messages[0].content).toBe("Goal: continue working")
+    expect(calls.map(call => call.event)).toEqual(["checkpoint"])
+  })
+
+  it("SHOULD refresh one checkpoint and preserve a previous boundary proposal and continuation", async () => {
+    const { fire } = await load("pi", { checkpoint: { context: "Goal: current; F1 open; review v2" } })
+    const previous = { type: "custom", customType: "review-state", data: { round: 4 } }
+    const event = { outcome: "completed", entries: [previous], continue: true, context: { contextMessages: [], contextEntries: [] } }
+
+    const actual = await fire("turn_end", event)
+
+    expect(actual.entries).toEqual([previous, { type: "custom", customType: "task-context", data: "Goal: current; F1 open; review v2" }])
+    expect(actual).not.toHaveProperty("continue") // Pi retains the preceding extension's true value.
+  })
+
+  it("SHOULD avoid archival during signal-free settlement", async () => {
+    const { fire } = await load("pi", { checkpoint: { context: "Goal: old task" } })
+    const old = { role: "toolResult", toolCallId: "old-call", toolName: "bash", isError: false, timestamp: 1, content: [{ type: "text", text: "old output".repeat(6000) }] }
+    const recent = { ...old, toolCallId: "new-call", content: [{ type: "text", text: "recent output".repeat(3000) }] }
+    const event = {
+      outcome: "completed", entries: [], context: { contextMessages: [], contextEntries: [
+        { sourceEntry: { type: "message", id: "old-entry", parentId: null, timestamp: "2026-10-27", message: old }, messages: [old] },
+        { sourceEntry: { type: "message", id: "new-entry", parentId: "old-entry", timestamp: "2026-10-27", message: recent }, messages: [recent] },
+      ] },
+    }
+
+    const actual = await fire("agent_before_settle", event, "main", { signal: undefined })
+
+    expect(actual).toBeUndefined()
+  })
+
+  it("SHOULD preserve context when the checkpoint backend fails", async () => {
+    const { fire } = await load("pi")
+    const messages = [{ role: "user", content: "Keep this" }]
+
+    const actual = await fire("context", { messages })
+
+    expect(actual).toBeUndefined()
+    expect(messages).toEqual([{ role: "user", content: "Keep this" }])
+  })
+
+  it("SHOULD avoid persistent edits when the checkpoint backend fails", async () => {
+    const { fire } = await load("pi")
+
+    const actual = await fire("turn_end", { outcome: "completed", entries: [], context: { contextEntries: [] } })
+
+    expect(actual).toBeUndefined()
+  })
+
+  it.each(["input", "session", "leaf", "abort"])("SHOULD discard a proposal after an in-flight %s change", async (change) => {
+    let changed = false
+    const controller = new AbortController()
+    const { fire } = await load("pi", { checkpoint: () => { changed = true; if (change === "abort") controller.abort(); return { context: "Old task" } } })
+    const ctx = {
+      hasPendingMessages: () => change === "input" && changed,
+      sessionManager: {
+        getSessionId: () => change === "session" && changed ? "new-session" : "s1",
+        getLeafId: () => change === "leaf" && changed ? "new-leaf" : "leaf",
+        getBranch: () => [],
+      },
+      signal: controller.signal,
+    }
+
+    const actual = await fire("turn_end", { outcome: "completed", entries: [], context: { contextEntries: [] } }, "main", ctx)
+
+    expect(actual).toBeUndefined()
+  })
+
+  it("SHOULD leave a boundary with queued user input unchanged", async () => {
+    const { fire } = await load("pi", { checkpoint: { context: "Goal" }, stop: { block: "Continue" } })
+
+    const actual = await fire("agent_before_settle", { outcome: "completed" }, "main", { hasPendingMessages: () => true })
+
+    expect(actual).toBeUndefined()
+  })
+
+  it("SHOULD reject cancelled history retrieval", async () => {
+    const { tools } = await load("pi")
+
+    const actual = tools[0].execute("id", { entryId: "entry" }, AbortSignal.abort(), undefined, {})
+
+    await expect(actual).rejects.toThrow("cancelled")
+  })
+
+  it("adds the prompt notes the checkpoint lacks to a typed prompt only", async () => {
+    const { calls, fire } = await load("pi", { prompt: { context: "Intent card for this task\n\nThis message corrects you", notes: "This message corrects you" } })
+    const result = await fire("before_agent_start", { messageType: "user", prompt: "no, add the button" })
+    expect(result).toEqual({ message: { customType: "intent-guard", content: "This message corrects you", display: false } })
+    expect(calls).toEqual([{ event: "prompt", input: { text: "no, add the button", cwd: "/repo", session: "s1" }, cwd: "/repo" }])
     expect(await fire("before_agent_start", { messageType: "custom", message: {} })).toBeUndefined()
   })
 
@@ -89,8 +185,8 @@ describe("pi adapter", () => {
     const { calls, fire } = await load("pi")
     expect(await fire("input", { text: "from an extension", source: "extension" })).toBeUndefined()
     expect(calls).toEqual([])
-    for (const source of ["interactive", "rpc"]) await fire("input", { text: `keep CSV via ${source}`, source })
-    expect(calls.map(({ event, input }) => [event, input.text])).toEqual([["user", "keep CSV via interactive"], ["user", "keep CSV via rpc"]])
+    await fire("input", { text: "keep CSV", source: "interactive" })
+    expect(calls.map(({ event, input }) => [event, input.text])).toEqual([["user", "keep CSV"]])
   })
 
   it("blocks an uncarded edit before it runs and counts the step after", async () => {
@@ -195,8 +291,8 @@ describe("omp adapter", () => {
     await fire("input", { text: "from an extension", source: "extension" })
     await fire("input", { text: "keep CSV", source: "interactive" }, "sub")
     expect(calls).toHaveLength(1)
-    for (const source of ["interactive", "rpc"]) await fire("input", { text: `keep CSV via ${source}`, source })
-    expect(calls.slice(1).map(({ event, input }) => [event, input.text])).toEqual([["user", "keep CSV via interactive"], ["user", "keep CSV via rpc"]])
+    await fire("input", { text: "keep CSV via rpc", source: "rpc" })
+    expect(calls.slice(1).map(({ event, input }) => [event, input.text])).toEqual([["user", "keep CSV via rpc"]])
   })
 })
 

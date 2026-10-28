@@ -29,7 +29,7 @@ First actions:
 
 Selection rules:
 
-- Prefer changes that strengthen the current diff's purpose: sharper validation, clearer behavior, safer edge handling, better docs, or more complete tests.
+- Prefer changes that strengthen the current diff's purpose, including fewer comments/tests and less scaffolding with material protection preserved; additions must earn their cost.
 - Choose a small or broad change according to its benefit within the requested scope.
 - Recommend unrelated cleanup, package churn, or speculative abstractions only when the local diff makes the payoff unusually clear.
 - Treat "suggest" literally: present the recommendation first. Edit files only after the user explicitly approves implementation.

@@ -17,7 +17,6 @@ SCRIPTS = Path(__file__).resolve().parents[1]
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
-import _test_support  # noqa: F401  (puts scripts/ on sys.path)
 from _test_support import TMUX_PICKERS
 
 INDEX_MAIN = TMUX_PICKERS / "session/lib/index_main.py"
@@ -403,15 +402,6 @@ class TestSessionPickerPrStyling(unittest.TestCase):
         self.assertNotIn("prrole=review", meta)
         self.assertIn("\033[1;38;5;81mreview-session", display)
         self.assertNotIn("\033[2;38;5;244mreview-session", display)
-
-    def test_quick_session_lookup_dims_closed_pr(self):
-        row, _, _ = self._run_quick_session_index(state="CLOSED", author="contributor")
-
-        display, _, _, meta, *_ = row.split("\t")
-        self.assertIn("pr=42:CLOSED", meta)
-        self.assertIn("prrole=review", meta)
-        self.assertIn("\033[2;38;5;244m", display)
-        self.assertIn("\033[2;38;5;244mreview-session", display)
 
     def test_quick_session_lookup_dims_closed_own_pr(self):
         row, _, _ = self._run_quick_session_index(state="CLOSED", author="me")

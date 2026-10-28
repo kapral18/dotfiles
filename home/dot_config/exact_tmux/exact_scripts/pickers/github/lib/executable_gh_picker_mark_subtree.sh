@@ -3,14 +3,6 @@
 #
 # Args: <scope_file> <items_cmd>
 #
-# Resolves scope, re-runs the items_cmd in `--cache-only` mode to obtain
-# the exact TSV fzf is displaying, then asks `gh_picker_mark_subtree.py` to
-# compute fzf actions. The Python helper picks the family from the cursor row
-# (parent + descendants, or sibling group + parent for a child cursor) and
-# emits a `pos(...)+toggle` chain so all marker positions get flipped.
-#
-# Loose rows, section headers, and backport placeholders produce no output;
-# fzf treats that as a no-op which is the intended user experience there.
 set -euo pipefail
 
 scope_file="${1:-}"
@@ -26,9 +18,6 @@ cursor="${FZF_POS:-1}"
 scope="$(cat "$scope_file" 2> /dev/null || echo all)"
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 
-# Re-render the post-filter+sort TSV. `--cache-only` is cheap (it just reads
-# the existing on-disk cache + applies filter+sort+offsets), so we can call it
-# synchronously without making the keypress feel laggy.
 rendered="$(GH_PICKER_SCOPE="$scope" "$items_cmd" --cache-only 2> /dev/null || true)"
 [ -n "$rendered" ] || exit 0
 

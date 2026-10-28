@@ -24,7 +24,6 @@ return {
           -- Only attach to docker-compose files, not all yaml
           filetypes = { "yaml.docker-compose" },
           root_dir = function(fname)
-            -- Only activate for docker-compose files
             local basename = vim.fn.fnamemodify(fname, ":t")
             if
               basename:match("^docker%-compose")

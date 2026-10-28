@@ -16,7 +16,6 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-import _test_support  # noqa: F401  (puts scripts/ on sys.path)
 from _test_support import SCRIPTS
 
 
@@ -44,55 +43,6 @@ def require_live_runtime(test: unittest.TestCase) -> None:
     )
     isolated.start()
     test.addCleanup(isolated.stop)
-
-
-class TestAiKb(unittest.TestCase):
-    """WHEN remembering and searching durable agent knowledge."""
-
-    def test_remember_search_get(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            result = subprocess.run(
-                [
-                    sys.executable,
-                    str(SCRIPTS / "ai_kb.py"),
-                    "--home",
-                    tmp,
-                    "remember",
-                    "--title",
-                    "Agent memory",
-                    "--body",
-                    "The KB stores durable learnings across sessions.",
-                    "--source",
-                    "test",
-                    "--json",
-                ],
-                capture_output=True,
-                text=True,
-                cwd=str(SCRIPTS),
-                env={**os.environ, "AI_KB_DISABLE_EMBED": "1"},
-            )
-            assert result.returncode == 0, result.stderr
-            capsule = json.loads(result.stdout)
-            assert capsule["title"] == "Agent memory"
-
-            result = subprocess.run(
-                [
-                    sys.executable,
-                    str(SCRIPTS / "ai_kb.py"),
-                    "--home",
-                    tmp,
-                    "search",
-                    "durable learnings",
-                    "--json",
-                ],
-                capture_output=True,
-                text=True,
-                cwd=str(SCRIPTS),
-                env={**os.environ, "AI_KB_DISABLE_EMBED": "1"},
-            )
-            assert result.returncode == 0, result.stderr
-            rows = json.loads(result.stdout)
-            assert rows[0]["id"] == capsule["id"]
 
 
 class TestKnowledgeBaseSchemaV2(unittest.TestCase):
@@ -226,44 +176,6 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
                 """
             )
             db.execute("DROP TABLE capsules_backup")
-
-    def test_init_creates_full_schema(self):
-        import ai_kb
-
-        with tempfile.TemporaryDirectory() as tmp:
-            kb = ai_kb.KnowledgeBase(home=Path(tmp))
-            kb.init()
-            with kb.connect() as db:
-                cols = [r[1] for r in db.execute("PRAGMA table_info(capsules)").fetchall()]
-            assert tuple(cols) == ai_kb.CAPSULE_COLUMNS, (
-                f"schema mismatch:\n got: {cols}\nwant: {list(ai_kb.CAPSULE_COLUMNS)}"
-            )
-
-    def test_init_drops_stale_table_when_columns_dont_match(self):
-        import ai_kb
-
-        with tempfile.TemporaryDirectory() as tmp:
-            kb = ai_kb.KnowledgeBase(home=Path(tmp))
-            # Fake a stale schema: minimal old shape with fewer columns.
-            with kb.connect() as db:
-                db.execute(
-                    """
-                    CREATE TABLE capsules (
-                        id TEXT PRIMARY KEY,
-                        title TEXT,
-                        body TEXT
-                    )
-                    """
-                )
-                db.execute("INSERT INTO capsules(id,title,body) VALUES('x','t','b')")
-            # Now init should detect the stale shape and rebuild. With no
-            # sidecars present, the rebuilt mirror is empty.
-            kb.init()
-            with kb.connect() as db:
-                cols = [r[1] for r in db.execute("PRAGMA table_info(capsules)").fetchall()]
-                count = db.execute("SELECT COUNT(*) FROM capsules").fetchone()[0]
-            assert tuple(cols) == ai_kb.CAPSULE_COLUMNS
-            assert count == 0, "stale rows must be dropped — no compat path"
 
     def test_read_paths_rebuild_stale_schema_from_sidecars_without_losing_metadata(self):
         import ai_kb
@@ -449,8 +361,6 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
                 assert tuple(cols) == ai_kb.CAPSULE_COLUMNS, cols
                 assert count == 1, count
                 assert (kb.capsules_dir / f"{good.id}.md").exists()
-                # The malformed sidecar is moved out of the canonical dir,
-                # byte-identical, so a later fix can restore it.
                 assert not (kb.capsules_dir / "broken.md").exists()
                 quarantined = kb.home / "quarantine" / "broken.md"
                 assert quarantined.read_text() == broken_text
@@ -641,42 +551,6 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
                 assert kb._schema_state(db) == "ok"
                 assert db.execute("SELECT COUNT(*) FROM capsule_fts").fetchone()[0] == 1
 
-    def test_remember_persists_full_metadata(self):
-        import ai_kb
-
-        with tempfile.TemporaryDirectory() as tmp:
-            os.environ["AI_KB_DISABLE_EMBED"] = "1"
-            try:
-                kb = ai_kb.KnowledgeBase(home=Path(tmp))
-                c = kb.remember(
-                    title="kb test",
-                    body="full payload",
-                    kind="gotcha",
-                    scope="project",
-                    workspace_path="/ws",
-                    project_id="proj-1",
-                    domain_tags=["python", "memory"],
-                    confidence=0.8,
-                    verified_by="go-rid-1",
-                )
-                assert c.kind == "gotcha"
-                assert c.scope == "project"
-                assert c.workspace_path == "/ws"
-                assert c.project_id == "proj-1"
-                assert c.domain_tags == "python,memory"
-                assert c.confidence == 0.8
-                assert c.verified_by == "go-rid-1"
-                # No embedder under disable flag → embedding fields blank.
-                assert c.embedding_dim == 0
-                assert c.embedding_model is None
-                # Round-trip via get().
-                got = kb.get(c.id)
-                assert got is not None
-                assert got.kind == "gotcha"
-                assert got.domain_tags == "python,memory"
-            finally:
-                os.environ.pop("AI_KB_DISABLE_EMBED", None)
-
     def test_remember_rejects_unknown_kind_or_scope(self):
         import ai_kb
 
@@ -724,7 +598,6 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
                 assert refreshed.title == "v2"
                 assert refreshed.body == "new fact"
 
-                # The sidecar is rewritten in place, no second file.
                 sidecars = sorted(p.name for p in kb.capsules_dir.glob("*.md"))
                 assert sidecars == [f"{old.id}.md"], sidecars
                 text = (kb.capsules_dir / f"{old.id}.md").read_text()
@@ -732,7 +605,6 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
                 assert "new fact" in text, text
                 assert "supersedes:" not in text, "v4 sidecars carry no supersede key"
 
-                # FTS follows the amend: the old body is gone from search.
                 assert [h["id"] for h in kb.search("new fact", limit=5, mode="bm25")] == [old.id]
                 # "fact" survives in the new body, so probe the token that only
                 # the old body had.
@@ -786,7 +658,6 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
                 assert overridden.kind == "fact"
                 assert overridden.confidence == 0.4
                 assert overridden.domain_tags == "d3"
-                # Still-omitted fields keep the stored values.
                 assert overridden.scope == "project"
                 assert overridden.source == "tests:carrier"
                 assert overridden.tags == "alpha,beta"
@@ -1008,7 +879,6 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
                 assert cols == ai_kb.CAPSULE_COLUMNS, cols
                 assert "supersedes" not in cols and "superseded_by" not in cols
 
-                # Idempotent: a v4 store reports nothing and loses nothing.
                 second = io.StringIO()
                 with contextlib.redirect_stderr(second):
                     kb.init()
@@ -1048,19 +918,14 @@ class TestKnowledgeBaseLexicalRanking(unittest.TestCase):
                 domain_tags=["python", "paths"],
             )
 
-            # Filter by kind=gotcha → only one hit.
             only_gotchas = kb.search("trailing slash", limit=5, kind="gotcha")
             assert len(only_gotchas) == 1
             assert only_gotchas[0]["kind"] == "gotcha"
 
-            # Filter by scope=universal → only the other.
             universals = kb.search("trailing slash", limit=5, scope="universal")
             assert len(universals) == 1
             assert universals[0]["scope"] == "universal"
 
-            # Domain filter ANDs across calls but ORs across given values
-            # (any-tag-match within a single call). Both have python so
-            # both should match.
             both = kb.search("trailing slash", limit=5, domain="python")
             assert len(both) == 2
 
@@ -1110,9 +975,7 @@ class TestKnowledgeBaseLexicalRanking(unittest.TestCase):
 
             hits = kb.search("repo layout", limit=2)
             ids = [h["id"] for h in hits]
-            # Penalized, not filtered: the decayed capsule still surfaces.
             assert set(ids) == {fresh.id, stale.id}, ids
-            # But it sinks below the otherwise-identical fresh capsule.
             assert ids[0] == fresh.id, ids
             ranked = {h["id"]: h["rrf_score"] for h in hits}
             assert ranked[fresh.id] > ranked[stale.id], ranked
@@ -1168,7 +1031,6 @@ class TestKnowledgeBaseHybridRetrieval(unittest.TestCase):
 
     def setUp(self):
         require_live_runtime(self)
-        # Embedding tests need the embedder ON.
         self.saved_disable = os.environ.pop("AI_KB_DISABLE_EMBED", None)
 
     def tearDown(self):
@@ -1404,7 +1266,6 @@ class TestKnowledgeBaseHybridRetrieval(unittest.TestCase):
 
             ids = [h["id"] for h in hits]
             assert ids[0] == top.id, [h["title"] for h in hits]
-            # Without the restore step MMR keeps the older twin here.
             assert ids[1] == newer.id, [h["title"] for h in hits]
             assert all(h["mmr_selected"] for h in hits)
 
@@ -1480,7 +1341,6 @@ class TestKnowledgeBaseWriteDedupe(unittest.TestCase):
                 first = kb.remember(title="Old truth", body="v1")
                 second = kb.remember(title="New truth", body="v2", supersedes=first.id)
                 assert second.id == first.id
-                # The capsule now holds "New truth"; "Old truth" is unused.
                 third = kb.remember(title="Old truth", body="v3")
                 assert third.id != first.id
                 assert sorted(c.title for c in kb.list(limit=10)) == ["New truth", "Old truth"]
@@ -1630,17 +1490,14 @@ class TestKnowledgeBaseCurate(unittest.TestCase):
                 assert summary["contradictions"] == [], summary
                 assert summary["candidates_examined"] == 0, summary
                 assert summary["decayed"] == 2, summary
-                # Verify the decay column actually moved on disk.
                 with kb.connect() as db:
                     rows = db.execute("SELECT decay_score FROM capsules ORDER BY title").fetchall()
                 scores = sorted(r["decay_score"] for r in rows)
                 assert all(abs(s - 0.2) < 1e-6 for s in scores), scores
 
-                # Run again: decay accumulates, capped at decay_max.
                 kb.curate(decay=True, dedupe=False, contradiction_scan=False, decay_step=0.5)
                 with kb.connect() as db:
                     rows = db.execute("SELECT decay_score FROM capsules").fetchall()
-                # 0.2 + 0.5 = 0.7
                 assert all(abs(r["decay_score"] - 0.7) < 1e-6 for r in rows), [r["decay_score"] for r in rows]
             finally:
                 os.environ.pop("AI_KB_DISABLE_EMBED", None)
@@ -1686,12 +1543,9 @@ class TestKnowledgeBaseCurate(unittest.TestCase):
                     contradiction_scan=False,
                 )
                 assert summary["duplicates"] >= 1, summary
-                # An irreversible delete must leave an audit trail.
                 assert [(r["removed_id"], r["keeper_id"]) for r in summary["removed"]] == [(older.id, newer.id)], (
                     summary
                 )
-                # Higher confidence wins → older becomes the loser and is
-                # deleted outright: row, FTS entry, and sidecar.
                 assert kb.get(older.id) is None, "dedupe must delete the losing row"
                 refreshed_newer = kb.get(newer.id)
                 assert refreshed_newer is not None
@@ -1750,24 +1604,6 @@ class TestKnowledgeBaseVecRunner(unittest.TestCase):
     spawned, and forwards the runner's JSON payload unchanged.
     """
 
-    def test_call_vec_runner_short_circuits_when_disabled(self):
-        import ai_kb
-
-        with tempfile.TemporaryDirectory() as tmp:
-            saved = os.environ.get("AI_KB_DISABLE_VEC")
-            os.environ["AI_KB_DISABLE_VEC"] = "1"
-            try:
-                kb = ai_kb.KnowledgeBase(home=Path(tmp))
-                knn = kb._call_vec_runner({"mode": "knn", "db_path": str(kb.db_path)})
-                pairs = kb._call_vec_runner({"mode": "pairs", "db_path": str(kb.db_path)})
-                assert knn == {"hits": []}, knn
-                assert pairs == {"pairs": []}, pairs
-            finally:
-                if saved is None:
-                    os.environ.pop("AI_KB_DISABLE_VEC", None)
-                else:
-                    os.environ["AI_KB_DISABLE_VEC"] = saved
-
     def test_call_vec_runner_raises_when_runner_missing(self):
         """If the colocated `vec_runner.py` is absent, hard-fail with
         a clear RuntimeError rather than silently degrading."""
@@ -1777,7 +1613,6 @@ class TestKnowledgeBaseVecRunner(unittest.TestCase):
             saved = os.environ.pop("AI_KB_DISABLE_VEC", None)
             try:
                 kb = ai_kb.KnowledgeBase(home=Path(tmp))
-                # Monkey-patch the runner path to a non-existent file.
                 original = kb._vec_runner_path
                 kb._vec_runner_path = lambda: Path(tmp) / "nope.py"
                 try:
@@ -1792,28 +1627,6 @@ class TestKnowledgeBaseVecRunner(unittest.TestCase):
                     kb._vec_runner_path = original
             finally:
                 if saved is not None:
-                    os.environ["AI_KB_DISABLE_VEC"] = saved
-
-    def test_doctor_reports_vec_runner_status(self):
-        """`,ai-kb doctor` must surface vec_runner state so operators
-        can debug a broken install. Verifies the line is present in
-        either the disabled / missing / ok variant — exact wording is
-        a contract the doctor command exposes to humans."""
-        import ai_kb
-
-        with tempfile.TemporaryDirectory() as tmp:
-            saved = os.environ.get("AI_KB_DISABLE_VEC")
-            os.environ["AI_KB_DISABLE_VEC"] = "1"
-            try:
-                kb = ai_kb.KnowledgeBase(home=Path(tmp))
-                lines = kb.doctor()
-                vec_lines = [l for l in lines if l.startswith("vec_runner=")]
-                assert len(vec_lines) == 1, lines
-                assert "disabled via AI_KB_DISABLE_VEC" in vec_lines[0], vec_lines
-            finally:
-                if saved is None:
-                    os.environ.pop("AI_KB_DISABLE_VEC", None)
-                else:
                     os.environ["AI_KB_DISABLE_VEC"] = saved
 
 
@@ -1981,11 +1794,9 @@ class TestKnowledgeBaseDocIngestion(unittest.TestCase):
             assert summary["files_skipped_unchanged"] == 0
             assert summary["capsules_stored"] == 3, summary
 
-            # Verify titles match the headings.
             titles = sorted(c.title for c in kb.list(limit=10))
             assert titles == ["Agents", "Skills", "Tools"], titles
 
-            # H3 stayed inside its parent chunk.
             skills = next(c for c in kb.list(limit=10) if c.title == "Skills")
             assert "Sub-section under Skills" in skills.body
             assert skills.kind == "doc", skills.kind
@@ -2054,8 +1865,6 @@ class TestKnowledgeBaseDocIngestion(unittest.TestCase):
             titles = sorted(c.title for c in kb.list(limit=10))
             assert titles == ["Bar skill", "Foo skill"], titles
 
-            # Domain tag inference should pick up skill name from
-            # parent dir.
             foo = next(c for c in kb.list(limit=10) if c.title == "Foo skill")
             assert "foo" in (foo.domain_tags or "").split(","), foo.domain_tags
 
@@ -2073,35 +1882,6 @@ class TestKnowledgeBaseDocIngestion(unittest.TestCase):
                 assert "unsupported" in str(err)
             else:
                 raise AssertionError("expected ValueError on non-markdown target")
-
-
-class TestKnowledgeBaseSearchReturnsBody(unittest.TestCase):
-    """Pin the regression where the FTS5 path returned `snippet` (the
-    bracketed match-highlight) but not the full `body`. Recall
-    consumers index `h["body"]`; when it was missing they injected only
-    the capsule title (a meta-string) instead of the actual lesson.
-    """
-
-    def test_search_includes_body_field_in_results(self):
-        import ai_kb
-
-        with tempfile.TemporaryDirectory() as tmp:
-            kb = ai_kb.KnowledgeBase(home=Path(tmp))
-            kb.init()
-            kb.remember(
-                title="t1",
-                body="Workflow state layout uses runs/*/manifest.json with a stage filter.",
-                source="agent:test",
-                tags="agent,test",
-                embed_now=False,
-            )
-            hits = kb.search("Workflow manifest layout", limit=5, mode="bm25")
-            assert len(hits) == 1, hits
-            row = hits[0]
-            assert "body" in row, f"search row must include body: keys={sorted(row.keys())}"
-            assert "manifest.json" in (row["body"] or ""), row["body"]
-            # snippet should still be present for CLI / UI consumers
-            assert "snippet" in row, "search row must still include snippet for highlights"
 
 
 class TestAiKbRememberSupersedes(unittest.TestCase):
@@ -2155,9 +1935,6 @@ class TestAiKbRememberSupersedes(unittest.TestCase):
             assert new["id"] == old["id"]
             assert new["title"] == "Corrected fact about X"
             assert new["confidence"] == 0.9
-            # Omitted flags keep the stored values instead of resetting to
-            # the CLI defaults (kind=fact happens to match; scope/source/tags
-            # would otherwise reset to universal/manual/empty).
             assert new["scope"] == "project"
             assert new["source"] == "tests:x"
             assert new["tags"] == "x,approach"

@@ -8,7 +8,6 @@ const CODE_CHARS = 3000
 // A result keeps its head and tail, so a tool's own truncation notice at the end survives.
 const RESULT_HEAD = 1000
 const RESULT_TAIL = 500
-// Per message text, and the request.
 const MESSAGE_CHARS = 4000
 const REQUEST_CHARS = 6000
 // Only the current turn is rendered; earlier decisions and resolutions come from the ledger.
@@ -83,7 +82,6 @@ const parts = (row: SessionMessage): Part[] => [
   ...row.toolUses.map(use => ({ text: call(use) })),
 ]
 
-// The newest parts that fit in `limit`, and how many older ones drop.
 const newest = (items: readonly Part[], limit: number) => {
   const kept: Part[] = []
   let size = 0
@@ -100,7 +98,6 @@ const newest = (items: readonly Part[], limit: number) => {
 // a typed turn with neither opens at its command's row. A turn with none of these holds only its final answer.
 // Rows before that boundary never enter the judge prompt.
 const record = (rows: readonly SessionMessage[], typed: string, ids: ReadonlySet<string>, answer: string, previous: string): ModelTextBlock[] => {
-  // The final answer has its own section.
   const last = rows.at(-1)
   const end = last?.role === 'assistant' && last.toolUses.length === 0 && last.text.trim() === answer.trim() ? rows.length - 1 : rows.length
   const first = rows.findIndex(row => row.toolUses.some(use => ids.has(use.tool_use_id)))
@@ -131,7 +128,6 @@ export const register: Register = on => {
   // Module state: a hot reload clears it, so nothing is reviewed until a new turn starts; the format checks still run.
   let isStarted = false
   let request = ''
-  // Ids of the main-agent tool calls since the turn started.
   let ids = new Set<string>()
   let isReviewed = false
   // A paused answer that asks the user was reviewed since the last wake: one such review per wake.

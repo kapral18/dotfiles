@@ -1,11 +1,4 @@
 -- Non-grid implementation based on: https://github.com/tweekmonster/hammerspoon-vimouse/blob/master/vimouse.lua
---
--- GridMouse
---
--- This module provides a Vi-like mouse control mode for Hammerspoon. It allows
--- you to control the mouse cursor using Vi-like keybindings, including
--- grid-based navigation and mouse events.
---
 -- Main Features:
 -- <cmd-d> toggles GridMouse mode.
 -- h/j/k/l moves the mouse cursor by 20 pixels.
@@ -32,7 +25,6 @@ local eventPropTypes = hs.eventtap.event.properties
 local keycodes = hs.keycodes.map
 local drawing = require("hs.drawing")
 
--- Configuration
 local GRID_SIZE = 3
 local GRID_HINTS = {
   [keycodes["q"]] = { col = 0, row = 0 },
@@ -56,7 +48,6 @@ local BASE_STROKE_WIDTH = 2
 local DRAG_THRESHOLD = 5 -- Pixels to move before considering it a drag
 local DRAG_DELAY = 0.2 -- Seconds to wait before drag starts
 
--- Finite State Machine
 local FSM = {
   states = {
     INACTIVE = {
@@ -101,7 +92,6 @@ local FSM = {
   },
 }
 
--- State Transition System
 function FSM.transition(newState, ...)
   local prevState = FSM.current
 
@@ -109,7 +99,6 @@ function FSM.transition(newState, ...)
     newState = FSM.context.grid.previous_state
   end
 
-  -- Cleanup previous state
   if prevState == "GRID" then
     if FSM.context.grid.current then
       for _, element in ipairs(FSM.context.grid.current) do
@@ -120,7 +109,6 @@ function FSM.transition(newState, ...)
     FSM.context.grid.stack = {}
   end
 
-  -- Cancel any pending drags
   if FSM.context.drag.delay_timer then
     FSM.context.drag.delay_timer:stop()
     FSM.context.drag.delay_timer = nil
@@ -132,10 +120,8 @@ function FSM.transition(newState, ...)
   FSM.context.drag.active = false
   FSM.context.drag.start_pos = nil
 
-  -- State transition
   FSM.current = newState
 
-  -- Enter actions
   if newState == "MOUSE" then
     hs.alert("Mouse Mode Active")
     FSM.mouseTap:start()
@@ -155,7 +141,6 @@ function FSM.transition(newState, ...)
   end
 end
 
--- Grid Management
 function FSM.createGridOverlay(boundary, scale)
   local elements = {}
   local cellW, cellH = boundary.w / GRID_SIZE, boundary.h / GRID_SIZE
@@ -206,13 +191,11 @@ function FSM.showGrid(boundary)
   end
 end
 
--- Event Handling
 FSM.mouseTap = hs.eventtap.new({ eventTypes.keyDown, eventTypes.keyUp }, function(event)
   local code = event:getKeyCode()
   local flags = event:getFlags()
   local repeating = event:getProperty(eventPropTypes.keyboardEventAutorepeat)
 
-  -- Global escape handling
   if code == keycodes.escape then
     if FSM.current == "GRID" then
       FSM.transition("PREVIOUS")
@@ -222,7 +205,6 @@ FSM.mouseTap = hs.eventtap.new({ eventTypes.keyDown, eventTypes.keyUp }, functio
     return true
   end
 
-  -- Grid navigation handling
   if FSM.current == "GRID" and event:getType() == eventTypes.keyDown then
     if code == keycodes["f"] then
       table.remove(FSM.context.grid.stack)
@@ -266,9 +248,7 @@ FSM.mouseTap = hs.eventtap.new({ eventTypes.keyDown, eventTypes.keyUp }, functio
     end
   end
 
-  -- Mouse controls (works in both MOUSE and GRID states)
   if FSM.current == "MOUSE" or FSM.current == "GRID" then
-    -- Scrolling
     if (code == keycodes["j"] or code == keycodes["k"]) and flags.ctrl then
       if event:getType() == eventTypes.keyDown then
         FSM.context.scroll.acceleration = (repeating ~= 0) and (FSM.context.scroll.acceleration + 1) or 1
@@ -279,18 +259,14 @@ FSM.mouseTap = hs.eventtap.new({ eventTypes.keyDown, eventTypes.keyUp }, functio
       return true
     end
 
-    -- Mouse buttons
     if code == keycodes["return"] or code == keycodes.space or code == keycodes.m then
       local btn = flags.ctrl and "right" or "left"
 
       if event:getType() == eventTypes.keyDown then
-        -- Mouse down handling
         FSM.context.drag.start_pos = hs.mouse.absolutePosition()
         hs.eventtap.event.newMouseEvent(eventTypes[btn .. "MouseDown"], FSM.context.drag.start_pos, flags):post()
 
-        -- Start drag delay timer
         FSM.context.drag.delay_timer = hs.timer.doAfter(DRAG_DELAY, function()
-          -- Check if mouse has moved beyond threshold
           local current_pos = hs.mouse.absolutePosition()
           local dx = math.abs(current_pos.x - FSM.context.drag.start_pos.x)
           local dy = math.abs(current_pos.y - FSM.context.drag.start_pos.y)
@@ -307,21 +283,16 @@ FSM.mouseTap = hs.eventtap.new({ eventTypes.keyDown, eventTypes.keyUp }, functio
           end
         end)
       else
-        -- Mouse up handling
         local current_pos = hs.mouse.absolutePosition()
 
-        -- Cleanup timers
         if FSM.context.drag.delay_timer then
           FSM.context.drag.delay_timer:stop()
           FSM.context.drag.delay_timer = nil
         end
 
-        -- Post mouse up event
         hs.eventtap.event.newMouseEvent(eventTypes[btn .. "MouseUp"], current_pos, flags):post()
 
-        -- Handle click if not dragged
         if not FSM.context.drag.active then
-          -- Post additional click if within threshold
           local dx = math.abs(current_pos.x - FSM.context.drag.start_pos.x)
           local dy = math.abs(current_pos.y - FSM.context.drag.start_pos.y)
           if dx <= DRAG_THRESHOLD and dy <= DRAG_THRESHOLD then
@@ -329,7 +300,6 @@ FSM.mouseTap = hs.eventtap.new({ eventTypes.keyDown, eventTypes.keyUp }, functio
           end
         end
 
-        -- Cleanup drag state
         FSM.context.drag.active = false
         FSM.context.drag.start_pos = nil
         if FSM.context.drag.timer then
@@ -344,7 +314,6 @@ FSM.mouseTap = hs.eventtap.new({ eventTypes.keyDown, eventTypes.keyUp }, functio
       return true
     end
 
-    -- Mouse movement
     if event:getType() == eventTypes.keyDown then
       local mul = flags.alt and 5 or 1
       local step = flags.shift and 5 or 20
@@ -376,7 +345,6 @@ FSM.mouseTap = hs.eventtap.new({ eventTypes.keyDown, eventTypes.keyUp }, functio
     end
   end
 
-  -- Activate grid from mouse mode
   if FSM.current == "MOUSE" and event:getType() == eventTypes.keyDown and code == keycodes["g"] then
     FSM.transition("GRID")
     return true
@@ -385,7 +353,6 @@ FSM.mouseTap = hs.eventtap.new({ eventTypes.keyDown, eventTypes.keyUp }, functio
   return false
 end)
 
--- Modal Bindings
 FSM.modals.escape:bind("", "escape", function()
   if FSM.current == "GRID" then
     FSM.transition("PREVIOUS")
@@ -394,7 +361,6 @@ FSM.modals.escape:bind("", "escape", function()
   end
 end)
 
--- Hotkey Bindings
 hs.hotkey.bind("cmd", "d", function()
   if FSM.current == "INACTIVE" then
     FSM.transition("MOUSE")
@@ -409,7 +375,6 @@ hs.hotkey.bind("cmd", "g", function()
   end
 end)
 
--- Terminal Compatibility
 hs.urlevent.bind("openConsole", function()
   if FSM.current ~= "INACTIVE" then
     FSM.mouseTap:start()

@@ -170,9 +170,6 @@ def main() -> int:
         elif "skipped=" in err:
             sys.stderr.write(err)
 
-    # Threads (not processes) for the pool: each unit of work is itself a
-    # subprocess, so the GIL is irrelevant and ThreadPoolExecutor avoids a
-    # pickling boundary for the file payloads.
     with ThreadPoolExecutor(max_workers=args.workers) as pool:
         futures = {pool.submit(run_shard, shard): shard for shard in shards}
         for future in as_completed(futures):
@@ -189,7 +186,6 @@ def main() -> int:
 
 
 def _parse_ran(text: str) -> int:
-    # Matches "Ran N test(s)" and the verbose form "Ran N test(s) in X.XXXs".
     for line in text.splitlines():
         line = line.strip()
         if line.startswith("Ran ") and " test" in line:

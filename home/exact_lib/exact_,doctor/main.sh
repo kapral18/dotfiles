@@ -8,8 +8,6 @@ if [ "${1:-}" = "ai" ]; then
   exec python3 "$HOME/lib/,doctor/ai.py" report "$@"
 fi
 
-# ── ANSI helpers ─────────────────────────────────────────────────────────────
-
 C_PASS=$'\033[38;5;42m'
 C_WARN=$'\033[38;5;214m'
 C_FAIL=$'\033[38;5;196m'
@@ -26,8 +24,6 @@ verbose=0
 total_pass=0
 total_warn=0
 total_fail=0
-
-# ── CLI ──────────────────────────────────────────────────────────────────────
 
 show_usage() {
   cat << 'EOF'
@@ -60,8 +56,6 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-# ── result helpers ───────────────────────────────────────────────────────────
-
 pass() {
   total_pass=$((total_pass + 1))
   [ "$quiet" -eq 1 ] && return 0
@@ -88,8 +82,6 @@ section() {
 }
 
 has_cmd() { command -v "$1" > /dev/null 2>&1; }
-
-# ── checks ───────────────────────────────────────────────────────────────────
 
 check_core() {
   section "Core"
@@ -569,8 +561,6 @@ _doctor_tail2() {
   fi
 }
 
-# Print the first source file referencing a manifest target (absolute form,
-# $HOME-relative form, or parent/basename tail), or fail when unreferenced.
 _doctor_first_reference() {
   local source_dir="$1" target="$2"
   [ -n "$source_dir" ] && [ -d "$source_dir" ] || return 1
@@ -606,8 +596,6 @@ _doctor_forget_row() {
   python3 "$helper" forget "$manifest" "$target" 2> /dev/null
 }
 
-# Print the .chezmoiscripts source file for a ledger producer stem, or fail
-# unless exactly one file matches.
 _doctor_find_producer_script() {
   local source_dir="$1" producer="$2"
   [ -n "$source_dir" ] && [ -n "$producer" ] || return 1
@@ -662,9 +650,6 @@ _doctor_rerun_hint() {
   printf '%schezmoi apply' "$deletes"
 }
 
-# Resolve a referencing source file to its producer run_* script: directly
-# when the reference already is one, else via the consuming script. Fail when
-# the producer is ambiguous or unknown.
 _doctor_script_for_reference() {
   local source_dir="$1" ref="$2"
   [ -n "$source_dir" ] && [ -d "$source_dir/.chezmoiscripts" ] || return 1
@@ -690,8 +675,6 @@ _doctor_script_for_reference() {
   esac
 }
 
-# Print the entryState-based re-run command for comma-separated ledger
-# producer stems.
 _doctor_rerun_hint_for_producer() {
   local source_dir="$1" producers="$2"
   local producer list=() scripts=()
@@ -804,8 +787,6 @@ check_config_drift() {
   fi
 }
 
-# ── main ─────────────────────────────────────────────────────────────────────
-
 if [ "$quiet" -eq 0 ]; then
   printf '%s,doctor%s — dotfiles ecosystem health check\n' "$C_HEAD" "$C_R"
 fi
@@ -821,8 +802,6 @@ check_bin_wrappers
 check_worktrees
 check_ai_configs
 check_config_drift
-
-# ── summary ──────────────────────────────────────────────────────────────────
 
 printf '\n%s── Summary%s\n' "$C_HEAD" "$C_R"
 printf '  %s %s passed' "$ICON_PASS" "$total_pass"

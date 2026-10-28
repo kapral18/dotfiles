@@ -26,13 +26,11 @@ if [[ ! -f "$cargo_crates_file" ]]; then
   exit 1
 fi
 
-# Read the file content into an array (bash 3 compatible)
 lines=()
 while IFS= read -r line || [[ -n "$line" ]]; do
   lines+=("$line")
 done <"$cargo_crates_file"
 
-# Get list of installed cargo binaries once
 declare -a installed_crates
 while IFS= read -r line; do
   [[ -z "$line" ]] && continue
@@ -40,7 +38,6 @@ while IFS= read -r line; do
   [[ -n "$crate_name" ]] && installed_crates+=("$crate_name")
 done < <(cargo install --list)
 
-# Check if a crate is already installed (in-memory lookup)
 is_crate_installed() {
   local crate_name=$1
   local installed
@@ -59,15 +56,10 @@ is_crate_desired() {
   return 1
 }
 
-# install cargo crate.
-#
-# Handles both regular crates and --git format
-# ex: install_crate crate_name
-# ex: install_crate --git https://github.com/user/repo.git crate_name
 install_crate() {
   local args=("$@")
   local last_index=$((${#args[@]} - 1))
-  local crate_name="${args[$last_index]}" # Last arg is always the crate name
+  local crate_name="${args[$last_index]}"
 
   if is_crate_installed "$crate_name"; then
     echo "Crate $crate_name is already installed, skipping"
@@ -85,26 +77,20 @@ install_crate() {
   return 0
 }
 
-# Get list of installed cargo binaries
 get_installed_binaries() {
   cargo install --list | sed -n 's/^\([^ ]*\) .*/\1/p' | grep -v '^$' | sort || true
 }
 
-# Track which crates should be installed
 declare -a desired_crates
 for line in "${lines[@]}"; do
-  # Skip empty lines and comments
   [[ -z "$line" || "$line" =~ ^\s*# ]] && continue
 
-  # Extract crate name (last word)
   crate_name="${line##* }"
   desired_crates+=("$crate_name")
 
-  # Install the crate (handles both regular and --git formats)
   install_crate $line
 done
 
-# Uninstall crates that are no longer in the config
 echo ""
 echo "Cleaning up unused crates..."
 installed_binaries=$(get_installed_binaries)
@@ -116,7 +102,6 @@ while IFS= read -r binary; do
   fi
 done <<<"$installed_binaries"
 
-# make new binaries available in the current shell
 if command -v mise >/dev/null 2>&1; then
   mise reshim
 fi

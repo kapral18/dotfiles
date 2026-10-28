@@ -1,32 +1,21 @@
-# ====================================
-# Zsh Interactive Shell Configuration
-# ====================================
-
-# Source .profile for login shell settings
 [ -f ~/.profile ] && source ~/.profile
 
-# Source .zprofile for login shell settings
 [ -f ~/.zprofile ] && source ~/.zprofile
 
-# Source shared interactive shell configurations
 [ -f ~/.shellrc ] && source ~/.shellrc
 
-# Zsh-specific history configurations
-
 HISTFILE="${HOME}/.zsh_history"
-HISTSIZE=50000                  # History size in memory
-SAVEHIST=500000                # History size in file
+HISTSIZE=50000
+SAVEHIST=500000
 
-# History options
-setopt HIST_IGNORE_ALL_DUPS    # Remove older duplicate entries from history
-setopt HIST_REDUCE_BLANKS      # Remove superfluous blanks from history items
-setopt HIST_VERIFY             # Show command with history expansion before running it
-setopt SHARE_HISTORY           # Share history between different instances of the shell
-setopt EXTENDED_HISTORY        # Record timestamp of command in HISTFILE
-setopt INC_APPEND_HISTORY      # Add commands to HISTFILE in order of execution
-setopt HIST_EXPIRE_DUPS_FIRST  # Expire duplicate entries first when trimming history
+setopt HIST_IGNORE_ALL_DUPS
+setopt HIST_REDUCE_BLANKS
+setopt HIST_VERIFY
+setopt SHARE_HISTORY
+setopt EXTENDED_HISTORY
+setopt INC_APPEND_HISTORY
+setopt HIST_EXPIRE_DUPS_FIRST
 
-# Initializations
 command -v starship >/dev/null && eval "$(starship init zsh)"
 command -v zoxide >/dev/null && eval "$(zoxide init zsh)"
 command -v navi >/dev/null && eval "$(navi widget zsh)"
@@ -35,7 +24,6 @@ if command -v mise >/dev/null; then
     eval "$(mise activate --shims zsh)"
 fi
 
-# Ensure path array contains unique values
 typeset -U path
 
 # Machine-local extras (not in git). Missing file is a no-op.

@@ -1,5 +1,3 @@
-# Completions for ,artifact.
-
 set -l __artifact_subcommands path write open poll pollers poll-stop list theme live clean stop
 set -l __artifact_live_subcommands start script
 

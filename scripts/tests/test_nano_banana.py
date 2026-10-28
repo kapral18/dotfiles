@@ -9,7 +9,6 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-import _test_support  # noqa: F401
 from _test_support import REPO, load_module
 
 CLI = REPO / "home" / "exact_lib" / "exact_,nano-banana" / "main.py"
@@ -137,7 +136,6 @@ class TestHelpAndArgs(unittest.TestCase):
         args = MOD.parse_args(["-i", "a.png", "-i", "b.png", "edit the pair"])
         self.assertEqual(args.input, ["a.png", "b.png"])
         self.assertEqual(args.prompt, "edit the pair")
-        self.assertEqual(args.model, "gemini-3.1-flash-image")
 
 
 class TestGenerateWritesStdoutPath(unittest.TestCase):

@@ -32,7 +32,5 @@ esac
 
 printf '%s' "$next" > "$sort_file"
 
-# Toast the new sort first, then reload. execute-silent runs in foreground
-# but tmux display-message returns instantly, so the reload follows promptly.
 printf 'execute-silent(tmux display-message "gh-picker sort: %s" 2>/dev/null || true)+reload(GH_PICKER_SCOPE=%s %s --cache-only 2>/dev/null)' \
   "$next" "$scope" "$items_cmd"

@@ -35,13 +35,11 @@ function M.freeze(line1, line2)
         vim.notify("freeze failed: " .. (result.stderr or ""), vim.log.levels.ERROR)
         return
       end
-      -- Copy PNG to clipboard (macOS)
       vim.system({
         "osascript",
         "-e",
         'set the clipboard to (read (POSIX file "' .. output .. '") as «class PNGf»)',
       })
-      -- Open the file
       vim.ui.open(output)
       vim.notify("freeze: " .. output)
     end)

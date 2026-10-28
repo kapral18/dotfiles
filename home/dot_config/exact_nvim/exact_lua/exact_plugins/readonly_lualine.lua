@@ -33,7 +33,7 @@ return {
               local bar = string.rep("█", filled) .. string.rep("▁", width - filled)
               return bar
             end,
-            color = { fg = "#5e81ac" }, -- light blue
+            color = { fg = "#5e81ac" },
             separator = "",
           },
         },

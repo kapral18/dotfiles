@@ -32,12 +32,12 @@ Look up commands by task.
 
 ## Testing / analysis helpers
 
-| Command                   | Description                                                          |
-| ------------------------- | -------------------------------------------------------------------- |
-| `,jest-test-title-report` | Compare Jest test titles between two worktrees and emit a CSV report |
-| `,get-risky-tests`        | Run Jest and report tests whose runtime exceeds a threshold          |
-| `,get-age-buckets`        | Compute file age buckets from git history to spot stale areas        |
-| `,generate-git-sandbox`   | Create a throwaway git repo for testing rebases, merges, and scripts |
+| Command                   | Description                                                                                                                                    |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `,jest-test-title-report` | Compare Jest test titles between two worktrees and emit a CSV report; `-h` / `--help` lists options, missing required paths exit with status 2 |
+| `,get-risky-tests`        | Run Jest and report tests whose runtime exceeds a threshold                                                                                    |
+| `,get-age-buckets`        | Compute file age buckets from git history to spot stale areas                                                                                  |
+| `,generate-git-sandbox`   | Create a throwaway git repo for testing rebases, merges, and scripts                                                                           |
 
 ## AI / agent helpers
 

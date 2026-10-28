@@ -196,7 +196,6 @@ fmt_md() {
   return $rc
 }
 
-# shfmt: shell scripts (bulk invocation)
 fmt_sh() {
   should_run sh || return 0
   local rc=0
@@ -216,7 +215,6 @@ fmt_sh() {
   return $rc
 }
 
-# stylua: lua (bulk invocation)
 fmt_lua() {
   should_run lua || return 0
   local rc=0
@@ -313,7 +311,6 @@ fmt_go() {
       gofumpt -w "${go_files[@]}"
     fi
   else
-    # Fallback for minimal environments (no goimports/gofumpt in PATH)
     need_cmd gofmt || return 1
     if $check_mode; then
       printf 'gofmt (fallback): checking %d files\n' "${#go_files[@]}"

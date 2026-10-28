@@ -29,7 +29,6 @@ def main() -> None:
         line = raw.rstrip("\n")
         m = RG_LINE_RE.match(line)
         if not m:
-            # Preserve non-matching lines as standalone entries.
             out.write(line)
             out.write("\0")
             continue

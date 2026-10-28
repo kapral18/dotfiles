@@ -12,7 +12,6 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-import _test_support  # noqa: F401
 from _test_support import REPO, load_module, png_with_metadata
 
 CLI = REPO / "home" / "exact_lib" / "exact_,image-codex" / "main.py"

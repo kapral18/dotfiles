@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # fzf-based GitHub PR/issue picker.
-# Native fzf GitHub integration that connects directly to ,w for worktree creation.
 #
 # Stale-while-revalidate: on open, cached items are shown instantly via
 # start:reload(cache-only). A background process fetches fresh data and
@@ -93,10 +92,6 @@ row_loader_cmd="$script_dir/lib/gh_row_loader.sh"
 
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux"
 mkdir -p "$cache_dir" 2> /dev/null || true
-# Per-picker state is PID-scoped so concurrent picker instances don't fight
-# over a shared file. ctrl-t / enter:transform mint their own per-binding
-# mktemp snapshots from `{+f}` (see gh_picker_ctrl_t.sh / gh_picker_enter.sh)
-# so the previous shared `gh_picker_multi.tsv` is no longer needed.
 primary_tmp="${cache_dir}/gh_picker_primary.$$.tsv"
 action_flag="${cache_dir}/gh_picker_action.$$"
 expand_flag="${cache_dir}/gh_preview_expand.$$"
@@ -159,10 +154,6 @@ status_header="$(python3 "$dashboard_ui" status --cache-file "$items_cache" --sc
 export GH_PICKER_DISPATCH_SCOPE="$scope"
 export GH_PICKER_DISPATCH_CACHE_FILE="$items_cache"
 
-# Background fetch: launched from fzf's start binding where $FZF_PORT is available.
-# Fetches fresh data from GitHub, then POSTs a reload to the running fzf instance.
-# After reload, kicks off preview pre-warm for uncached items.
-#
 # Only POSTs the reload when the fetch actually succeeded. Otherwise (e.g. the
 # fetch was killed by a concurrent ctrl-r refresh) the cache is still stale and
 # telling fzf to reload from it would override an in-progress ctrl-r reload

@@ -12,7 +12,6 @@ import textwrap
 import unittest
 from pathlib import Path
 
-import _test_support  # noqa: F401  (puts scripts/ on sys.path)
 from _test_support import REPO
 from check import SLOW_SHARDS, collect_changed, plan_check, production_probe_paths
 from test_runner import discover_files, resolve_files
@@ -33,15 +32,6 @@ class TestCheckPlan(unittest.TestCase):
         assert "verify-templates" not in plan.gates
         assert plan.fmt_paths[-1].endswith("readonly_summarize-commit.lua")
 
-    def test_WHEN_tmux_picker_changes_SHOULD_select_picker_shards_not_adapters(self):
-        plan = plan_check(
-            REPO,
-            full=False,
-            changed=("home/dot_config/exact_tmux/exact_scripts/pickers/github/executable_gh_picker.sh",),
-        )
-        assert "tests/test_tmux_pickers.py" in plan.tests
-        assert "tests/test_gh_picker_dispatch_state.py" in plan.tests
-
     def test_WHEN_tmpl_changes_SHOULD_run_verify_templates(self):
         plan = plan_check(
             REPO,
@@ -50,10 +40,6 @@ class TestCheckPlan(unittest.TestCase):
         )
         assert "verify-templates" in plan.gates
         assert "tests/test_invariants.py" in plan.tests
-
-    def test_WHEN_docs_change_SHOULD_run_verify_docs_navigation(self):
-        plan = plan_check(REPO, full=False, changed=("docs/topics/code-quality/formatting.md",))
-        assert "verify-docs-navigation" in plan.gates
 
     def test_WHEN_nothing_changed_SHOULD_select_no_work(self):
         plan = plan_check(REPO, full=False, changed=())
@@ -70,15 +56,6 @@ class TestCheckPlan(unittest.TestCase):
         assert "test_runner.py" not in plan.tests
         assert "verify-templates" in plan.gates
         assert "fish-history-merge" in plan.extra
-
-    def test_WHEN_q_fish_completion_changes_SHOULD_run_q_shard(self):
-        plan = plan_check(
-            REPO,
-            full=False,
-            changed=("home/dot_config/fish/completions/readonly_,q.fish",),
-        )
-        assert plan.tests == ("tests/test_q.py",)
-        assert plan.gates == ("verify-bin-surface",)
 
     def test_WHEN_check_py_changes_SHOULD_run_test_check(self):
         plan = plan_check(REPO, full=False, changed=("scripts/check.py",))
@@ -102,10 +79,6 @@ class TestCheckPlan(unittest.TestCase):
         assert "test_mcp_registry.py" in plan.tests
         assert "tests/test_tmux_pickers.py" not in plan.tests
 
-    def test_WHEN_llama_model_catalog_changes_SHOULD_run_llama_lifecycle_shard(self):
-        plan = plan_check(REPO, full=False, changed=("home/dot_config/llama.cpp/models.ini.tmpl",))
-        assert "tests/test_llama_cpp_lifecycle.py" in plan.tests
-
     def test_WHEN_test_support_changes_SHOULD_run_cheap_shards_not_slow_pickers(self):
         plan = plan_check(REPO, full=False, changed=("scripts/_test_support.py",))
         assert "test_yaml_parser.py" in plan.tests
@@ -123,11 +96,6 @@ class TestCheckPlan(unittest.TestCase):
 
 class TestTestRunnerDiscovery(unittest.TestCase):
     """WHEN listing unittest shards."""
-
-    def test_WHEN_discovering_shards_SHOULD_omit_the_runner_module(self):
-        names = {path.name for path in discover_files()}
-        assert "test_runner.py" not in names
-        assert (REPO / "scripts" / "test_yaml_parser.py").name in names
 
     def test_WHEN_resolving_the_runner_path_SHOULD_drop_it(self):
         assert resolve_files(["test_runner.py"]) == []

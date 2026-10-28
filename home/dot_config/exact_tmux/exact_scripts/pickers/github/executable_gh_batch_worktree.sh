@@ -140,7 +140,6 @@ done < "$selection_file"
 issue_branches=()
 
 if [ "$background" -eq 0 ]; then
-  # Foreground: collect issue branch names (if any), then dispatch everything to background.
   if [ ${#issues[@]} -gt 0 ]; then
     tmpfile="$(mktemp /tmp/gh_batch_worktree_XXXXXX.conf)"
     trap 'rm -f "$tmpfile"' EXIT
@@ -157,10 +156,6 @@ if [ "$background" -eq 0 ]; then
       done
     } > "$tmpfile"
 
-    # Open the scratch buffer, and when the editor is nvim, add a vertical-split
-    # terminal sidecar running the interactive agent with the fixed branch-naming
-    # prompt (not the bare scratch path). The terminal auto-closes when the agent
-    # exits (run_in_split close_on_exit). Non-nvim editors keep the plain open.
     prompt_template="$(cd "$(dirname "$0")" && pwd)/gh_batch_branch_prompt.txt"
     prompt_inst=""
     agent_launcher=""
@@ -216,9 +211,6 @@ if [ ${#issues[@]} -gt 0 ] && [ -n "$branches_file" ] && [ -f "$branches_file" ]
   done < "$branches_file"
 fi
 
-# Per-item outcome counters. They drive nothing user-visible on their own: all
-# feedback is delivered through the dashboard markers (animated amber spinner,
-# cyan ◆ done, cleared on skip/fail). The batch run prints nothing to its pane.
 created=0
 skipped=0
 failed=0
@@ -253,12 +245,6 @@ _notify_fzf_reload() {
   items_cmd="$HOME/.config/tmux/scripts/pickers/github/gh_items.sh"
   cache_load_cmd="GH_PICKER_SCOPE=$(printf %q "$scope") $(printf %q "$items_cmd") --cache-only 2>/dev/null"
   # Use IPv4 explicitly; on macOS `localhost` may resolve to ::1 while fzf binds 127.0.0.1.
-  # Fire-and-forget: backgrounded so the per-item progress feedback never adds
-  # latency to the batch loop (curl roundtrip + 1s timeout for stale ports
-  # would otherwise serialize against `,w prs/issue` work). Reloads are
-  # idempotent re-reads of the cache file, so out-of-order arrival is safe.
-  # The subshell breaks the parent-child relationship so the script can exit
-  # without `wait`-ing on stragglers.
   (curl -s --max-time 1 -XPOST "http://127.0.0.1:${port}" -d "reload($cache_load_cmd)+track" 9>&- > /dev/null 2>&1 &) 2> /dev/null
 }
 
@@ -298,7 +284,6 @@ _stop_loading() {
 }
 
 _run_timed() {
-  # Bound one `,gh-worktree` invocation so a single hung clone cannot pin the item.
   if [ -n "$_TIMEOUT_BIN" ]; then
     "$_TIMEOUT_BIN" --kill-after=10s "${ITEM_TIMEOUT_SECS}s" "$@"
   else
@@ -398,7 +383,6 @@ _kill_if_batch_process() {
 }
 
 _reap_ledger_file() {
-  # Kill leftover create/spinner trees and clear their loading markers.
   # kill_mode: "own" (ledger of THIS batch — only pids that are still our live
   # children may be killed; a dead/recycled pid must never take an unrelated
   # process down), "stale" (dead batch — verify start identity + argv before
@@ -431,7 +415,7 @@ _reap_ledger_file() {
       _patch_cache_entry "$kind" "$repo" "$num" clear
     fi
   done < "$ledger"
-  rm -f "$ledger" 2> /dev/null || true
+  rm -f "$ledger" "${ledger}".?????? 2> /dev/null || true
   _ledger_lock_release "$ledger"
   _notify_fzf_reload
 }
@@ -456,8 +440,10 @@ _reap_stale_batch_jobs() {
 }
 
 _finalize_batch_jobs() {
-  # Bound the whole detached batch: any still-running create trees are killed and
-  # their loading markers cleared so the dashboard cannot spin forever.
+  # A deadline can strand this lock; reclaim it only after every create has exited.
+  if [ -z "$(jobs -p)" ]; then
+    rmdir "${job_ledger}.lockdir" 2> /dev/null || true
+  fi
   _reap_ledger_file "$job_ledger" own
 }
 
@@ -485,8 +471,6 @@ _create_pr_worktree() {
     settled=1
     created=$((created + 1))
     _patch_cache_entry "pr" "$repo" "$num" "done"
-    # Progressive feedback: re-render fzf so the ◆ marker for this item appears
-    # immediately, instead of waiting for the whole batch to finish.
     _notify_fzf_reload
   else
     failed=$((failed + 1))
@@ -520,8 +504,6 @@ _create_issue_worktree() {
     settled=1
     created=$((created + 1))
     _patch_cache_entry "issue" "$repo" "$num" "done"
-    # Progressive feedback: re-render fzf so the ◆ marker for this item appears
-    # immediately, instead of waiting for the whole batch to finish.
     _notify_fzf_reload
   else
     failed=$((failed + 1))
@@ -619,7 +601,5 @@ for entry in "${issue_branches[@]+"${issue_branches[@]}"}"; do
 done
 
 _wait_for_creates
-# Successful completions already dropped themselves from the ledger; finalize
-# only clears stragglers (and removes the ledger file).
 _finalize_batch_jobs
 trap 'rm -f "$selection_file" "${branches_file:-}" 2>/dev/null || true' EXIT

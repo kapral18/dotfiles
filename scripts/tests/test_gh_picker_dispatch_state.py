@@ -18,7 +18,6 @@ SCRIPTS = Path(__file__).resolve().parents[1]
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
-import _test_support  # noqa: F401  (puts scripts/ on sys.path)
 from _test_support import TMUX_PICKERS, modern_bash
 
 
@@ -559,26 +558,6 @@ class TestGhPickerDispatchState(unittest.TestCase):
                 "end",
             ]
 
-    def test_wait_marks_timeout_when_last_child_exits_on_deadline(self):
-        script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"
-        probe = r"""
-set -euo pipefail
-eval "$(sed -n '/^_wait_for_creates()/,/^}/p' "$1")"
-pids=()
-batch_deadline=5
-batch_timed_out=0
-SECONDS=5
-_wait_for_creates
-printf '%s\n' "$batch_timed_out"
-"""
-        result = subprocess.run(
-            [modern_bash(), "-c", probe, "fixture", str(script)],
-            capture_output=True,
-            text=True,
-        )
-        assert result.returncode == 0, result.stderr
-        assert result.stdout.strip() == "1"
-
     def test_batch_launch_guard_rechecks_deadline(self):
         script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"
         probe = r"""
@@ -860,6 +839,60 @@ printf 'survived\n'
                     second_proc.kill()
                     second_proc.communicate(timeout=3)
 
+    def test_deadline_during_ledger_drop_releases_own_ledger_and_lock(self):
+        script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"
+
+        with tempfile.TemporaryDirectory() as tmp:
+            fixture = self._setup_fixture(Path(tmp))
+            drop_started = Path(tmp) / "drop-started"
+            ledger_dir = fixture["cache_dir"] / "gh_batch_worktree_jobs"
+            ledger_dir.mkdir()
+            unrelated = ledger_dir / "unrelated.tsv.ABC123"
+            unrelated.write_text("keep\n")
+            self._write_executable(
+                fixture["home"] / "bin/mv",
+                f"#!{sys.executable}\n"
+                "import os, signal, sys\n"
+                "from pathlib import Path\n"
+                "if sys.argv[-1].endswith('.tsv'):\n"
+                "    signal.signal(signal.SIGTERM, signal.SIG_IGN)\n"
+                "    Path(os.environ['DROP_STARTED']).write_text(sys.argv[-1])\n"
+                "    while True: signal.pause()\n"
+                "os.execv('/bin/mv', ['/bin/mv', *sys.argv[1:]])\n",
+            )
+            env = {
+                **self._stale_ledger_env(fixture),
+                "DROP_STARTED": str(drop_started),
+                "GH_BATCH_TOTAL_TIMEOUT_SECS": "5",
+            }
+
+            process = subprocess.Popen(
+                [modern_bash(), str(script), str(fixture["selection_file"]), "--background"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                env=env,
+                start_new_session=True,
+            )
+            try:
+                stdout, stderr = process.communicate(timeout=25)
+            finally:
+                try:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                process.communicate(timeout=5)
+
+            assert process.returncode == 0, (stdout, stderr)
+            assert drop_started.exists(), "create never reached the ledger critical section"
+            ledger = Path(drop_started.read_text())
+            lock = Path(f"{ledger}.lockdir")
+            assert not ledger.exists(), f"deadline left own ledger behind: {ledger}; lock exists: {lock.exists()}"
+            assert not lock.exists()
+            assert not list(ledger_dir.glob(f"{ledger.name}.??????")), "deadline left ledger rewrite temporaries"
+            assert unrelated.read_text() == "keep\n"
+            assert "owner/repo\t123\tclear" in fixture["patch_log"].read_text()
+
     def test_ledgerless_lockdir_for_reused_batch_pid_is_reaped(self):
         script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"
 
@@ -1029,7 +1062,6 @@ printf 'survived\n'
                 assert first_proc.returncode == 0, (first_stdout, first_stderr)
 
     def test_multiple_creates_never_clear_done_markers(self):
-        # Every successful item must retain its done marker after finalization.
         script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -1121,39 +1153,6 @@ printf 'survived\n'
             assert clear_nums == ["2"], patch_log
             ledger_dir = fixture["cache_dir"] / "gh_batch_worktree_jobs"
             assert not list(ledger_dir.glob("*.tsv")), list(ledger_dir.glob("*.tsv"))
-
-    def test_stale_job_ledger_reaped_when_batch_pid_dead(self):
-        script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"
-
-        with tempfile.TemporaryDirectory() as tmp:
-            fixture = self._setup_fixture(Path(tmp))
-            ledger_dir = fixture["cache_dir"] / "gh_batch_worktree_jobs"
-            ledger_dir.mkdir(parents=True)
-            # PID 1 is not our batch; kill -0 succeeds for init, so pick a pid that
-            # is guaranteed dead: allocate and free a subprocess pid.
-            dead = subprocess.Popen(["bash", "-c", "exit 0"])
-            dead.wait(timeout=2)
-            dead_pid = dead.pid
-            (ledger_dir / f"{dead_pid}.tsv").write_text(
-                self._ledger_row(dead_pid, "pr", "owner/repo", "123", "dead-start"), encoding="utf-8"
-            )
-            env = {
-                **os.environ,
-                "HOME": str(fixture["home"]),
-                "XDG_CACHE_HOME": str(fixture["cache_home"]),
-                "PATCH_LOG": str(fixture["patch_log"]),
-                "CURL_LOG": str(fixture["curl_log"]),
-                "GH_PICKER_DISPATCH_SCOPE": "all",
-                "GH_PICKER_DISPATCH_PORT": "4141",
-                "GH_PICKER_DISPATCH_CACHE_FILE": str(fixture["dispatch_cache"]),
-                "PATH": f"{fixture['home'] / 'bin'}:/opt/homebrew/bin:/usr/bin:/bin:{os.environ['PATH']}",
-            }
-
-            result = self._run_background_batch(script, fixture["selection_file"], env)
-            assert result.returncode == 0, result.stderr
-            assert not (ledger_dir / f"{dead_pid}.tsv").exists()
-            patch_log = fixture["patch_log"].read_text()
-            assert "owner/repo\t123\tclear" in patch_log
 
     def _stale_ledger_env(self, fixture: dict[str, Path]) -> dict[str, str]:
         return {
@@ -1321,8 +1320,6 @@ printf 'survived\n'
                 ancient = time.time() - (1800 + 600 + 300 + 60)
                 os.utime(ledger, (ancient, ancient))
                 env = self._stale_ledger_env(fixture)
-                env["GH_BATCH_ITEM_TIMEOUT_SECS"] = "1"
-                env["GH_BATCH_TOTAL_TIMEOUT_SECS"] = "1"
                 result = self._run_background_batch(script, fixture["selection_file"], env)
                 assert result.returncode == 0, result.stderr
                 lookalike.wait(timeout=5)

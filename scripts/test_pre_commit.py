@@ -12,7 +12,6 @@ import textwrap
 import unittest
 from pathlib import Path
 
-import _test_support  # noqa: F401  (puts scripts/ on sys.path)
 from _test_support import REPO, modern_bash
 
 
@@ -208,7 +207,7 @@ class TestPreCommitHook(unittest.TestCase):
 
     def test_WHEN_a_staged_file_needs_repair_SHOULD_scope_bin_fmt_before_staged_check(self):
         """SHOULD repair only the staged path, then run affected index checks once."""
-        self._prepare_dirty_repo()
+        dirty, original_bytes = self._prepare_dirty_repo()
 
         result = self._run_hook()
 
@@ -220,14 +219,6 @@ class TestPreCommitHook(unittest.TestCase):
         ]
         staged_index = run(["git", "show", ":staged.txt"], cwd=self.fixture.root).stdout
         assert staged_index == "formatted\n"
-
-    def test_WHEN_scoped_repair_runs_SHOULD_preserve_unrelated_dirty_file_bytes(self):
-        """SHOULD leave an unrelated unstaged file byte-identical."""
-        dirty, original_bytes = self._prepare_dirty_repo()
-
-        result = self._run_hook()
-
-        assert result.returncode == 0, result.stderr
         assert dirty.read_bytes() == original_bytes
 
     def test_WHEN_a_staged_file_has_unstaged_edits_SHOULD_refuse_partial_staging(self):

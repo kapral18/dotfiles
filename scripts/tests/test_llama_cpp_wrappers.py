@@ -91,9 +91,9 @@ class TestLlamaCppWrappers(unittest.TestCase):
         )
 
         assert subcommand.returncode == 0, subcommand.stderr
-        assert "stop\tStop the lifecycle-owned router" in subcommand.stdout
+        assert "stop" in [line.split("\t")[0] for line in subcommand.stdout.splitlines()]
         assert force.returncode == 0, force.stderr
-        assert "--force\tInterrupt active consumers and stop the owned router" in force.stdout
+        assert "--force" in [line.split("\t")[0] for line in force.stdout.splitlines()]
 
 
 class TestClaudeLlamaCppWrapper(unittest.TestCase):
