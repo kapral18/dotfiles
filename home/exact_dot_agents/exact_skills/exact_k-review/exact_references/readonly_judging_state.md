@@ -29,20 +29,18 @@ A settled-value-only analysis is incomplete: such values pass through intermedia
 
 ## Context-Divergence Gate (Run On Shared Paths Serving Multiple Contexts)
 
-A fix verified in one context says nothing about sibling contexts sharing the same code path;
-these failures read as successful fixes from inside the reviewed context.
-
 1. **Enumerate sibling contexts:** name every context that reaches the changed path, from scope-level evidence outward (config reads, flag checks, tier/license predicates, role guards).
 2. **Classify each context:** preserved, changed, or newly-reachable, anchored against base behavior.
    A context whose behavior flipped silently is HIGH even when the reviewed context's change is correct.
-3. **Verify or surface:** exercise at least one intended and one preserved context;
-   when a preserved context cannot be verified statically, report it unverified instead of cleared.
+3. **Verify or surface:** settle intended and necessary preserved behavior from source/contracts and existing checks.
+   Use a bounded local probe only for a concrete material risk that remains unresolved;
+   report an unsettled context as unverified instead of cleared.
 
 ## Scale-Behavior Gate (Run On Collection And Volume Operations)
 
-1. **State production n:** name the realistic production scale of the data this operation consumes (items, rows, requests, bytes).
-   If unknown, treat as `Unknown` and resolve before clearing.
-2. **Trace at boundaries:** walk the operation at 0, 1, typical n, and an order of magnitude beyond;
-   check for per-item work moved into loops, queries issued per iteration, unbounded accumulation, and result sets rendered or serialized without a bound.
-3. **Report honestly:** a scale hazard here is a finding with severity set by consequence;
-   calling the scale safe requires naming the bound, not absence of observation.
+1. **Establish bounds:** identify input limits and algorithmic cost from source/contracts, plus expected scale when it affects the conclusion.
+   Unknown production volume alone is not a blocker when source bounds settle the risk.
+2. **Trace material risks:** check repeated work or queries, unbounded accumulation, and unbounded rendering/serialization.
+   Choose boundary inputs only when they distinguish a concrete failure; do not generate a case quota.
+3. **Report honestly:** name the bound supporting a safety claim.
+   If scale-sensitive behavior remains unsettled, report the specific risk and missing evidence rather than clearing it.

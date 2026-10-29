@@ -23,7 +23,7 @@ If the repo has no obvious runtime (e.g. a docs repo), ask.
 ### 3. Isolate the logic in a portable module
 
 Put the actual logic — the bit answering the question — behind a small, pure interface that could be lifted into the real codebase later.
-The TUI around it is throwaway; the logic module is not. Pick the shape that fits the question:
+Both the TUI and logic remain disposable until behavior is absorbed into maintained code. Pick the shape that fits the question:
 
 - **A pure reducer** — `(state, action) => state`. Good when actions are discrete events and state is a single value.
 - **A state machine** — explicit states and transitions. Good when "which actions are legal right now" is part of the question.
@@ -65,8 +65,10 @@ Record the conclusion in the task record before deleting the prototype.
 
 ## Anti-patterns
 
-- **Tests.** A prototype that needs tests is no longer a prototype.
+- **A durable test suite for disposable exploration.**
+  Retained material behavior needs coverage when it is absorbed, under `~/AGENTS.md` §3.
 - **Wiring to the real database.** In-memory unless the question is specifically about persistence.
 - **Generalising.** No "what if we support X later." It answers one question.
 - **Blurring logic and TUI.** If the reducer references `console.log`, prompts, or escape codes, it is no longer portable.
-- **Shipping the TUI shell.** The shell is throwaway; the logic module behind it is the bit worth keeping.
+- **Shipping the TUI shell.**
+  Delete the shell; retain validated logic only through in-scope absorption with the required behavioral coverage.

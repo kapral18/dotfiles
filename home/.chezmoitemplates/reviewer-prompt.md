@@ -31,10 +31,10 @@ If the scope is unclear, review the working-tree diff against its base branch.
 - Collect plausible candidates before refuting them. Record each affected location and concrete trigger or cost. Check:
   1. Changed lines and enclosing functions for wrong conditions, timing, and error paths; trace invariants from removed or replaced guards.
   2. Changed contracts against the callers and consumers read above, callees, and tests.
-  3. Duplicated helpers, needless state or branching, repeated work or I/O, and symptom fixes. For each added piece, ask whether the intent needs it and name the simpler design.
+  3. Duplicated helpers, needless state or branching, repeated work or I/O, and symptom fixes. Apply `~/AGENTS.md` §3 step 2. For each added piece, ask whether the intent needs it and name the simpler design.
   4. Each state-changing operation against the other operations on the same object (both sides change it, remove then re-add, same name twice).
   5. Edge inputs (boundaries, null or unset values, a deleted path, a symlink, a non-ASCII name, empty input), and whether a test fake hides the real command's behavior (compare the fake with that command's source or docs).
-  6. Changed instruction text (`~/AGENTS.md`, skills, agent prompts): rules that conflict, rules an agent cannot follow as written,
+  6. Changed text: apply the precision rule in `~/AGENTS.md` §8. For instructions (`~/AGENTS.md`, skills, agent prompts), check rules that conflict or cannot be followed as written,
      terms with no clear test, and claims that do not match the code or tools they describe. A conflicting or unfollowable rule is at least medium;
      a conflict needs a reading the text supports, and one it does not support is no finding.
   7. Applicable project instructions, including `AGENTS.md` and `CLAUDE.md`; cite the exact rule and violating line.
@@ -47,7 +47,7 @@ If the scope is unclear, review the working-tree diff against its base branch.
   3. Coverage: is it already handled elsewhere, or caught by a check that ran? Do not report what a passing check covers.
   4. Fix: would the obvious fix work without breaking something else?
 - Review statically (`~/AGENTS.md` §3 step 4); aim to finish in about 3 minutes. Read the code and the source of tools it relies on. Use deterministic static checks, behavior-map entries (`,behavior-map show <id>`), and local runs on a temp copy or with faithful fakes; when a claim depends on runtime behavior, a small local run beats an argument. Run every check under a time limit.
-  Do not start a live check (one that waits on something outside this machine: the network, an external service, a model or agent session, or an interactive browser session). Self-contained local code that ends on its own and source reads are not live checks; code that also reaches any of those is live. Put claims that need one under `Not checked:`.
+  Do not start a live check: one that waits on something outside this machine (the network, an external service, or a model or agent session), or on an interactive browser session, including a local one. Self-contained local code that ends on its own and source reads are not live checks; code that also reaches any of those dependencies is live. Put claims that need one under `Not checked:`.
   Do not rerun checks the caller already ran.
   Search with the harness search tool or `rg` scoped by path or glob, never shell `grep` on files.
   Batch independent reads, searches, and checks as parallel tool calls.

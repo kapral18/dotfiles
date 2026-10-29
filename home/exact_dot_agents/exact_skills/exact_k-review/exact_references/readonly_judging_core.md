@@ -32,8 +32,7 @@ Use in every non-trivial review.
   Prove mechanical-only with `,sem diff --format json` per `~/.agents/skills/k-sem/SKILL.md`:
   every change is `renamed`/`moved` or has `structuralChange: false`; a line diff alone does not prove it.
 - Establish base invariants first (`git show <base>:<path>` + local `rg`), then validate PR/branch reality (diff + full file reads).
-- Evaluate the diff as a state and contract boundary; simulate behavior across universal failure primitives:
-  caller/callee contract asymmetry, test oracle/mock fidelity gaps, compositional fault cascades in batch/collection processing, temporal/async hazards, projection/mapping divergence, and silent error degradation.
+- Trace concrete risks across changed contracts: caller/callee disagreement, incorrect test or mock assumptions, partial batch failures, async ordering, inconsistent mappings, and errors silently treated as success.
   Select boundary and predicate counterexamples for the material risks; do not enumerate mutations for every changed condition.
 - When evaluating a proposed change: prefer smallest repro in `/tmp` or smallest safe experiment in worktree.
 - Reuse existing check results for this snapshot; do not rerun passing checks.
@@ -57,9 +56,6 @@ Attempt refutation in this order and stop at the first decisive result:
 4. **Proposed fix:** would the fix behave as claimed without introducing a new problem?
    Compare fix delta with requested delta; broader delta is a candidate, not implementation detail.
 5. **Already covered:** is the concern already handled elsewhere in the diff or base? Cite where.
-
-Self-refutation catches unreachable paths, inflated severity, and weak fixes, but lacks cross-family independence.
-A separate family can improve final judgment independence, but does not justify another pass over the same risk.
 
 ## Check-Coverage Exemption (Run Before Drafting Findings On A Final Verdict Surface)
 

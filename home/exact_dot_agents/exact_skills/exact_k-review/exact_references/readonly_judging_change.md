@@ -84,4 +84,5 @@ Audit co-located consumers that project, compare, or transform that same concept
 
 - **Projection symmetry:** when one projection changes, verify parallel projections reflect the same semantic mapping.
 - **Bi-directional consistency:** verify read vs write, serialize vs deserialize, and encode vs decode paths handle all known variants and edge cases symmetrically.
-- **Delta divergence:** classify any case where sibling consumers apply diverging semantic deltas to the same input space as HIGH (broken invariant / silent behavioral split).
+- **Delta divergence:** report an unintended semantic split between sibling consumers;
+  a broken invariant or silent behavioral split is HIGH. Intentional differences need a supported contract.

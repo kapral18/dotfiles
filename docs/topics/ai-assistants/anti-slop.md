@@ -6,8 +6,6 @@ The upstream core's purpose test, evidence requirements, and design-direction co
 
 The adoption is a maintained derivative, not an upstream plugin install or automatic mirror.
 It preserves the useful capabilities while adapting workflow and style rules to the existing SOP.
-The [skill](../../../home/exact_dot_agents/exact_skills/exact_k-anti-slop/readonly_SKILL.md) and references contain 4,562 whitespace-delimited words, including metadata, against 24,477 across upstream's six skills: about 81% less text with additional categories covered.
-These are word counts, not token measurements or evidence of equal model performance.
 Only matching references load; this report and the inspection inventory are not part of routine skill loading.
 Checks do not prescribe output length: keep already-clear text and add detail only for a concrete gap in meaning or use.
 Necessary qualifiers, accessibility requirements, and code contracts still take precedence over brevity.
@@ -140,7 +138,7 @@ The mandatory delivery table is replaced by the existing completion and review w
 - Upstream labels 18px text “large.” [WCAG uses 18pt regular or 14pt bold](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html). The derivative also uses the current sRGB breakpoint, 0.04045; the older 0.03928 constant does not change results for the accepted 8-bit inputs.
 - The mobile 44px target is retained as a usability aim, with the [24px WCAG 2.2 AA minimum and exceptions](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html) identified correctly.
 - Valid managed focus can require negative `tabindex`; keyboard keys depend on the widget. The derivative avoids blanket removal or uniform key requirements.
-- Comments can need more than two lines. Preserve license notices, tooling directives, API contracts, removal conditions, and useful issue history; shortening them is not an end in itself.
+- Comments have no arbitrary two-line cap. Keep required notices/directives and critical constraints that clearer code cannot express; do not retain fix-history narration.
 - The prose examples are not copied as rewrite recipes: stronger wording must not introduce unsupported facts or personal experience.
 - Absolute vocabulary/punctuation bans, decorative dose caps, mandatory theme toggles, and compulsory design-document creation are replaced by purpose, user direction, and requested scope.
 - Installer/wizard prompts, saved modes, plugin caches, audit-file numbering, and the MCP transport are omitted. Chezmoi, the SOP, scoped reviews, and the shared calculator cover their useful roles with one implementation.

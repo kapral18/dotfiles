@@ -34,4 +34,5 @@ Do not load secondary skills until read/diff evidence proves the surface is in s
 
 - For user-visible UI changes, verify the rendered state from the styles, props, and component contract;
   an interactive browser session is a live check (`~/AGENTS.md` §3 step 4).
-- State the gap that only a live check could close as an "(unverified: …)" `Checked:` item (`~/AGENTS.md` §3 step 8), with the static evidence checked instead.
+- Report static evidence under `Checked:`. Put a claim only a live check could settle under `Open:` with that check as its blocker;
+  offer the check only as `~/AGENTS.md` §3 step 8 allows.

@@ -26,12 +26,8 @@ Goal: compare the change with how base (usually `main`) works today.
 
 - The current branch or PR files and diff establish the changed behavior; base-ref reads are background evidence.
 - Ask targeted questions of base source and history; do not run an unconditional query net.
-- History encodes invariants and past bug fixes. Keep archaeology targeted and line-bounded:
-  - Probe only non-obvious modified guards, conditionals, fallback branches, or legacy helpers.
-  - Use `git blame -L <start>,<end> <base> -- <path>` or `git log -n 5 -L <start>,<end>:<path>`;
-    `git log -n 5 -p -- <path>` only for the modified file.
-  - Follow the identified commit to `gh pr view <pr>` or `gh issue view <issue>` for intent.
-- A change that removes or weakens a guard added for a past defect or CVE is a HIGH regression finding.
+- For modified guards, conditionals, fallback branches, or legacy helpers, load and apply the Historical Archaeology Gate in `~/.agents/skills/k-review/references/judging_change.md`.
+  It owns bounded history probes and the distinction between an obsolete guard and a reintroduced defect.
 - Report the base/head scope and evidence source in a `Base context:` line. This is assistant metadata, never GitHub comment text.
 
 ## PR Pending Reviews

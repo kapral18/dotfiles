@@ -5,12 +5,13 @@ description: "Use to review local changes, a PR, review threads (PR fixes), or a
 
 # Review
 
-Pick one mode, review inline, and report anchored findings.
+Pick one review target and report anchored findings.
 Load `~/.agents/skills/k-review/references/authorship.md` once before any mode; it decides whether you may edit.
 
 ## Modes
 
-Pick exactly one. If intent stays ambiguous after the checks in Disambiguation, pick the likeliest mode and say which.
+Pick exactly one target mode below. Verify adds the independent review and fix-loop workflow to that target.
+If intent stays ambiguous after Disambiguation, pick the likeliest target and say which.
 
 | Mode          | Use when                                                        | Open                                                    |
 | ------------- | --------------------------------------------------------------- | ------------------------------------------------------- |

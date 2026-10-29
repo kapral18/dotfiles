@@ -55,14 +55,14 @@ This adds no stop; the Fix procedure owns the stopping rule.
    The loop goes on for every other finding.
    A reviewer repeating a finding you rejected is not a returned cause: reject it again, unless it names new evidence;
    then check it like any finding.
-7. If this round's two full reviewers found a supported medium or higher finding, run another full round without asking:
+7. If the two-reviewer round found a supported medium or higher finding, run another two-reviewer round without asking:
    two fresh reviewers using the complementary focuses and source-first/history-reconciliation packet in Verify mode, reporting only new findings or resolved findings contradicted by new evidence.
-   A later full round is narrowed: it reviews what the fixes since the last full round touched and their consumers.
-   Once a narrowed round finds no new supported medium or higher finding, a full round covers the whole Verify scope.
+   That next round is narrowed: it reviews what fixes since the previous two-reviewer round touched and their consumers.
+   Once a narrowed round finds no new supported medium or higher finding, the next round covers the whole Verify scope.
    Fix its findings with steps 1 to 6.
-   A clean fix-diff review or a clean narrowed round does not end the loop; a clean full round on the whole scope does.
+   A clean fix-diff review or a clean narrowed round does not end the loop; a clean whole-scope round does.
    No count of reviews or rounds stops the loop, and it never pauses to ask whether to continue.
-   The loop ends when a full round on the whole scope finds no new supported medium or higher finding and supplies passing evidence for the applicable criteria and claimed fixes; fix its lows.
+   The loop ends when a whole-scope round finds no new supported medium or higher finding and supplies passing evidence for the applicable criteria and claimed fixes; fix its lows.
    A material unverified result stays `Open:` with its blocker; missing reviewer coverage is returned to that reviewer for completion, not treated as clean.
    Neither checklist membership nor a reviewer's focus may exclude a new supported defect in scope or impact.
    Keep rounds short: aim for about 3 minutes per reviewer and 5 per round. Time a round from launch to results with `date +%s`

@@ -66,7 +66,7 @@ The interesting feedback is usually "I want the header from B with the sidebar f
 
 ### 6. Capture the answer and clean up
 
-Once a variant wins, write down which and why (commit, PR, issue, `,ai-kb`, or a `NOTES.md`).
+Once a variant wins, record which and why in the task record.
 Then, for sub-shape A delete the losing variants and the switcher and fold the winner into the page;
 for sub-shape B promote the winner to a real route and delete the throwaway route and switcher.
 Do not leave variant components or the switcher lying around.
@@ -76,4 +76,4 @@ Do not leave variant components or the switcher lying around.
 - **Variants that differ only in colour or copy** — a tweak, not a prototype. Real variants disagree about structure.
 - **Sharing too much between variants** — a shared `<Header>` is fine; a shared `<Layout>` defeats the point.
 - **Wiring variants to real mutations** — read-only prototypes are fine; point mutations at a stub.
-- **Promoting prototype code straight to production** — it was written under prototype constraints; rewrite it properly when folding in.
+- **Retaining prototype code without absorption checks** — apply maintained-code quality and material behavioral coverage before retaining the winner.

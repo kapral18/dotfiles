@@ -7,22 +7,21 @@
   Keep a stateful sequence together when the failure depends on its ordering; do not split it just to enforce one act per test.
 - Multiple assertions are fine when they check one behavior: the fields whose failure means the outcome in the name is wrong.
   An independently wrong field does not automatically need another test; select assertions by the material contract.
-- Inside the `WHEN ...` / `SHOULD ...` names, state condition and outcome specifically: `SHOULD return 401` not `SHOULD fail`;
+- State condition and outcome specifically in test names: `returns 401 for an expired token`, not `fails`;
   domain words, not implementation words.
 - Prefix result variables `actual...` and expectation variables `expected...` when both sides are named.
 
 ## Cause and effect
 
-- Every value the assertion depends on is visible inside the test body.
-- Use `beforeEach`/`setUp`/fixtures for infrastructure (servers, doubles, constructing the unit), not for scenario data an assertion relies on.
+- Make scenario inputs and expected outcomes clear from the test body or a clearly named data fixture.
+- Use shared lifecycle setup (`beforeEach`, `setUp`, fixture hooks) for infrastructure rather than hidden scenario defaults.
 - Do not share mutable state between tests; each test arranges its own data.
 
-## No logic in tests
+## Independent expectations
 
-- Expected values are literals: `'https://photos.google.com/u/0/photos'`, not `baseUrl + '/u/0/photos'`.
-  Concatenation and arithmetic in an expectation can reproduce the bug it should catch.
-- Do not reproduce production logic in a test.
-  Short sequences or loops may exercise the public workflow; use parametrization only when it makes necessary cases clearer.
+- Prefer literal expectations when sufficient; independent fixtures, models, or properties may supply larger or relational oracles.
+  Do not copy production logic to calculate its expected result.
+- Short sequences or loops may exercise the public workflow; use parametrization only when it makes necessary cases clearer.
 - Prefer clarity over DRY (DAMP): repeat a literal when that keeps the test readable without scrolling.
 - Do not create a helper and more tests merely to compute an expectation; choose a simpler independent oracle.
 

@@ -40,7 +40,7 @@ Preserve unique material protection; never remove a failing test to conceal a de
 
 ## Test Shape
 
-- Write BDD-style tests when adding tests: `describe('WHEN ...')`, `it('SHOULD ...')`.
+- Name tests by their condition and observable outcome using the project's framework and naming conventions.
 - Extend an existing public-behavior test before creating another test or fixture when that supplies the missing protection.
 - Keep tests focused on observable behavior, not implementation trivia.
 - Cover the boundary or regression that would fail without the change.

@@ -60,9 +60,8 @@ Do not load React/web/test/design secondaries merely because they might become r
 - Keep local guards unless every entry path necessarily passes through the shared rule/helper.
 - If extracting, route every entry point through the shared helper/reference and verify each one.
 - Do not add features, abstractions, flexibility, configurability, or error handling not requested.
-- No abstractions for single-use code; no error handling for impossible scenarios.
-- If 200 lines would do as 50, rewrite.
-- If a senior engineer would call it overcomplicated, simplify.
+- Introduce an abstraction only when it clarifies a domain concept, removes meaningful duplication, hides complexity, or enforces an invariant; call-site count alone does not decide its value.
+- Do not add error handling for a state the verified contract makes unreachable.
 - Simplicity never licenses dropping behavior or adding unrequested compatibility/legacy paths.
 
 ## Artifact Necessity
@@ -81,10 +80,11 @@ Apply `~/AGENTS.md` §3's minimum sufficient test protection rule; the product s
 - Use `snake_case` for new files unless the project dictates otherwise.
 - Use spaced literals: `{ key: 'value' }`, `[ 1, 2, 3 ]`.
 - Prefer ESM named imports.
-- Replace magic strings with named constants.
+- Name a literal when the name explains its domain meaning or removes meaningful duplication;
+  do not extract one-off values merely to add indirection.
 - Prefer composition over inheritance; prefer pure functions over side effects.
 - Keep nesting shallow; use early returns.
-- Keep functions under 50 lines.
+- Keep functions cohesive; split distinct responsibilities or obscured control flow, not to meet a line count.
 - Prefer `async`/`await` over `.then()` chains.
 - Treat a behavioral claim in a comment, docstring, or commit message ("safe because", "always", "never", "cannot happen") as a claim to verify against the code and tests, not as evidence; do not preserve or add one you have not confirmed.
 - Plan the relevant tests/linters with the change; run them once on the finished change and report results or why a check was skipped.

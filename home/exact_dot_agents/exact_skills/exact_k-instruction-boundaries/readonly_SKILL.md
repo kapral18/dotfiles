@@ -34,14 +34,19 @@ Forbidden: <hard ban>. Verify: <observable check>.` Keep the ban even when the r
 6. **Distinguish instruction content from enforcement.** Source review can verify a written boundary; it does not prove model adherence.
    Do not add wording tests, checklists or runtime machinery merely to verify an instruction.
    Additional enforcement needs a concrete material failure; implementation changes follow `~/AGENTS.md` §3's minimum sufficient test protection rule.
+7. **Resolve material ambiguity.** Apply the precision rule in `~/AGENTS.md` §8.
+   Make the actor, action, scope, conditions, and observable result explicit where they affect execution.
+   If a plausible literal reading satisfies the words but misses the goal, rewrite the instruction or explicitly exclude that reading.
 
 ## Fidelity Boundaries
 
-Fidelity outranks conversion style. Keep as-is:
+Preserve meaning when rewriting:
 
-- Factual/definitional negations ("a green suite discriminates nothing", "X is not evidence") because they are facts, not instructions.
-- Negations inside quoted examples, BAD/GOOD pairs, code blocks, command flags, and table cells.
-- Dense gate wording where rewriting would weaken modal strength, scope, examples, paths, flags, commands, or exception clauses.
-- Existing hard prohibitions that define the full boundary.
+- Keep factual distinctions, negation, and qualifications; do not turn them into different instructions merely to prefer affirmative wording.
+- Preserve quotations and executable or machine-consumed text according to their source and tooling contracts.
+- Keep modal strength, scope, conditions, exceptions, identifiers, paths, and flags.
+- Rewrite or deduplicate a prohibition only when every independently reachable entry retains its guard.
 
-Done when every forbidden behavior is expressed as a hard boundary, every affirmative clause adds precision rather than replacing the ban, and no fact or qualifier was lost.
+Examples, tables, and dense clauses may be clarified; their format alone does not require keeping the original sentence.
+
+Done when every forbidden behavior is expressed as a hard boundary, every affirmative clause adds precision rather than replacing the ban, material ambiguity is resolved, and no fact or qualifier was lost.

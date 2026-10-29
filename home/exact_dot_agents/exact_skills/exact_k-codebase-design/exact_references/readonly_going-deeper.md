@@ -8,10 +8,11 @@ Assumes the vocabulary in `~/.agents/skills/k-codebase-design/SKILL.md` — **mo
 Classify a candidate's dependencies first; the category determines how the deepened module is tested across its seam.
 
 1. **In-process** — pure computation, in-memory state, no I/O.
-   Always deepenable: merge the modules, verify through the new interface directly. No adapter needed.
+   Test directly through the chosen interface; no adapter is needed merely because the dependency is in-process.
+   Merge modules only when it improves the design within scope.
 2. **Local-substitutable** — dependencies with local test stand-ins (PGLite for Postgres, in-memory filesystem).
-   Deepenable if the stand-in exists; reuse it when a justified behavioral check needs it.
-   The seam is internal; no port at the external interface.
+   Reuse a faithful stand-in when a justified behavioral check needs it.
+   Keep the seam internal unless callers need to select or supply the dependency.
 3. **Remote but owned (ports & adapters)** — your own services across a network boundary.
    Define a **port** at the seam; the deep module owns the logic, the transport is an injected **adapter**.
    Tests use an in-memory adapter; production uses HTTP/gRPC/queue.
@@ -19,8 +20,9 @@ Classify a candidate's dependencies first; the category determines how the deepe
 
 ### Seam discipline
 
-- **One adapter = hypothetical seam. Two = real.**
-  Introduce a port only when at least two adapters are justified (typically production + test). A single-adapter seam is just indirection.
+- **Justify the seam.**
+  Apply the caller-contract, ownership, and substitution criteria in `~/.agents/skills/k-codebase-design/SKILL.md`;
+  adapter count is not a substitute for that need.
 - **Internal vs external seams.**
   Keep internal seams private to the implementation even when the module's own tests use them;
   expose a seam through the interface only for external callers.
@@ -36,7 +38,6 @@ Classify a candidate's dependencies first; the category determines how the deepe
 ## Branch B — Design it twice (alternative interfaces)
 
 When the user wants alternative interfaces for a chosen deepening candidate.
-Based on Ousterhout's "design it twice" — your first idea is unlikely to be the best.
 
 ### 1. Frame the problem space
 

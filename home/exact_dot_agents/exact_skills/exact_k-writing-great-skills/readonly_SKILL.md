@@ -5,14 +5,12 @@ description: "Use when authoring/refactoring skills: invocation, triggers, refer
 
 # Writing Great Skills
 
-A skill makes outcomes predictable.
 Match specificity to fragility: exact ordered steps where only one sequence is safe (destructive, auth, publication, interactive tooling);
 outcomes, constraints, and completion criteria where the work is judgment.
-Every lever below serves that.
 
-This skill owns skill craft.
+This skill covers skill structure, routing, and pruning.
 For CLI-tool mechanics (`tool_version`, `--help`, source layout), load `~/.agents/skills/k-cli-skills/SKILL.md`.
-For AI-facing hard prohibition boundaries and affirmative reinforcement, load `~/.agents/skills/k-instruction-boundaries/SKILL.md`.
+For unambiguous behavioral wording, hard prohibition boundaries, and affirmative reinforcement, load `~/.agents/skills/k-instruction-boundaries/SKILL.md`.
 The SOP still owns evidence, minimal edit scope, and human-visible gates; a skill defers to the SOP for those instead of restating them.
 
 ## Invocation
@@ -46,7 +44,7 @@ Use three rungs:
 3. **External reference** — separate file loaded through a context pointer only when that branch needs it.
 
 Progressive disclosure: inline what every branch needs; move branch-only material behind a sharp pointer.
-The pointer wording controls reliability; a must-have behind a weak pointer is a variance bug.
+Required guidance needs an explicit load condition; a vague pointer can let an invocation skip it.
 Too little disclosure bloats the top; too much hides needed material.
 Co-locate each concept's definition, rules, and caveats under one heading.
 Do not use bare filenames or relative paths for concrete bundled file references, even when colocated.
@@ -62,12 +60,8 @@ Every step needs a done condition. Strong criteria are both checkable and exhaus
 
 ## Leading words
 
-A leading word is a compact pretrained concept the model can think with (_tracer bullet_, _fog of war_, _tight loop_, _red_).
-Repeat the token instead of restating its definition.
-
-It anchors execution in the body and invocation in the description.
-Prefer pretrained words; coined words recruit no priors and require definition tokens.
-Hunt restatements a leading word retires: “fast, deterministic, low-overhead” → _tight_; “a loop you believe in” → _red_ or not.
+Use established domain terms consistently.
+Define unfamiliar shorthand, and keep distinct requirements explicit rather than compressing them into one label.
 
 ## Pruning
 
@@ -82,7 +76,8 @@ Hunt restatements a leading word retires: “fast, deterministic, low-overhead�
   Drop incident stories, commit hashes, dates, "now / no longer / previous" phrasing, and model names from behavioral text;
   keep the reason as a present-tense mechanism, and keep version pins only as dated verification facts.
 
-A generic virtue word (_be thorough_) is a no-op; delete it, or replace it with the concrete completion criterion it stood for (what must be checked, and when it counts as done).
+Replace vague virtues such as _be thorough_ with concrete completion criteria when they guide behavior;
+remove them only when verified redundant.
 
 ## Failure modes
 
@@ -91,11 +86,11 @@ A generic virtue word (_be thorough_) is a no-op; delete it, or replace it with 
 - **Duplication**: one meaning in multiple places; maintenance drift and false prominence.
 - **Sediment**: stale layers retained because adding feels safer than removing.
 - **Sprawl**: too long even when live and unique; fix with hierarchy, branch disclosure, or sequence split.
-- **No-op**: relevant but already model-default behavior.
+- **No-op**: adds no distinct requirement on any reachable invocation, as verified against existing guidance and load paths.
 
 ## When to split
 
-Split only when the cut earns its load.
+Split only for a distinct invocation or workflow stage.
 
 - **By invocation**: split a model-invoked skill only for a distinct leading word that should trigger it, or when another skill must reach it.
 - **By sequence**: split steps when seeing later steps tempts the agent to rush the current one.

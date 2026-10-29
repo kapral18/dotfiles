@@ -15,16 +15,27 @@ Project instructions may add rules.
 - Change only what the request needs, plus defects in the change's impact (§3 step 1). No unrelated cleanup, refactor, or reformat.
 - No compatibility shims, aliases, or deprecation paths unless the user asks. Replace means remove the old path.
 - Finish the task without stopping for a yes the user would give.
-  Do each step you can do now that the request named, or that is reversible and changes nothing outside this machine the request did not name,
-  when it is in the request's scope (fixing what a review the request ran on the user's own work found counts) or fixes a defect in the change's impact (§3 step 1).
+  Do every step you can do now that meets both conditions:
+
+  1. It is in the request's scope (including fixes from a requested review of the user's own work) or fixes a defect in the change's impact (§3 step 1).
+  2. The request names the step, or it is reversible and changes nothing outside this machine that the request did not name.
+
   Also do each §3 step 7 cleanup `k-cleanup` allows.
-  This never covers a §5 action §5 does not allow, a live check §3 step 4 keeps for the user's ask, or a step the user asked you to ask about first.
+  This never authorizes a §5 action §5 does not allow, a live check §3 step 4 keeps for the user's ask, or a step the user asked you to ask about first.
   A request to change or build all of something approves the work: continue until every item is done, or a user decision or an `Open:` blocker stops it.
-- Stop for the user only on what needs their judgment: a goal or preference evidence cannot settle, overriding an explicit choice of theirs,
-  a step in scope or an impact defect fix you could do now that the bullet above leaves out (a live check only as §3 step 8 allows), or a question they asked for.
-  Any other step goes in its §3 step 8 list.
-  At a fork in how to do the task, take the option you expect the user to agree with and list it under `Assumptions:`;
-  if you expect none, it is a dilemma: ask.
+
+- Stop for the user only when one of these applies:
+
+  - A goal or preference needs their judgment because evidence cannot settle it.
+  - The step would override an explicit choice of theirs.
+  - A step is in scope or fixes an impact defect and you can do it now, but the preceding rule does not authorize it.
+    Offer a live check only as §3 step 8 allows.
+  - They asked you to ask them a question.
+
+  Put other unfinished steps in their §3 step 8 report lists.
+
+- When choosing how to do the task, take the option you expect the user to agree with and record it under `Assumptions:`.
+  If you expect them to agree with none, ask.
   Never offer an option you argued against.
   Put a real question last, under `Decision needed:`, with your pick and its `[S<n>]`. Do not act on that decision until the user answers.
 
@@ -67,8 +78,9 @@ Steps for each change; skip one that does not apply and say why:
    Before the task's first edit, write its card: `,task card set <<'CARD'` with `Goal:` (the outcome the user wants, in their words),
    `Reading:` (your interpretation, including what they left unsaid and where the ask may miss the goal), `Done when:` (items you can prove), `Scope:` (paths or globs the goal needs),
    `Not doing:`, then `CARD`. Pass `--session <id>` when a hook names it.
-   Mark each item with `,task check D<n> --claim C<n>`, or `,task block D<n> --reason "..."`
-   and list it under `Open:` with its blocker, or under `Decision needed:` when it waits on the user.
+   Mark each proven Done-when item with `,task check D<n> --claim C<n>`.
+   For a blocked item, use `,task block D<n> --reason "..."` and list it under `Open:` with its blocker,
+   or under `Decision needed:` when it waits on the user.
    Before editing a path outside `Scope:` that the goal or a defect in the change's impact needs, run `,task scope add <path> --reason "..."`;
    anything else goes under `Proposed:`.
    When the user corrects or changes the goal, rewrite the card before you continue;
@@ -76,26 +88,33 @@ Steps for each change; skip one that does not apply and say why:
    When a hook asks you to zoom out, say in one line whether the work still serves the Goal; if it drifted, change course.
 1. **Before.** Read the code, its callers, and consumers. Know what must change with it: tests, docs, generated files.
    Collect the impact list both ways: what the change can break, and for new or changed behavior, every domain and scope it must fit.
-   The change's impact is the part of each item on that list that depends on, copies, or must fit what the change touches,
-   in files you may edit outside pre-existing working-tree changes and outside what the user or an approved plan excluded.
-   It also holds, under the same exclusions, a supported defect anywhere in a file the request's change touches when its fix is reversible and has one reasonable form.
-   The list is set by the request's change; fixing a defect in the change's impact does not widen it.
+   The change's impact includes:
+
+   - The part of each listed item that depends on, copies, or must fit what the request's change touches.
+   - A supported defect anywhere in a file the request's change touches, when its fix is reversible and has one reasonable form.
+
+   Both categories are limited to files you may edit, outside pre-existing working-tree changes and what the user or an approved plan excluded.
+   The request's change sets the impact; fixing an impact defect does not widen it.
    Separate your edits from pre-existing working-tree changes.
    In a repo, run the `k-behavior-map` skill (before a change): it writes that list, checks it against the map, and maps an unmapped area you will edit in first.
+
 2. **Change.** Debug against logs and reproductions, not guesses.
+   For a bug, identify the violated invariant and prefer the smallest in-scope design that rules out the error class.
+   If required behavior or scope prevents that, fix the cause and state the constraint.
 3. **Check.**
    Comments are not default deliverables.
    Add comments/docstrings only for required legal/tooling text or a critical non-obvious constraint that clearer code cannot express;
    never use them as plans, progress notes, or substitutes for finished code.
    New or changed material implementation behavior MUST have durable behavioral test coverage.
    Reuse or extend existing tests; add the smallest missing cases with independent behavioral oracles alongside the implementation.
+   Test the invariant through observable behavior; do not pin private structure or add a case per incident.
    Zero new tests is justified only when existing behavioral coverage is sufficient or there is no material runtime change.
    Source inspection, types/static checks and disposable probes do not replace missing durable behavioral coverage.
    Never add tests merely to raise coverage, enumerate branches/fields, pin trivial wiring or prose wording, or verify the implementation's own mocks.
    In the changed scope, remove or consolidate redundant comments/tests and their unused scaffolding.
    Preserve required directives and material behavioral protection; never delete a test merely to hide a failure.
-   Run the project's unit and static checks for what the change touches once on the finished change, each under a time limit (step 4);
-   one that step 4 makes a live check waits for the user's ask (step 4).
+   Run the project's unit and static checks for what the change touches once on the finished change, each under step 4's time limits.
+   Live checks require the user's ask, as step 4 defines.
    After a fix, rerun only failed and affected checks.
    A test you add for new or changed behavior must fail without the change: show that once.
    A test that mocks the code under test proves nothing.
@@ -105,10 +124,10 @@ Steps for each change; skip one that does not apply and say why:
    Check interacting operations and edge inputs only where the changed behavior creates a concrete material risk;
    use source evidence or existing checks first.
    Where a fake replaces an external command, check the fake against that command's source or docs.
-   A live check waits on something outside this machine: the network, an external service, a model or agent session,
-   or an interactive browser session (for example an e2e or smoke run against a deployed system).
+   A live check waits on something outside this machine (the network, an external service, or a model or agent session),
+   or on an interactive browser session, including a local one.
    Self-contained local code that ends on its own is not one, even when it starts a local server or headless browser or waits on timers;
-   its time limit bounds it. Code that also reaches any of those outside things is live. Reading a source, web docs included, is never one.
+   its time limit bounds it. Code that also reaches any of those dependencies is live. Reading a source, web docs included, is never one.
    Settle a claim that would need a live check from the source; mark one the source cannot settle as step 8 says.
    Run a live check only when the user asks, as its own invocation with a hard time limit, on a copy when it would change anything outside this machine or delete or overwrite user data.
    Run every check command under a time limit set above its normal run time (`timeout <seconds> <command>`).
@@ -117,17 +136,17 @@ Steps for each change; skip one that does not apply and say why:
    Never repeat a check without new information. A step the task itself needs, such as fetching a file it works on, is not a check.
    This replaces any harness default to run or demo a change before reporting.
    In a repo, run `k-behavior-map` update for the entries the change touched.
-5. **Review.** Do this once per change when it adds a command or module, or changes persisted data, a parser, concurrency,
+5. **Review.** Review a change when it adds a command or module, or changes persisted data, a parser, concurrency,
    auth/secrets/crypto, a public API, or code that deletes user data or files.
-   Also do it when the change edits a rule or workflow step in `~/AGENTS.md`, a `~/.agents/skills` skill, a `k-agent-*` profile, the shared reviewer prompt, or a hook or advisor prompt that judges against these rules.
+   Also review edits to a rule or workflow step in `~/AGENTS.md`, a `~/.agents/skills` skill, a `k-agent-*` profile, the shared reviewer prompt, or a hook or advisor prompt that judges against these rules.
    Wording-only edits (typos, reflow, a rename with no change in meaning) do not count.
    Run `k-review` Verify mode: two fresh reviewers in parallel, on the task change not yet reviewed, given the step 3 and 4 results.
 6. **Fix.**
    Fix every supported finding the change caused, the request covers, or the change's impact holds (even one that predates the task), low ones too,
    with `~/.agents/skills/k-review/references/review_fixes.md`.
    Before each fix round, step back to the user's goal and question the method, not only the findings; that reference says how.
-   It owns the loop: it runs without asking until a full round on the whole scope is clean;
-   a cause that returns twice goes under `Open:` and stops driving it.
+   Follow that reference's review/fix loop without asking, including its whole-scope closing round.
+   A cause that returns twice goes under `Open:` and no longer drives review rounds; continue the loop for other findings.
 7. **Clean up** with the `k-cleanup` skill, yourself; never leave the user a cleanup step.
    When cleaning up, never delete a branch, a worktree, or a file this task did not create
    (`k-cleanup` lists the exceptions), and never run `git stash drop` or `git reset --hard`.
@@ -136,15 +155,17 @@ Steps for each change; skip one that does not apply and say why:
    - `Checked:` one bullet, no sub-bullets, per Done-when item or changed behavior, with a command and its result, or a `file:line`;
      each fact in it cites its verified `[C<n>]`.
      Mark each fix after the last review "(unreviewed)" unless it is wording-only.
-     Put a claim only a live check could settle under `Open:` with that check as its blocker;
-     offer it under `Decision needed:` only when the source leaves open a specific failure, named in the offer, that would change what the user does next.
    - `Assumptions:` each fork in how to do the task that you settled without asking (§1), citing its `[S<n>]`.
    - `Proposed:` steps outside the request's scope that fix no defect in the change's impact, left unapplied, with `[S<n>]`.
    - `Open:` only what you cannot do now, each with its blocker. A step you could do now is never a blocker.
+     Put a claim only a live check could settle here, with that check as its blocker.
+     Offer the check under `Decision needed:` only when the source leaves open a specific failure, named in the offer, that would change what the user does next.
      If `Open:` is not empty, say the change is not done.
    - No other list holds undone work. A list the user asked for, such as next steps or gaps, is part of the answer.
 
-Done means the request works, its checks pass (a failure that held at task start outside the request and the change's impact goes under `Proposed:` with its output), every known issue in the request's scope and every defect in the change's impact is fixed whatever its severity, and step 7 is finished.
+Done means the request works, its checks pass, every known issue in the request's scope and every defect in the change's impact is fixed whatever its severity, and step 7 is finished.
+A check failure that held at task start outside both the request and the change's impact goes under `Proposed:` with its output;
+it does not prevent completion.
 A finding with no trigger and consequence (a wrong state, a misleading reading, or a maintenance cost) is preference:
 reject it with a reason.
 
@@ -168,7 +189,7 @@ Report with the step 8 lists. As new findings, list only the issues your earlier
   A session started with `continue <topic>` continues the task; only the commit, push, and PR requests under the handoff note's `Approvals:` carry over.
   Any other new session starts a new task.
   For the rest of the task, a commit request covers later commits, and a push request covers later fast-forward pushes of the same branch.
-- Anything a human will see (GitHub PRs, issues, comments, reviews, Slack, email):
+- Before sending or publishing human-visible text outside this session (GitHub PRs, issues, comments, reviews, Slack, email):
   draft it, show the exact text and target, and wait for approval.
   Exceptions: the title and body of a PR the user asked for, and replies or comments on a PR you opened in this task
   (after a handoff, one listed under `Approvals:`).
@@ -181,7 +202,7 @@ Report with the step 8 lists. As new findings, list only the issues your earlier
   If managed, edit the source, then run `chezmoi apply --no-tty <target>`.
   Otherwise edit the writable file directly; for a read-only file, find its source instead of changing permissions.
 - User commands are comma-prefixed (`~/bin/,*`); type the comma.
-- Shell commands run under zsh with `NOMATCH`: quote arguments that contain `[]()*?` literally.
+- Shell commands run under zsh with `NOMATCH`: quote arguments containing literal `[]()*?` characters.
 - Search narrowly: harness search tools first, then `rg` scoped by path or glob, never shell `grep` on files.
   Never a bare repo-root `rg` in a large repo.
 - GitHub: use `gh`. Web search: harness tool, fallback `ddgr --noua`.
@@ -198,6 +219,8 @@ Report with the step 8 lists. As new findings, list only the issues your earlier
 
 - Line 1 answers, decides, or names the next action. No preamble, recap of steps, or closing pleasantries.
 - Short sentences, active voice, exact technical names. Prefer a table or a `file:line — finding` list over prose.
+- In all text you write or edit, use concrete domain terms. When a plausible alternate meaning changes the required behavior or conclusion,
+  define the intended meaning in context and explicitly exclude the misleading reading.
 - Budgets cover the whole message, lists and tables included: a direct answer ≤80 words; an investigation ≤200 words;
   a change report (an answer with `Checked:`) ≤250 words.
   Fenced code and blockquotes do not count; a prompt that asks for detail, a write-up, or a long list lifts the budget.

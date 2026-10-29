@@ -28,9 +28,7 @@ In-session `~/AGENTS.md` §8 shape rules do not override this skill's friendly r
 Load `~/.agents/skills/k-anti-slop/SKILL.md` and its prose reference for the wording filter;
 reuse them if already loaded for this invocation.
 
-- Choose no reply when it would only restate the thread or add attribution trivia, or turn a casual exchange into an investigation report.
 - Match the surface's register; keep simple social replies in natural conversational phrasing, using lab-report phrasing only when requested.
-- Use natural wording, or say that no message is worth sending.
 
 ## Core Tone
 
@@ -41,17 +39,15 @@ reuse them if already loaded for this invocation.
   State certainty at its actual level.
 - Apply `~/AGENTS.md` §2 when drafting agreement or disagreement: politeness must not imply that an unverified claim is correct.
   Give the supported reason, correction, or unresolved question; do not draft concessions or promises merely to placate the recipient.
-- Keep the AI/agentic session invisible.
-  The reader must not be able to tell an agent produced this: no mention of the agent/assistant, the skills/prompts/SOP it follows, the tools or CLIs it ran, request payloads, or the raw tool errors it hit while working.
-  Write as the user would (e.g. not "my agent re-ran the `gh` call after a 422" — just make the point).
-  It hides agentic plumbing; it does not withhold legitimate domain content like real API error codes the human needs.
+- Keep session provenance out of external text: do not narrate the assistant, its workflow, tool calls, or errors encountered while drafting.
+  Preserve legitimate domain facts, including tool, harness, model, and API names when they are the subject being discussed.
   Exception: a verified domain overlay may mandate AI-attribution trailers; it overrides this rule for the surfaces it names.
-- Session artifacts MUST NOT appear in external text: SOP section numbers or rule names, skill/agent/lane/worker/packet names and IDs, `Compatibility impact:` lines, `Unknown because` markers, `,handoff` note paths or contents, harness or model names, hook notes, and worker status reports.
-  Strip them from the draft before showing the payload; the in-session summary keeps them.
+- Session-only artifacts MUST NOT appear in external text: internal rule citations, task/worker IDs, `Unknown because` markers, handoff paths or contents, hook notes, and worker status reports.
+  Strip these provenance details before showing the draft; do not strip a required domain term or report field merely because the session also uses it.
 
 ## Concision
 
-Length is a hard budget per artifact class, not a vibe.
+Length follows the budget for the artifact class.
 "Concise" means unpadded, not shallow: if a cut removes a fact, real hedge, or safety qualifier, restore it and cut elsewhere.
 
 Budgets (words of narrative; code blocks and links do not count):
@@ -60,29 +56,28 @@ Budgets (words of narrative; code blocks and links do not count):
 - PR/issue comment, review reply: ≤80.
 - PR description, issue body, release note: ≤200 + optional short bullet list.
 
-- No water. Every sentence carries a fact, request, or decision. Delete the rest.
+- Every sentence carries a fact, request, or decision. Delete the rest.
 - Cut anything the reader infers from context (thread, diff, prior message, PR title).
   Do not restate the concern, file path, obvious effect, or what the reader just said.
-- PR review submit bodies are acknowledgements, not summaries.
-  Do not repeat, summarize, or enumerate details already present in inline comments.
 - Prefer no message over a low-signal message.
-  If the thread already has the correction or next step, and the only remaining contribution is historical color, attribution cleanup, or rephrasing someone else's point, do not draft.
+  Do not draft a reply that only repeats the thread, adds attribution trivia, or turns a casual exchange into an investigation report.
 - No headline summaries, status prefixes, or `RE:`-style headers. Get to the substance.
 - Prefer the shortest form that carries full meaning: a one-line comment, a tight PR description, a single-sentence status update.
 - PR review summary bodies are short acknowledgements: prefer `Looks good.` for clean approvals and `Left inline feedback.` when comments exist.
+  Do not repeat the inline findings.
 
 ## Default Shape
 
-For most messages, this covers it:
+Lead with the point; add uncertainty or a question only when relevant:
 
 1. **The point**, in the first sentence: what changed, what you're asking, or what you found.
 2. **The doubt**, when one exists: the assumption you're unsure of, or what you could not verify. One clause, stated plainly.
-3. **The close**: `wdyt` / `lmk` / a short question.
+3. **A request**, when the recipient has something to decide or do.
 
-That is the whole message. Add sections only when the content genuinely needs them.
+Add sections only when the content needs them.
 
-- One idea per bullet or line. Split any sentence carrying two facts.
-- Put paths, commands, IDs, and links on their own line, not buried mid-sentence.
+- Keep each paragraph or bullet on one topic; related facts may share a sentence.
+- Keep references beside the claims they support. Put long or copyable commands on separate lines when that improves use.
 - Argue from the technical reason or the open question, never from time or effort ("didn't have time to", "for now", "quick fix" are all off limits).
 
 ## Structure (Longer-Form Artifacts)
@@ -109,9 +104,3 @@ Reach for a density primitive before prose; add sections only when a shorter for
 
 Before drafting a response to an existing message or thread, MUST load and follow `~/.agents/skills/k-communication/references/thread-replies.md`.
 Verify the current outcome before choosing reply or resolution-state wording.
-
-## Optional Niceties
-
-- A light collaborative close (`Wdyt`, `lmk`) is the default nicety; it replaces longer warmth. Drop it on pure facts or resolve/close.
-- Honest doubt is a nicety, not a weakness: naming the assumption you could not verify invites correction and reads as collaborative.
-- Match the surface's register: terser for chat/Slack, slightly more structured for long-form email or a PR description when the content genuinely needs it.

@@ -30,7 +30,8 @@ Implement the approved `k-spec` plan inline.
   for a visual or runtime one, load `k-ui-capture`, plus the matching domain overlay when one exists.
   Windows coverage only when asked, through `k-live-ui-windows`.
 - On a failure, fix within scope and rerun the failed and affected checks.
-  After two attempts without new evidence, stop and report the blocker.
+  After two attempts without new evidence, stop editing and investigate read-only;
+  report the blocker only if that investigation cannot resolve it.
 - Run the independent review that `~/AGENTS.md` §3 step 5 requires through `k-review` verify mode.
 
 ## Output

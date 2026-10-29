@@ -10,7 +10,6 @@ The `~/.agents/skills/k-code-quality/SKILL.md` skill still applies unless local 
 
 ## Component Structure
 
-- Use one functional React component per file when writing React.
 - Prefer hooks and composition over class components or inheritance.
 - Keep component props explicit and typed.
 - Split a component only when it reduces real complexity or matches an existing local pattern.
@@ -34,7 +33,8 @@ Do not load secondary skills until read/diff evidence proves the surface is in s
 ## UI Behavior
 
 - Preserve keyboard and focus behavior when changing interactive components.
-- In tables, lists, and collections, ensure presentation, sorting comparators, and filter predicates share identical projection logic for item attributes.
+- In tables, lists, and collections, derive presentation, sort keys, and filters from the same canonical attribute value;
+  make display formatting and comparison rules explicit.
 - Verify user-visible behavior with a unit render test or from the component contract when the change affects interaction or layout;
   an interactive browser session is a live check (`~/AGENTS.md` §3 step 4).
   Source verification does not waive minimum sufficient test protection under `~/AGENTS.md` §3 for new/changed material behavior.

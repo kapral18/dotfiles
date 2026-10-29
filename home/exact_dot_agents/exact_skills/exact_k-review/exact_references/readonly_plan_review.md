@@ -38,8 +38,7 @@ Walk the plan end-to-end, ordered by risk:
    Apply the Check-Coverage Exemption in `~/.agents/skills/k-review/references/judging_core.md` (plan clause):
    do not report formatting, lint, or type-error classes the repo's existing checks catch at implementation.
 5. **Gates by content:** planned removals get the Deletion-Safety Audit and Historical Archaeology Gate;
-   planned replacements the Replacement/Migration Parity Gate; a stateful/parser-like plan must name how it will verify transitions
-   (explicit transition cases, or an independent oracle table in a disposable harness);
+   planned replacements the Replacement/Migration Parity Gate; a stateful/parser-like plan must name evidence for material transition risks and preserved behavior under the State-Machine Verification Gate;
    cross-module/deploy plans the Systemic-Risk Checks; user-facing flows the Product-Flow Lens;
    alerting/monitoring work the Signal-Quality Gate.
 6. **Gaps:** missing steps, unowned risks, absent rollback/verification, and co-edit-set members the plan does not mention (docs, diagrams, configs).

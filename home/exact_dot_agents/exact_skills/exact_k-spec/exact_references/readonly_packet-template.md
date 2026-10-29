@@ -1,7 +1,8 @@
 # Spec Plan Template
 
 The template used by `~/.agents/skills/k-spec/SKILL.md`.
-Keep every section and every criterion's `check:`/`judgment:` tag; omit `External dependencies` only when there are none.
+Keep every section and each criterion's `check:`/`judgment:` tag; include only applicable criteria.
+Omit `External dependencies` only when there are none.
 
 ```markdown
 # Spec: <topic>
@@ -31,7 +32,7 @@ Acceptance criteria:
 2. <observable statement>
    judgment: <what evidence settles it>
 3. <stateful-behavior statement>
-   check: `<command>`            # explicit transition cases: intended, preserved, malformed, terminal
+   check: `<command>`            # relevant intended and preserved transitions
    now: planned
 
 Risks / unknowns:

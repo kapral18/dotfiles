@@ -6,7 +6,8 @@ description: "Use when writing or reviewing prose, technical docs, UI, accessibi
 # Anti-slop
 
 Use the shortest wording that preserves meaning and usability. Do not expand already-clear text to demonstrate checklist coverage.
-It covers authored artifacts; in-session responses follow `~/AGENTS.md`.
+It covers authored artifacts; apply the precision rule in `~/AGENTS.md` §8 on every surface.
+In-session replies also follow that section's response format.
 
 ## Scope and evidence
 

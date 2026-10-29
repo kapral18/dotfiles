@@ -28,23 +28,23 @@ The bundled Python contrast calculator runs locally without an MCP server. See t
 
 ## Review and verification
 
-Comments need indispensable non-obvious constraints or required directives. Tests have a separate obligation: new or changed material implementation behavior must have durable behavioral coverage. Reuse or extend existing tests; add only missing protection. Zero new tests requires sufficient existing behavioral coverage or no material runtime change. Source/static checks and disposable probes do not replace missing durable coverage. Throwaway exploration remains test-free; absorbed implementation must meet the test rule. Workflows and reviewers reject branch/field quotas and remove redundancy while preserving material protection. Plans and unfinished fixes belong in the task record, never in code comments.
+Prefer the smallest in-scope design that rules out the error class in application logic and data. Tests protect its observable invariant; see the [global rules](../../../home/readonly_AGENTS.md#3-work-loop) and [design principles](../../../home/exact_dot_agents/exact_skills/exact_k-codebase-design/readonly_SKILL.md#principles).
 
-`k-review` covers local changes, PRs, PR feedback, and plans. Its Verify mode uses independent reviewers and repeats until a full review round finds no new supported medium-or-higher finding; low findings are fixed too.
+Comments retain required directives or critical non-obvious constraints. Material implementation changes need durable behavioral coverage: reuse existing tests and add only missing protection. Static checks and disposable probes do not replace it. The [comment](../../../home/exact_dot_agents/exact_skills/exact_k-anti-slop/exact_references/readonly_comments.md) and [test](../../../home/exact_dot_agents/exact_skills/exact_k-code-quality-tests/readonly_SKILL.md) guidance define case selection, independent oracles, and removal of redundancy.
 
-1. Freeze the task scope, including behavior-map and memory writes. A later review in the same task compares against the previous review's saved baseline.
-2. Run two fresh reviewers in parallel using the [Reviewer launch procedure](../../../home/exact_dot_agents/exact_skills/exact_k-review/readonly_SKILL.md#reviewer-launch). Give them the same scope, change's impact (for a change within write scope; a narrowed round gets none), request, checks, assumptions, and known findings.
-3. Verify findings against source and fix supported issues within the request's scope and defects in the change's impact. Before each fix round, reconsider the goal and read the affected consumers. Investigate a recurring cause and replace the approach or revert the affected change instead of adding patches indefinitely.
-4. Review the fix diff, then run narrowed and full rounds as required. A clean fix-diff or narrowed round does not replace the final full-scope round. There is no round-count limit or approval pause; a cause that reaches the stopping condition stays under `Open:` while other findings are resolved.
-5. Save the reviewed files as the next baseline. Report fixed and rejected findings, proposals, blockers, and measured review-round timing. Mark non-wording fixes made after the last review as unreviewed.
+After a prototype question is settled, record its verdict in the task record and delete or absorb the prototype within authorized scope. Absorbed material behavior needs the same durable coverage; scheduled cleanup is not completion.
 
-The [review skill](../../../home/exact_dot_agents/exact_skills/exact_k-review/readonly_SKILL.md) and [fix procedure](../../../home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_review_fixes.md) define the exact scope, severity thresholds, returned-cause handling, and baseline rules.
+`k-review` handles local changes, PRs, feedback, and plans. Verify freezes scope and acceptance, launches two fresh reviewers, and fixes supported findings through unbounded rounds. Narrowed and fix-diff reviews do not replace the closing whole-scope round. The loop ends with no new supported medium-or-higher finding and its low findings fixed; recurring-cause stopping rules remain with the [fix procedure](../../../home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_review_fixes.md).
 
-`k-light-review` is the inline variant for small, self-authored, low-risk changes. `k-code-quality` and its test, web, and React skills apply the corresponding standards while editing. Its De-slop section applies to every file type, beyond the patterns its rules name.
+The [review skill](../../../home/exact_dot_agents/exact_skills/exact_k-review/readonly_SKILL.md) defines exact targeting, evidence, baseline, and reporting requirements. `k-light-review` covers small, self-authored, low-risk changes inline; both routes use `k-code-quality` and the relevant secondary guidance.
+
+Review targets and the Verify workflow are separate choices. Local fixes follow the canonical authorship rules, including explicit requests to fix another author's work.
+
+[`k-communication`](../../../home/exact_dot_agents/exact_skills/exact_k-communication/readonly_SKILL.md) preserves relevant domain facts while excluding session provenance. It keeps related facts together and asks a closing question only when the recipient has something to decide or do.
 
 Review queues reuse verified evidence only while its source and check inputs still match the saved snapshot, including local uncommitted and untracked files. Changed inputs refresh only the affected evidence and checks. A saved PR discussion must have been read completely before it can support a conclusion.
 
-`k-diagnosing-bugs` puts an unresolved runtime criterion under `Open:` with the missing evidence or check as its blocker. The evidence ledger excludes quoted and fenced examples, including fences inside lists, from report-citation checks.
+`k-diagnosing-bugs` puts an unresolved runtime criterion under `Open:` with the missing evidence or check as its blocker. `k-code-quality-web` reports static evidence under `Checked:` and claims requiring a live check under `Open:`. The evidence ledger excludes quoted and fenced examples, including fences inside lists, from report-citation checks.
 
 ## Catalog
 

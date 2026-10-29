@@ -4,9 +4,8 @@ Use when the user asks to review local work, a diff, a commit range, or a branch
 
 ## Authorship
 
-Resolve authorship per `~/.agents/skills/k-review/references/authorship.md`. Do not assume `self` because the change is checked out locally:
-a branch tracking another person's fork is `other`, and commits by someone else are `other`.
-For `other` or `unknown`, report findings with proposed fixes and stop.
+Resolve authorship and write authority with `~/.agents/skills/k-review/references/authorship.md`.
+Local checkout alone does not establish `self`; explicit requests to fix other or unknown authorship follow that reference's write-scope rule.
 
 ## Scope
 
@@ -34,7 +33,7 @@ Select the scope:
 
 ## Fixes
 
-With `self` write scope, fix supported findings in the same pass inside `~/.agents/skills/k-review/references/review_fixes.md` Fix Scope, then run the affected checks once.
+Within write scope, fix supported findings in the same pass inside `~/.agents/skills/k-review/references/review_fixes.md` Fix Scope, then run the affected checks once.
 Local ownership never authorizes commit or push.
 
 ## Output

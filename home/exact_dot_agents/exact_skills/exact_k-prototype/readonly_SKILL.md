@@ -33,16 +33,16 @@ a page/component → UI) and state the assumption in the task record.
    The user must start it without thinking.
 3. **No persistence by default.** State lives in memory — persistence is the thing the prototype is _checking_, not something it depends on.
    If the question is about a database, hit a scratch DB or a local file with a clear "PROTOTYPE — wipe me" name.
-4. **Skip the polish during disposable exploration.** No tests, no error handling beyond what makes it runnable, no abstractions.
+4. **Skip the polish during disposable exploration.**
+   No durable test suite, no error handling beyond what answers the question, no speculative abstractions.
    Learn something fast, then delete it.
 5. **Surface the state.**
    After every action (logic) or on every variant switch (UI), print or render the full relevant state so the user sees what changed.
 6. **Delete or absorb when done.**
-   Either delete it or fold the validated decision into the real code, so nothing is left rotting in the repo.
+   Delete it or absorb the validated behavior within the authorized implementation scope.
    Absorbed material behavior must meet `~/AGENTS.md` §3's minimum sufficient test protection rule before implementation is complete.
 
 ## When done
 
-The _answer_ is the only thing worth keeping.
-Done when the question, the verdict (keep / discard / refactor), and where the validated decision goes are captured somewhere durable (commit message, PR, issue, `,ai-kb`, or a `NOTES.md` next to the prototype), and the prototype is deleted or scheduled for deletion/absorption.
-If the user is around, that capture is a quick conversation; if not, leave the placeholder so the verdict can be filled in before the prototype is deleted.
+After the question is answered, record the question, verdict, and destination in the task record, then delete or absorb the prototype.
+Do not call its lifecycle complete while cleanup is merely scheduled.
