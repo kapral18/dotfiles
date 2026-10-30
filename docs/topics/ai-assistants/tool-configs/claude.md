@@ -46,6 +46,30 @@ Keep at least one key under `claude_global_config`: an empty set fails the hook 
 Removing a key stops managing it but leaves its last value in `~/.claude.json`.
 `settings.llama-cpp*.json.tmpl` hold the settings `,claude-llama-cpp` passes for local models: model-scoped `high` effort, thinking off.
 
+### Agent status summaries
+
+Fish and POSIX shell startup export `BUN_OPTIONS` with the managed
+[`no-agent-summary.cjs`](../../../../home/dot_claude/readonly_no-agent-summary.cjs) preload.
+Repeated startup keeps one copy and preserves inherited Bun options.
+The preload suppresses `setTimeout` and `setInterval` callbacks containing Claude's
+`[AgentSummary] Timer fired` or `agent_summary` anchors in compiled Bun executables.
+Other timers and ordinary Bun scripts keep their behavior. Background agents still run;
+their generated status summaries stop updating.
+
+Adapted from [Flamerix AI's MIT-licensed gist, revision 2fe2241](https://gist.github.com/flamerix-ai/c3905705cc4205e5de3011fa2e74efce/2fe224167473e3185c104a5dbff7a788ab025b3b).
+The [license](../../../../home/dot_claude/readonly_no-agent-summary.LICENSE) ships beside the preload.
+This version always suppresses matching timers and omits upstream diagnostic modes and file logging.
+The locally installed Claude Code 2.1.308 native binary contains both anchors.
+Isolated compiled Bun fixtures verify suppression, cancellation, normal timers and promisification;
+they do not establish a percentage of token savings.
+
+New shell-launched Claude processes inherit the preload. Already-running processes and daemons
+keep their original environment; restart them from a new shell to activate it.
+Finder-launched Claude Desktop Code sessions do not inherit arbitrary shell variables,
+so these shell exports do not cover that launch path.
+An update that changes the callback anchors or timer API can silently restore summaries.
+No installed Claude binary is patched.
+
 ### Mods
 
 Claude Code mods are TypeScript function-hook plugins (early-access API).

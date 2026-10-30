@@ -15,6 +15,8 @@ The SOP owns compatibility and verification.
 
 ## De-slop
 
+When reviewing a repository artifact, first load `~/.agents/skills/k-review/references/adversarial_stance.md`;
+reuse it if already loaded in full.
 De-slop everything you write or review, in any file type: cut or report what does not earn its place, whether or not a rule here or in a secondary skill names the pattern.
 Examples: dead code, duplicated logic, needless abstraction, comments that restate code, unrequested scope, misleading names, tests that cannot fail, padded or templated prose.
 Minimal Edit Scope, Semantic Dedupe And Simplicity, and Artifact Necessity below are specific cases.

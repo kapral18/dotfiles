@@ -40,6 +40,105 @@ def stop_process_group(process: subprocess.Popen) -> None:
 class TestTmuxPickerShellHelpers(unittest.TestCase):
     """WHEN validating tmux picker shell helper contracts."""
 
+    def test_existing_worktree_session_without_session_path_is_reused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            home = root / "home"
+            pickers = home / ".config/tmux/scripts/pickers"
+            for source in TMUX_PICKERS.rglob("*"):
+                if not source.is_file() or "__pycache__" in source.parts:
+                    continue
+                relative = source.relative_to(TMUX_PICKERS)
+                target = pickers / relative.parent / relative.name.removeprefix("executable_")
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(source.read_bytes())
+                target.chmod(0o755 if relative.name.startswith("executable_") else 0o644)
+            (home / ".config/tmux/pick_session_dir_exclude.txt").write_text("")
+            worktree = home / "code/duzo/main"
+            worktree.mkdir(parents=True)
+            selection = root / "selection.tsv"
+            selection.write_text(f"duzo\tworktree\t{worktree}\twt_root:main|repo=code/duzo\t{worktree}\tduzo\n")
+            fake_bin = root / "bin"
+            fake_bin.mkdir()
+            calls = root / "calls.jsonl"
+            tmux = fake_bin / "tmux"
+            tmux.write_text(
+                f"#!{sys.executable}\n"
+                "import json, os, sys\n"
+                "args = sys.argv[1:]\n"
+                "with open(os.environ['CALLS'], 'a') as log: log.write(json.dumps(args) + '\\n')\n"
+                "if args[0] == 'list-sessions':\n"
+                "    fmt = args[args.index('-F') + 1]\n"
+                "    fmt = fmt.replace('#{?session_path,#{session_path},#{pane_current_path}}', "
+                "os.environ['PANE_PATH'])\n"
+                "    print(fmt.replace('#{session_name}', 'code/duzo|main').replace('#{session_path}', ''))\n"
+                "elif args[0] == 'new-session':\n"
+                "    print('duplicate session: code/duzo|main', file=sys.stderr)\n"
+                "    sys.exit(1)\n"
+                "elif args[0] == 'display-message' and '-p' in args: print('other-session')\n"
+            )
+            tmux.chmod(0o755)
+            (fake_bin / "fzf").write_text("#!/bin/sh\nexit 1\n")
+            (fake_bin / "fzf").chmod(0o755)
+            env = {
+                **os.environ,
+                "HOME": str(home),
+                "XDG_CACHE_HOME": str(root / "cache"),
+                "PATH": f"{fake_bin}:{os.environ['PATH']}",
+                "TMUX": "fixture,1,0",
+                "CALLS": str(calls),
+            }
+            for pane_path in (str(worktree), ""):
+                with self.subTest(pane_path=pane_path):
+                    calls.write_text("")
+                    result = subprocess.run(
+                        [modern_bash(), str(pickers / "session/pick_session.sh")],
+                        env={**env, "PANE_PATH": pane_path, "PICK_SESSION_SELECTION_FILE": str(selection)},
+                        capture_output=True,
+                        text=True,
+                        timeout=10,
+                    )
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    actual_calls = [json.loads(line) for line in calls.read_text().splitlines()]
+                    self.assertFalse(any(call[0] == "new-session" for call in actual_calls), actual_calls)
+                    self.assertIn(["switch-client", "-t", "=code/duzo|main"], actual_calls)
+
+            cache = root / "cache/tmux/pick_session_items.tsv"
+            cache.unlink()
+            commands = [
+                [modern_bash(), str(pickers / "session/index.sh"), "--quick", "--skip-dirty", "--skip-gh"],
+                [modern_bash(), str(pickers / "session/items.sh")],
+                [sys.executable, str(pickers / "session/lib/items_full_rehydrate.py"), str(cache)],
+            ]
+            for command in commands:
+                with self.subTest(command=command):
+                    if command == commands[-1]:
+                        cache.write_text(selection.read_text())
+                    result = subprocess.run(
+                        command,
+                        env={**env, "PANE_PATH": str(worktree)},
+                        capture_output=True,
+                        text=True,
+                        timeout=10,
+                    )
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    rows = [line.split("\t") for line in result.stdout.splitlines()]
+                    self.assertTrue(
+                        any(row[1:3] == ["session", str(worktree)] and row[4] == "code/duzo|main" for row in rows),
+                        rows,
+                    )
+            result = subprocess.run(
+                commands[0],
+                env={**env, "PANE_PATH": ""},
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertFalse(
+                any(line.split("\t")[1] == "session" for line in result.stdout.splitlines()), result.stdout
+            )
+
     def test_snapshot_filters_headers_into_unique_cache_files(self):
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)

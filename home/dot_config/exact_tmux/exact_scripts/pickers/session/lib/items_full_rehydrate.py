@@ -485,7 +485,10 @@ def path_tombstoned(kind: str, p: str) -> bool:
 
 
 current_name = tmux_out(["tmux", "display-message", "-p", "#S"]).strip()
-sess_out = tmux_out(["tmux", "list-sessions", "-F", "#{session_name}\t#{session_path}"], required=True)
+sess_out = tmux_out(
+    ["tmux", "list-sessions", "-F", "#{session_name}\t#{?session_path,#{session_path},#{pane_current_path}}"],
+    required=True,
+)
 sess_by_rpath = {}
 sess_raw_path = {}
 live_session_names = set()

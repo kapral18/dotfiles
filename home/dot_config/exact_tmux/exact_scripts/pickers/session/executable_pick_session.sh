@@ -123,14 +123,16 @@ sess_rpaths=()
 
 sess_cache_load() {
   local out n p rp
-  out="$(tmux list-sessions -F $'#{session_name}\t#{session_path}' 2> /dev/null || true)"
+  out="$(tmux list-sessions -F $'#{session_name}\t#{?session_path,#{session_path},#{pane_current_path}}' 2> /dev/null || true)"
   sess_names=()
   sess_paths=()
   sess_rpaths=()
   while IFS=$'\t' read -r n p; do
     [ -n "$n" ] || continue
-    [ -n "$p" ] || continue
-    rp="$(resolve_path "$p" 2> /dev/null || printf '%s' "$p")"
+    rp=""
+    if [ -n "$p" ]; then
+      rp="$(resolve_path "$p" 2> /dev/null || printf '%s' "$p")"
+    fi
     sess_names+=("$n")
     sess_paths+=("$p")
     sess_rpaths+=("$rp")

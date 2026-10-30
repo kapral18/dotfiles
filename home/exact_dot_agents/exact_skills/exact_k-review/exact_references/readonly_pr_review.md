@@ -1,5 +1,7 @@
 # Mode: PR Review
 
+Before reviewing, load `~/.agents/skills/k-review/references/adversarial_stance.md`; reuse it if already loaded in full.
+
 Use when the user wants a PR review (initial or continued), gives a PR and says "review", or asks whether a PR fix resolves a bug ("does this PR fix it", "recheck", "is it resolved on the updated branch").
 To apply reviewer feedback (code changes plus thread replies), use `~/.agents/skills/k-review/references/pr_fix.md`.
 

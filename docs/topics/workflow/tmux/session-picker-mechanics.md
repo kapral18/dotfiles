@@ -106,6 +106,8 @@ Quick/sessions-only publishes merge into the existing cache and refuse to replac
 
 Refresh preserves query and cursor position by reloading through the same ordered cache pipeline and using fzf tracking actions.
 
+Sessions with an empty tmux `session_path` use the active pane’s `pane_current_path` for indexing and worktree matching. Session existence is tracked by name even when neither path is available, so selecting its worktree does not try to create a duplicate session.
+
 Session enumeration fails closed: if `tmux list-sessions` fails, index updates keep the last good cache and cache rehydration preserves existing rows rather than presenting worktrees/directories without sessions. Ordered snapshots also verify that their cache, mutation, pending, and frecency inputs did not change while ordering; a raced snapshot is discarded.
 
 Main cache files live under `~/.cache/tmux/`:

@@ -118,6 +118,14 @@ GATES: tuple[Gate, ...] = (
 
 TEST_RULES: tuple[TestRule, ...] = (
     TestRule(
+        prefixes=(
+            "home/dot_claude/readonly_no-agent-summary.cjs",
+            "home/readonly_dot_profile.tmpl",
+            "home/dot_config/fish/readonly_config.fish.tmpl",
+        ),
+        tests=("tests/test_claude_agent_summary.py",),
+    ),
+    TestRule(
         prefixes=("home/dot_config/exact_ghostty/",),
         tests=("tests/test_ghostty.py",),
     ),

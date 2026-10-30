@@ -24,6 +24,7 @@ Everything else stays inline: implementation, verification, memory, and routine 
 ## Profiles
 
 The reviewer body is shared: `home/.chezmoitemplates/reviewer-prompt.md`. It collects candidates across correctness, removed safeguards, contracts, simplification, conflicting state operations, edge inputs, instruction text, project rules, and slop, then deduplicates and refutes them before reporting evidence-backed `file:line` findings.
+Every engineering reviewer loads the same [adversarial stance](../../../home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_adversarial_stance.md) as main and light reviews. It steers scrutiny within the assigned scope; fresh contexts, complementary focuses, existing judgment rules, and the parent-owned fix loop remain in force. The separate holistic audit uses that stance with project-wide coverage. Final-answer compliance hooks retain their distinct evidence and completion checks.
 Its verdict follows the evidence: there is no finding quota, and the caller's or author's preferred outcome does not justify inventing, suppressing, or withdrawing a finding.
 
 | Harness     | Reviewer                                                                                                                     | Search                                     |

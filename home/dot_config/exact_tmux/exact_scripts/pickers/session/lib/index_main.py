@@ -1340,7 +1340,7 @@ elif _dirty_candidates:
 _tmux_session = subprocess.run(["tmux", "display-message", "-p", "#S"], check=False, stdout=subprocess.PIPE, text=True)
 current_session = (_tmux_session.stdout or "").strip()
 _tmux_sessions = subprocess.run(
-    ["tmux", "list-sessions", "-F", "#{session_name}\t#{session_path}"],
+    ["tmux", "list-sessions", "-F", "#{session_name}\t#{?session_path,#{session_path},#{pane_current_path}}"],
     check=False,
     stdout=subprocess.PIPE,
     stderr=subprocess.PIPE,
@@ -1359,6 +1359,8 @@ for row in sess_out.splitlines():
         continue
     name, _, path = row.partition("\t")
     name, path = name.strip(), path.strip()
+    if not name or not path:
+        continue
     rp = resolve_path(path)
     # Skip sessions rooted in "bag" locations (archived leftovers from picker
     # removals). These are almost always stale and can mask a newly recreated

@@ -1,5 +1,7 @@
 # Mode: PR Fix
 
+Before judging feedback or fixes, load `~/.agents/skills/k-review/references/adversarial_stance.md`; reuse it if already loaded in full.
+
 Use for an explicit request to address review feedback. Fix authority follows `~/.agents/skills/k-review/references/authorship.md`.
 Resolve PR identity, current head, authorship (`~/.agents/skills/k-review/references/authorship.md`), and the set of threads the user authorized before any edit.
 

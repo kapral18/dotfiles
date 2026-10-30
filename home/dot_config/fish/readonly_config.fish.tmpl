@@ -13,6 +13,11 @@ end
 set -x EDITOR nvim
 set -x VISUAL nvim
 
+set -l claude_preload "--preload "(string escape --no-quoted -- "$HOME/.claude/no-agent-summary.cjs")
+if not string replace -q -- " $claude_preload " "" " $BUN_OPTIONS "
+    set -gx BUN_OPTIONS (string trim -- "$BUN_OPTIONS $claude_preload")
+end
+
 set -x HOMEBREW_NO_AUTO_UPDATE 1
 set -x HOMEBREW_PREFIX {{ .homebrewPrefix }}
 set -x HOMEBREW_CELLAR {{ .homebrewPrefix }}/Cellar

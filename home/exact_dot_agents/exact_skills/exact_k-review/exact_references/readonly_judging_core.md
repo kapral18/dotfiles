@@ -1,5 +1,7 @@
 # Judging Core (Surface-Agnostic)
 
+Before judging, load `~/.agents/skills/k-review/references/adversarial_stance.md`; reuse it if already loaded in full.
+
 - Mode files and `~/.agents/skills/k-review/references/shared_rules.md` reference this file; do not duplicate these sections elsewhere.
 - Delivery-agnostic: no GitHub or delivery rules.
 - Surfaces needing PR/GitHub-delivery rules layer them via `~/.agents/skills/k-review/references/shared_rules.md`.

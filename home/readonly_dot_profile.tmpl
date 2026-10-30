@@ -5,6 +5,13 @@ export TERM="${TERM:-xterm-256color}"
 export EDITOR=nvim
 export VISUAL=nvim
 
+_claude_preload="--preload $(printf '%q' "$HOME/.claude/no-agent-summary.cjs")"
+case " ${BUN_OPTIONS-} " in
+  *" $_claude_preload "*) ;;
+  *) export BUN_OPTIONS="${BUN_OPTIONS:+$BUN_OPTIONS }$_claude_preload" ;;
+esac
+unset _claude_preload
+
 export HOMEBREW_NO_AUTO_UPDATE=1
 export HOMEBREW_PREFIX="{{ .homebrewPrefix }}"
 export HOMEBREW_CELLAR="{{ .homebrewPrefix }}/Cellar"

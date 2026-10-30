@@ -172,7 +172,7 @@ done
 if command -v tmux > /dev/null 2>&1; then
   cur="$(tmux display-message -p '#S' 2> /dev/null || true)"
   tmp_sessions="$(mktemp -t pick_session_fallback.XXXXXX)"
-  tmux list-sessions -F $'#{session_name}\t#{session_path}' 2> /dev/null | while IFS=$'\t' read -r name path; do
+  tmux list-sessions -F $'#{session_name}\t#{?session_path,#{session_path},#{pane_current_path}}' 2> /dev/null | while IFS=$'\t' read -r name path; do
     [ -n "$name" ] || continue
     [ "$name" = "$cur" ] && continue
     tpath="$path"

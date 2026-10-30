@@ -1,5 +1,7 @@
 # Mode: Plan Review
 
+Before reviewing, load `~/.agents/skills/k-review/references/adversarial_stance.md`; reuse it if already loaded in full.
+
 Use when:
 
 - the user asks to review a plan, design document, implementation proposal, or RFC before (or during) implementation

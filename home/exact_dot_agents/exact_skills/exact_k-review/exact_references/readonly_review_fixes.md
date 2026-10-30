@@ -1,5 +1,7 @@
 # Review Fixes
 
+Before reviewing a fix, load `~/.agents/skills/k-review/references/adversarial_stance.md`; reuse it if already loaded in full.
+
 Fix findings only within write scope (`~/.agents/skills/k-review/references/authorship.md`).
 For `other` or `unknown` authorship, fixing needs the user to explicitly say so.
 

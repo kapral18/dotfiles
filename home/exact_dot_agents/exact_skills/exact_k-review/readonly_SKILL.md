@@ -5,6 +5,7 @@ description: "Use to review local changes, a PR, review threads (PR fixes), or a
 
 # Review
 
+Before any mode, load `~/.agents/skills/k-review/references/adversarial_stance.md` for the mandatory engineering-review stance.
 Pick one review target and report anchored findings.
 Load `~/.agents/skills/k-review/references/authorship.md` once before any mode; it decides whether you may edit.
 

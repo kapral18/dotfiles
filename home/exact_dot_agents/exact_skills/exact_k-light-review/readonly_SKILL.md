@@ -5,6 +5,9 @@ description: "Use for one quick inline review of a small, low-risk, self-authore
 
 # Light Review
 
+Before reviewing, load `~/.agents/skills/k-review/references/adversarial_stance.md`;
+the light path keeps the same adversarial stance within its smaller assignment.
+
 ## Light-Eligibility Predicate
 
 All conditions must hold: local-only diff, verified self-authorship, reversible change, focused observable check, and semantically simple behavior.
