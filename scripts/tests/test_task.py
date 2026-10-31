@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import fcntl
+import io
 import json
 import os
 import subprocess
@@ -12,6 +14,9 @@ import unittest
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
+from unittest import mock
+
+from _test_support import load_module
 
 REPO = Path(__file__).resolve().parents[2]
 COMMAND = REPO / "home" / "exact_lib" / "exact_,task" / "main.py"
@@ -70,7 +75,11 @@ class TestTask(unittest.TestCase):
     def hook(self, event: str, **data) -> dict:
         data.setdefault("session", "s1")
         data.setdefault("cwd", str(self.repo))
-        result = self.run_task("hook", event, "--harness", "test", "--input", json.dumps(data))
+        handle, name = tempfile.mkstemp(dir=self.tmp.name, suffix=".json")
+        payload = Path(name)
+        with os.fdopen(handle, "w") as stream:
+            stream.write(json.dumps(data))
+        result = self.run_task("hook", event, "--harness", "test", "--input-file", str(payload))
         self.assertEqual(result.returncode, 0, result.stderr)
         return json.loads(result.stdout)
 
@@ -1666,6 +1675,57 @@ class TestTask(unittest.TestCase):
         self.hook("prompt", text="new turn after background process ended")
         (self.repo / "README.md").write_text("user changed it")
         self.assertEqual(self.hook("stop", answer="explained"), {})
+
+
+class TestTaskHookLimits(unittest.TestCase):
+    """WHEN a hook meets a busy worktree lock, a huge file, odd input, or an agent store path."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.base = Path(self.tmp.name)
+        patcher = mock.patch.dict(os.environ, {"AGENT_TASK_DIR": str(self.base / "store")})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        with mock.patch.object(sys, "path", [str(COMMAND.parent), *sys.path]):
+            self.task = load_module("task_limits_under_test", COMMAND)
+
+    def run_main(self, *argv: str) -> tuple[int, str]:
+        out = io.StringIO()
+        with mock.patch.object(sys, "stdout", out):
+            code = self.task.main(list(argv))
+        return code, out.getvalue()
+
+    def test_hook_answers_nothing_when_the_lock_stays_busy(self):
+        directory = self.task.task_dir(self.base)
+        directory.mkdir(parents=True)
+        with (directory / ".lock").open("a") as held, mock.patch.object(self.task, "LOCK_WAIT", 0.1):
+            fcntl.flock(held, fcntl.LOCK_EX)
+            code, out = self.run_main(
+                "hook", "prompt", "--harness", "test", "--input", json.dumps({"cwd": str(self.base)})
+            )
+        self.assertEqual((code, out.strip()), (0, "{}"))
+
+    def test_hook_treats_non_object_input_as_empty(self):
+        os.chdir(self.base)
+        self.addCleanup(os.chdir, REPO)
+        code, _ = self.run_main("hook", "prompt", "--harness", "test", "--input", "[1, 2]")
+        self.assertEqual(code, 0)
+
+    def test_large_file_is_fingerprinted_without_reading_it(self):
+        big = self.base / "weights.bin"
+        big.write_bytes(b"x" * 64)
+        big.chmod(0)
+        self.addCleanup(big.chmod, 0o600)
+        with mock.patch.object(self.task, "HASH_LIMIT", 16):
+            self.assertNotIn("unreadable", self.task.file_state(big))
+
+    def test_agent_store_and_transcripts_are_not_scratch(self):
+        home = Path("/home/task-test-user")
+        store = home / ".local/share/agent-tasks"
+        with mock.patch.dict(os.environ, {"HOME": str(home), "AGENT_TASK_DIR": str(store)}):
+            self.assertFalse(self.task.scratch(str(store / "card.json")))
+            self.assertFalse(self.task.scratch(str(home / ".claude/projects/x.jsonl")))
 
 
 if __name__ == "__main__":

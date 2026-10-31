@@ -61,7 +61,7 @@ Sources live under [`home/exact_bin/`](../../../../home/exact_bin/).
 ## Patch, file, and clipboard transfer: `,wh`
 
 - Source: [`home/exact_bin/executable_,wh`](../../../../home/exact_bin/executable_,wh) (thin launcher) → [`home/exact_lib/exact_,wh/main.sh`](../../../../home/exact_lib/exact_,wh/main.sh)
-- `,wh send` writes the current staged diff to `/tmp/staged.patch` and sends it with Magic Wormhole.
+- `,wh send` writes the current staged diff to a private temp `staged.patch` (removed on exit; `WH_PATCH_FILE` overrides the path) and sends it with Magic Wormhole.
 - `,wh send <path>` sends a single file or archives a directory first.
 - `,wh send --clip` sends the clipboard: text is sent as text, images are sent as PNG.
 - `cmd | ,wh send -` sends piped stdin.

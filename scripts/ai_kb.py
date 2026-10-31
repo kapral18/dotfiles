@@ -41,6 +41,7 @@ import shutil
 import sqlite3
 import subprocess
 import sys
+import tempfile
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -951,6 +952,21 @@ class KnowledgeBase:
         if scope not in CAPSULE_SCOPES:
             raise ValueError(f"unknown scope {scope!r}; expected one of {CAPSULE_SCOPES}")
         confidence = float(max(0.0, min(1.0, confidence)))
+        header = {
+            "title": title,
+            "source": source,
+            "tags": tags,
+            "workspace_path": workspace_path,
+            "project_id": project_id,
+            "verified_by": verified_by,
+            "domain_tags": domain_csv,
+            "refs": refs_csv,
+        }
+        multiline = sorted(
+            name for name, value in header.items() if value and ("\n" in str(value) or "\r" in str(value))
+        )
+        if multiline:
+            raise ValueError(f"{', '.join(multiline)} must be a single line")
 
         now = utc_now()
         if existing is not None:
@@ -1440,9 +1456,14 @@ class KnowledgeBase:
 
     @staticmethod
     def _write_sidecar(path: Path, text: str) -> None:
-        tmp = path.with_name(path.name + ".tmp")
-        tmp.write_text(text)
-        os.replace(tmp, path)
+        fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.")
+        try:
+            with os.fdopen(fd, "w") as handle:
+                handle.write(text)
+            os.replace(tmp, path)
+        except BaseException:
+            Path(tmp).unlink(missing_ok=True)
+            raise
 
     def remove(self, note_id: str) -> bool:
         self.init()

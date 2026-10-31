@@ -129,11 +129,13 @@ if [ -n "$(find "${temp_dir}" -name "result*.png")" ]; then
     log_info "Comparison complete. Output saved as $output_file"
     open "$output_file"
   else
-    temp_output="${temp_dir}/temp_output.${output_format}"
+    # Outside temp_dir: `open` returns before the viewer reads the file, and the EXIT trap removes temp_dir.
+    temp_output="$(mktemp -d "${TMPDIR:-/tmp}/pdf-diff.XXXXXX")/diff.${output_format}"
     magick -density "$density" "${temp_dir}"/result*.png "$temp_output"
-    log_info "Comparison complete. Opening temporary output file."
+    log_info "Comparison complete. Output saved as $temp_output"
     open "$temp_output"
   fi
 else
   log_error "No result files found. Check if the processing step completed successfully."
+  exit 1
 fi

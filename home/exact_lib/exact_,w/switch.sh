@@ -107,7 +107,7 @@ require_cmd fzf
 
 selected="$(
   printf '%s\n' "${candidates[@]}" | fzf --no-preview --query "$query" --prompt "worktree> "
-)"
+)" || true
 
 if [ -z "$selected" ]; then
   echo "No worktree selected."

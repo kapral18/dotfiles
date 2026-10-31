@@ -125,6 +125,7 @@ Accepts a branch name or absolute path, creates a tmux session if needed, and sw
 - Interactive fzf multi-select by default.
 - Removes directory, deletes local branch, removes unused fork remotes, cleans empty parent dirs, purges from zoxide, and kills the tmux session.
 - Protects the repository's actual default branch.
+- Never offers or deletes the main worktree (the first `git worktree list` entry, including separate-git-dir clones), whatever branch it is on, even with `--force` or `--paths`.
 - Treats `.DS_Store` as ignorable.
 - Bags leftover files in otherwise-empty parents under `../.bag/worktree_remove/<wrapper>/<timestamp>/...`.
 - `--paths` skips the picker and allows removing detached worktrees.

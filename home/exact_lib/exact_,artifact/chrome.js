@@ -1,5 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const ARTIFACT_NAME = window.__AGENT_ARTIFACT_NAME__ || "artifact.html";
+const ARTIFACT_TOKEN = window.__AGENT_ARTIFACT_TOKEN__ || "";
 let context = {};
 let multiContexts = [];
 let tray = [];
@@ -165,7 +166,7 @@ async function sendFeedbackBatch() {
   setStatus("Sending " + items.length + " feedback item(s)...");
   const response = await fetch(apiPath("/api/feedback/"), {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", "x-artifact-token": ARTIFACT_TOKEN },
     body: JSON.stringify({ items }),
   });
   if (response.ok) {
@@ -200,6 +201,6 @@ document.querySelectorAll("[data-prompt]").forEach((button) => {
 });
 $("feedbackToggle").onclick = () => setFeedbackActive(!feedbackActive);
 $("end").onclick = async () => {
-  await fetch(apiPath("/api/end/"), { method: "POST" });
+  await fetch(apiPath("/api/end/"), { method: "POST", headers: { "x-artifact-token": ARTIFACT_TOKEN } });
   setStatus("Session ended.");
 };

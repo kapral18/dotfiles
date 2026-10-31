@@ -25,11 +25,14 @@ set -l desired_extensions \
 set -l installed_extensions $(gh extension list | awk '{print $3}' 2>/dev/null)
 or set installed_extensions
 
+set -l failed 0
+
 for installed_ext in $installed_extensions
     if not contains $installed_ext $desired_extensions
         echo "Removing $installed_ext (no longer in managed list)..."
         if ! gh extension remove $installed_ext
             echo "✗ Failed to remove $installed_ext"
+            set failed 1
         end
     end
 end
@@ -41,7 +44,9 @@ for desired_ext in $desired_extensions
         echo "Installing $desired_ext..."
         if ! gh extension install $desired_ext
             echo "✗ Failed to install $desired_ext"
+            set failed 1
         end
     end
 end
 
+exit $failed

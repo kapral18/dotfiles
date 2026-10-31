@@ -216,9 +216,12 @@ class Task:
     def status(self) -> list[tuple[str, str]]:
         if not self.root:
             return []
-        out = git(self.root, "--no-optional-locks", "status", "--porcelain=v1", "-z", "--untracked-files=all")
+        args = ("--no-optional-locks", "status", "--porcelain=v1", "-z", "--untracked-files=all")
+        out = git(self.root, *args)
         if out is None:
-            return []
+            out = git(self.root, *args)
+        if out is None:
+            raise OSError(f"git status failed in {self.root}; changes this call made cannot be attributed")
         paths: list[tuple[str, str]] = []
         tokens = out.split("\0")
         i = 0
@@ -313,6 +316,12 @@ def open_items(card: dict) -> list[dict]:
     return [item for item in card["done"] if item["status"] == "open"]
 
 
+# Larger files are fingerprinted by metadata so a shell call never re-reads model weights or dumps.
+HASH_LIMIT = 8 * 1024 * 1024
+# A hook waits this long for another ,task call in the same worktree, then answers nothing rather than outlive its caller's timeout.
+LOCK_WAIT = 10.0
+
+
 def file_state(path: Path) -> str:
     try:
         info = path.lstat()
@@ -323,6 +332,8 @@ def file_state(path: Path) -> str:
     try:
         if stat.S_ISLNK(info.st_mode):
             content = os.readlink(path)
+        elif stat.S_ISREG(info.st_mode) and info.st_size > HASH_LIMIT:
+            content = f"large:{info.st_size}:{info.st_mtime_ns}:{info.st_ctime_ns}:{info.st_ino}"
         elif stat.S_ISREG(info.st_mode):
             digest = hashlib.sha256()
             with path.open("rb") as handle:
@@ -337,12 +348,12 @@ def file_state(path: Path) -> str:
 
 
 def scratch(path: str) -> bool:
-    roots = ["/tmp/", "/private/tmp/", "/var/folders/", "/private/var/folders/", str(root_dir()) + "/"]
+    roots = ["/tmp/", "/private/tmp/", "/var/folders/", "/private/var/folders/"]
     tmpdir = os.environ.get("TMPDIR")
     if tmpdir:
         roots.append(tmpdir.rstrip("/") + "/")
     home = str(Path.home())
-    roots += [f"{home}/.claude/plans/", f"{home}/.claude/projects/", f"{home}/.local/share/agent-handoffs/"]
+    roots += [f"{home}/.claude/plans/", f"{home}/.local/share/agent-handoffs/"]
     return any(path.startswith(root) for root in roots)
 
 
@@ -975,7 +986,7 @@ def cmd_card_clear(args: argparse.Namespace) -> int:
 def cmd_review(args: argparse.Namespace) -> int:
     """Checkpoint acceptance separately from completion claims and review verdicts."""
     task = Task(Path.cwd(), args.session)
-    card = require_card(task, args.session)
+    card = require_card(task)
     acceptance = {
         key: card.get(key, []) for key in ("goal", "reading", "scope", "not_doing", "scope_changes", "corrections")
     }
@@ -1253,6 +1264,7 @@ def build_parser() -> argparse.ArgumentParser:
     hook.add_argument("event", choices=[*HOOKS, "codex"])
     hook.add_argument("--harness", default="unknown")
     hook.add_argument("--input", help="JSON input (default: stdin)")
+    hook.add_argument("--input-file", help="file holding the JSON input")
     hook.set_defaults(func=cmd_hook)
     return parser
 
@@ -1264,16 +1276,33 @@ def main(argv: list[str] | None = None) -> int:
         return args.func(args)
     cwd = Path.cwd()
     if args.command == "hook":
-        raw = args.input if args.input is not None else sys.stdin.read()
+        if args.input_file:
+            raw = Path(args.input_file).read_text(encoding="utf-8")
+        else:
+            raw = args.input if args.input is not None else sys.stdin.read()
         try:
             args.data = json.loads(raw) if raw.strip() else {}
         except ValueError:
+            args.data = {}
+        if not isinstance(args.data, dict):
             args.data = {}
         cwd = Path(args.data.get("cwd") or cwd)
     directory = task_dir(cwd)
     directory.mkdir(parents=True, exist_ok=True)
     with (directory / ".lock").open("a") as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX)
+        if args.command == "hook":
+            deadline = time.monotonic() + LOCK_WAIT
+            while True:
+                try:
+                    fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    break
+                except BlockingIOError:
+                    if time.monotonic() > deadline:
+                        print("{}")
+                        return 0
+                    time.sleep(0.05)
+        else:
+            fcntl.flock(lock, fcntl.LOCK_EX)
         try:
             return args.func(args)
         except (ValueError, OSError) as error:

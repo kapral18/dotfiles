@@ -1,3 +1,7 @@
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+
 /** The intent-guard adapter shared by Pi, OMP, and OpenCode: forwards session events to `,task hook` (~/AGENTS.md §3 step 0). */
 
 export interface Answer {
@@ -57,13 +61,20 @@ export function lastAnswer(messages: readonly unknown[]): string {
 export function createIntentGuard(harness: "pi" | "omp" | "opencode", exec: Exec) {
   return async function task(event: string, input: Record<string, unknown>, ctx: GuardContext, session?: string): Promise<Answer> {
     const payload = JSON.stringify({ ...input, cwd: ctx.cwd, session: session ?? ctx.sessionManager.getSessionId() })
+    // A file keeps large writes under the argument-size limit and out of the process list.
+    let dir: string | undefined
     try {
-      const run = await exec(",task", ["hook", event, "--harness", harness, "--input", payload], { cwd: ctx.cwd, timeout: 15_000 })
+      dir = mkdtempSync(join(tmpdir(), "intent-guard-"))
+      const file = join(dir, "input.json")
+      writeFileSync(file, payload, { mode: 0o600 })
+      const run = await exec(",task", ["hook", event, "--harness", harness, "--input-file", file], { cwd: ctx.cwd, timeout: 15_000 })
       if (run.code !== 0) return {}
       const answer: unknown = JSON.parse(run.stdout)
       return answer && typeof answer === "object" ? (answer as Answer) : {}
     } catch {
       return {}
+    } finally {
+      if (dir) rmSync(dir, { recursive: true, force: true })
     }
   }
 }

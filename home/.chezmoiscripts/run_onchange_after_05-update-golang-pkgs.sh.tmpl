@@ -77,8 +77,12 @@ install_go_pkg() {
       fi
     fi
   fi
+  printf '%s\n' "$pkg" >>"$installed_list"
   return 0
 }
+
+installed_list="$(mktemp)"
+trap 'rm -f "$golang_pkgs_file" "$installed_list"' EXIT
 
 for line in "${lines[@]}"; do
   [[ -z "$line" || "$line" =~ ^\s*# ]] && continue
@@ -94,7 +98,7 @@ echo "Cleaning up unused Go packages..."
 reconcile_helper={{ joinPath .chezmoi.sourceDir "../scripts/reconcile_golang_pkgs.py" | quote }}
 state_file="$HOME/.cache/chezmoi/golang-pkgs-state"
 if [[ -f "$reconcile_helper" ]]; then
-  python3 "$reconcile_helper" "$golang_pkgs_file" "$gobin_dir" "$state_file" || true
+  python3 "$reconcile_helper" "$golang_pkgs_file" "$gobin_dir" "$state_file" "$installed_list" || true
 else
   echo "Warning: reconcile helper not found at $reconcile_helper; skipping cleanup"
 fi

@@ -144,7 +144,8 @@ if [[ -n "$owner_of" ]]; then
       if (p == "") return 0
       sub(/\/+$/, "", p)
       if (!anchored && index(p, "/") == 0) return component_matches(p, target, dir)
-      if (has_glob(p)) return target ~ glob_regex(p, dir)
+      # A pattern whose last component names a directory (`**/logs`) also owns everything under it.
+      if (has_glob(p)) return target ~ glob_regex(p, dir || !has_glob(basename(p)))
       return target == p || index(target, p "/") == 1
     }
     /^[[:space:]]*#/ || /^[[:space:]]*$/ { next }

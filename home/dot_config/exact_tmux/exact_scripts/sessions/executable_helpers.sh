@@ -37,10 +37,10 @@ session_exists_exact() {
 }
 
 session_exists_prefix() {
-  tmux has-session -t "${SESSION_NAME}" > /dev/null 2>&1
+  tmux has-session -t "=${SESSION_NAME}" > /dev/null 2>&1
 }
 
 switch_to_session() {
   local session_name="$1"
-  tmux switch-client -t "${session_name}"
+  tmux switch-client -t "=${session_name}"
 }

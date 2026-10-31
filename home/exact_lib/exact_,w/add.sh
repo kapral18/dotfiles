@@ -192,9 +192,9 @@ if [ "$is_base_branch_specified" -eq 0 ]; then
         _comma_w_configure_prefixed_branch_push_routing "$worktree_path" "$local_branch" "$input_remote" "$input_remote_branch" "$quiet_mode" || true
       fi
     else
-      git_worktree_add "$worktree_path" -b "$local_branch" "${tracking_remote}/${input_remote_branch}"
+      git_worktree_add "$worktree_path" -b "$local_branch" "${input_remote}/${input_remote_branch}"
       _add_worktree_tmux_session "$quiet_mode" "$parent_name" "$local_branch" "$worktree_path"
-      _print_created_worktree_message "$quiet_mode" "$local_branch" "$worktree_path" "${tracking_remote}/${input_remote_branch}"
+      _print_created_worktree_message "$quiet_mode" "$local_branch" "$worktree_path" "${input_remote}/${input_remote_branch}"
 
       if [[ "$local_branch" != *__* ]]; then
         git branch --set-upstream-to="${tracking_remote}/${input_remote_branch}" "$local_branch" > /dev/null 2>&1 || true

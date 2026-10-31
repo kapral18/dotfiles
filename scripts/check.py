@@ -159,6 +159,9 @@ TEST_RULES: tuple[TestRule, ...] = (
         tests=("tests/test_hammerspoon_search.py",),
     ),
     TestRule(
+        prefixes=("home/.chezmoiscripts/run_once_before_00-install-xcode.sh",), tests=("tests/test_install_xcode.py",)
+    ),
+    TestRule(
         prefixes=(
             "home/.osx.core",
             "home/.chezmoiscripts/run_onchange_after_05-osx.core.sh.tmpl",
@@ -205,6 +208,7 @@ TEST_RULES: tuple[TestRule, ...] = (
             "tests/test_tmux_handoff_namespace.py",
             "tests/test_session_github_cache.py",
             "tests/test_plain_session_removal.py",
+            "tests/test_tmux_bag_preserve.py",
         ),
     ),
     TestRule(prefixes=("home/dot_config/fish/completions/readonly_,q.fish",), tests=("tests/test_q.py",)),
@@ -282,10 +286,23 @@ TEST_RULES: tuple[TestRule, ...] = (
         prefixes=("scripts/check.py", "scripts/test_runner.py", "Makefile", "AGENTS.md"), tests=("test_check.py",)
     ),
     TestRule(
-        prefixes=("home/exact_lib/exact_,w/", "home/exact_bin/executable_,w"),
-        tests=("tests/test_w_remove_detached.py", "tests/test_worktree_delete_boundaries.py"),
+        prefixes=(
+            "home/exact_lib/exact_,w/",
+            "home/exact_bin/executable_,w",
+            "home/exact_lib/exact_shared/worktree_lib.sh",
+            "home/exact_lib/exact_shared/bash_utils_lib.sh",
+        ),
+        tests=("tests/test_w_remove.py", "tests/test_w_commands.py", "tests/test_worktree_delete_boundaries.py"),
     ),
     TestRule(prefixes=("home/exact_lib/exact_,wh/",), tests=("tests/test_wh.py",)),
+    TestRule(
+        prefixes=(
+            "home/exact_lib/exact_,hey-branch/",
+            "home/exact_lib/exact_,gh-tfork/",
+            "home/exact_bin/executable_,check-backport-progress",
+        ),
+        tests=("tests/test_git_helpers.py",),
+    ),
     TestRule(prefixes=("home/dot_omp/",), tests=("test_omp_migration.py", "tests/test_invariants.py")),
     TestRule(prefixes=("scripts/install_github_zip_bundle.py",), tests=("tests/test_install_github_zip_bundle.py",)),
     TestRule(

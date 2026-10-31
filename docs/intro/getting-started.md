@@ -53,13 +53,13 @@ This command applies the setup immediately. Use the preview flow first if you ne
 
 This setup uses `chezmoi` hooks under [`home/.chezmoiscripts/`](../../home/.chezmoiscripts/). On first run, you should expect:
 
-| Hook                                                    | What it does                                          |
-| ------------------------------------------------------- | ----------------------------------------------------- |
-| `run_once_before_00-install-xcode.sh`                   | Xcode Command Line Tools install + license acceptance |
-| `run_once_after_01-install-brew.sh`                     | Homebrew install                                      |
-| `run_once_after_02-install-fish.sh`                     | Fish install + switching your login shell             |
-| `run_onchange_after_03-install-brew-packages.fish.tmpl` | Brew bundle install + cleanup                         |
-| `run_onchange_after_04-update-fish-packages.fish.tmpl`  | Fish packages update                                  |
+| Hook                                                    | What it does                                                                          |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `run_once_before_00-install-xcode.sh`                   | Xcode Command Line Tools install (license acceptance only when full Xcode is present) |
+| `run_once_after_01-install-brew.sh`                     | Homebrew install                                                                      |
+| `run_once_after_02-install-fish.sh`                     | Fish install + switching your login shell                                             |
+| `run_onchange_after_03-install-brew-packages.fish.tmpl` | Brew bundle install + cleanup                                                         |
+| `run_onchange_after_04-update-fish-packages.fish.tmpl`  | Fish packages update                                                                  |
 
 There are also hooks that manage language/tool versions and global packages (mise, cargo, go, gems, pnpm, uv) and some macOS preferences.
 
@@ -67,7 +67,9 @@ There are also hooks that manage language/tool versions and global packages (mis
 
 During init/apply, `chezmoi` will prompt for values via [`home/.chezmoi.toml.tmpl`](../../home/.chezmoi.toml.tmpl):
 
+- whether 1Password is ready (answering no stops setup; sign in to 1Password first)
 - email / SSH public key
 - PGP cache TTL
+- whether to download llama.cpp models on apply (asked once per machine)
 
 Those values are used by templates (for example: git identity and SSH signing).

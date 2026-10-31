@@ -8,6 +8,8 @@ if [ $# -eq 0 ]; then
   exit 1
 fi
 
-editor_cmd="$EDITOR +/$1 +'norm! n'"
+# Passed through the environment so the pattern is never parsed as shell code by fzf's $SHELL.
+export GREPO_PATTERN="$1" GREPO_EDITOR="${EDITOR:-nvim}" GREPO_SHELL="${SHELL:-}"
 
-rg -l "$1" | fzf --bind "enter:execute($editor_cmd {})" --preview "bat --style=numbers --color=always {}"
+# bash runs the binding so a multi-word EDITOR splits; the editor gets the user's shell back.
+rg -l -- "$1" | SHELL=bash fzf --bind 'enter:execute(SHELL="$GREPO_SHELL" $GREPO_EDITOR "+/$GREPO_PATTERN" "+norm! n" {})' --preview "bat --style=numbers --color=always {}"

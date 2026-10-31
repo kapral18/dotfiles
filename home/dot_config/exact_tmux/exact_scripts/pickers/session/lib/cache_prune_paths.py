@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+import tempfile
 
 cache_file = os.environ["CACHE_FILE"]
 wt_paths = {p for p in os.environ.get("PENDING_WT", "").split("\n") if p}
@@ -30,7 +31,7 @@ with open(cache_file, "r", encoding="utf-8", errors="ignore") as f:
             continue
         out.append(line)
 
-tmp = cache_file + ".tmp"
-with open(tmp, "w", encoding="utf-8") as f:
+fd, tmp = tempfile.mkstemp(dir=os.path.dirname(cache_file) or ".", prefix=".cache_prune.")
+with os.fdopen(fd, "w", encoding="utf-8") as f:
     f.writelines(out)
 os.replace(tmp, cache_file)

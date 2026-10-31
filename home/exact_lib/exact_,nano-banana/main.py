@@ -30,6 +30,7 @@ from pathlib import Path
 
 VERSION = "1.2.0"
 DEFAULT_MODEL = "gemini-3.1-flash-image"
+PASS_ENTRY = "google/gemini/api/token"
 PRO_MODEL = "gemini-3-pro-image"
 FLASH_VIDEO_MODEL = DEFAULT_MODEL
 API_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
@@ -62,7 +63,13 @@ def _api_key() -> str:
         key = os.environ.get(var)
         if key:
             return key
-    sys.exit("ERROR: set NANOBANANA_API_KEY (or GEMINI_API_KEY) in the environment")
+    try:
+        result = subprocess.run(["pass", "show", PASS_ENTRY], check=False, capture_output=True, text=True)
+    except FileNotFoundError:
+        result = None
+    if result is not None and result.returncode == 0 and result.stdout.strip():
+        return result.stdout.splitlines()[0].strip()
+    sys.exit(f"ERROR: set NANOBANANA_API_KEY (or GEMINI_API_KEY), or add pass entry {PASS_ENTRY}")
 
 
 def allows_video(model: str) -> bool:
@@ -149,8 +156,25 @@ def fit_inline_image(path: Path, max_bytes: int = MAX_INLINE_BYTES) -> tuple[byt
 def image_part(path: Path, max_bytes: int = MAX_INLINE_BYTES) -> dict:
     if not path.is_file():
         sys.exit(f"ERROR: input not found: {path}")
-    data, mime = fit_inline_image(path, max_bytes)
+    mime_for_path(path)
+    with tempfile.TemporaryDirectory(prefix="nano-banana-strip-") as tmp:
+        data, mime = fit_inline_image(stripped_copy(path, Path(tmp)), max_bytes)
     return {"inlineData": {"mimeType": mime, "data": base64.b64encode(data).decode("ascii")}}
+
+
+def stripped_copy(path: Path, tmp: Path) -> Path:
+    """A copy without EXIF/GPS metadata, so uploads never carry it."""
+    magick = shutil.which("magick")
+    if not magick:
+        sys.exit("ERROR: ImageMagick (magick) is required to strip input metadata before upload")
+    output = tmp / f"stripped{path.suffix.lower()}"
+    result = subprocess.run(
+        [magick, str(path), "-auto-orient", "-strip", str(output)], check=False, capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout or str(result.returncode)).strip()
+        sys.exit(f"ERROR: stripping metadata from {path} failed: {detail}")
+    return output
 
 
 def video_url_part(url: str) -> dict:
@@ -225,6 +249,16 @@ def _generate(payload: dict, model: str, key: str) -> tuple[bytes, str]:
     sys.exit(f"ERROR: no image in response{suffix} [set NANOBANANA_DEBUG=1 for raw response]")
 
 
+def _unused(name: str) -> str:
+    """`name`, or `stem-N.ext` when a derived default would overwrite an earlier result."""
+    path = Path(name)
+    n = 1
+    while path.exists():
+        path = Path(f"{Path(name).stem}-{n}{Path(name).suffix}")
+        n += 1
+    return str(path)
+
+
 def _default_output(prompt: str, mime: str) -> str:
     slug = "".join(c if c.isalnum() else "-" for c in prompt.lower())
     slug = "-".join(filter(None, slug.split("-")))[:50] or "nano-banana"
@@ -285,7 +319,7 @@ def main(argv: list[str] | None = None) -> None:
         model=args.model,
     )
     image, mime = _generate(payload, args.model, _api_key())
-    output = args.output or _default_output(args.prompt, mime)
+    output = args.output or _unused(_default_output(args.prompt, mime))
     with open(output, "wb") as fh:
         fh.write(image)
     print(output)

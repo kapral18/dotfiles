@@ -295,14 +295,23 @@ def cmd_status() -> int:
     return 0
 
 
+def _unused(path: Path) -> Path:
+    """`path`, or `stem-N.ext` when a derived default would overwrite an earlier result."""
+    candidate, n = path, 1
+    while candidate.exists():
+        candidate = path.with_name(f"{path.stem}-{n}{path.suffix}")
+        n += 1
+    return candidate
+
+
 def default_gen_output(prompt: str) -> Path:
     slug = "".join(char if char.isalnum() else "-" for char in prompt.lower())
     slug = "-".join(filter(None, slug.split("-")))[:50] or "image"
-    return Path(f"{slug}.png").resolve()
+    return _unused(Path(f"{slug}.png").resolve())
 
 
 def default_edit_output(images: list[Path]) -> Path:
-    return Path(f"{images[0].stem}-edit.png").resolve()
+    return _unused(Path(f"{images[0].stem}-edit.png").resolve())
 
 
 def require_runtime(required: tuple[str, ...]) -> tuple[str, list[ManifestEntry], Path] | int:
@@ -327,10 +336,11 @@ def run_sd_cli(argv: list[str], output: Path, dry_run: bool) -> int:
     if dry_run:
         print(shlex.join(argv))
         return 0
+    before = output.stat().st_mtime_ns if output.is_file() else None
     result = subprocess.run(argv, stdout=sys.stderr, check=False)
     if result.returncode != 0:
         return result.returncode
-    if not output.is_file():
+    if not output.is_file() or output.stat().st_mtime_ns == before:
         print(f"error: sd-cli exited 0 but did not write {output}", file=sys.stderr)
         return 1
     print(output)

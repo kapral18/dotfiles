@@ -244,5 +244,20 @@ class TestMain(unittest.TestCase):
                 os.chdir(previous)
 
 
+class TestDefaultOutputCollision(unittest.TestCase):
+    """WHEN a derived default output name already exists."""
+
+    def test_it_should_pick_a_new_name_instead_of_overwriting(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            old = os.getcwd()
+            os.chdir(tmp)
+            try:
+                Path("red-fox.png").write_bytes(b"earlier")
+                Path("red-fox-1.png").write_bytes(b"earlier")
+                self.assertEqual(MOD.default_output("red fox", [], "image/png").name, "red-fox-2.png")
+            finally:
+                os.chdir(old)
+
+
 if __name__ == "__main__":
     unittest.main()

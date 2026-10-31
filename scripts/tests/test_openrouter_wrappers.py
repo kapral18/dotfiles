@@ -142,6 +142,13 @@ class TestOpenRouterWrappers(unittest.TestCase):
                             observed["env"].get(config["model_providers.openrouter.env_key"]), "fixture-key"
                         )
 
+    def test_SHOULD_refuse_an_unknown_effort_before_touching_the_account(self):
+        module = _load_openrouter_presets_module()
+        with mock.patch.object(module.URL_OPENER, "open") as urlopen:
+            with self.assertRaises(module.PresetError):
+                module.ensure_preset("ultra", "active-account-key")
+        urlopen.assert_not_called()
+
     def test_SHOULD_create_only_a_missing_preset_in_the_active_account(self):
         module = _load_openrouter_presets_module()
         existing_response = mock.MagicMock()

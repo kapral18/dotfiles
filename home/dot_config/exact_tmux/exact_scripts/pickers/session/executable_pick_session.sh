@@ -479,22 +479,22 @@ repo_root_worktree_dir() {
 
 mark_lazy_split_pending() {
   local target="$1"
-  tmux set-option -t "$target" -q "@pick_session_lazy_split_pending" "1" > /dev/null 2>&1 || true
+  tmux set-option -t "=${target}:" -q "@pick_session_lazy_split_pending" "1" > /dev/null 2>&1 || true
 }
 
 clear_lazy_split_pending() {
   local target="$1"
-  tmux set-option -t "$target" -q "@pick_session_lazy_split_pending" "0" > /dev/null 2>&1 || true
+  tmux set-option -t "=${target}:" -q "@pick_session_lazy_split_pending" "0" > /dev/null 2>&1 || true
 }
 
 mark_lazy_spawn_pending() {
   local target="$1"
-  tmux set-option -t "$target" -q "@pick_session_lazy_spawn_pending" "1" > /dev/null 2>&1 || true
+  tmux set-option -t "=${target}:" -q "@pick_session_lazy_spawn_pending" "1" > /dev/null 2>&1 || true
 }
 
 mark_async_prompt() {
   local target="$1"
-  tmux set-option -t "$target" -q "@pick_session_async_prompt" "1" > /dev/null 2>&1 || true
+  tmux set-option -t "=${target}:" -q "@pick_session_async_prompt" "1" > /dev/null 2>&1 || true
 }
 
 cache_session_lines=()
@@ -535,7 +535,7 @@ split_first_window_in_session() {
   local dir="$2"
   local win panes
 
-  win="$(tmux list-windows -t "$name" -F '#{window_id}' 2> /dev/null | head -n 1)"
+  win="$(tmux list-windows -t "=${name}" -F '#{window_id}' 2> /dev/null | head -n 1)"
   [ -n "$win" ] || win="${name}:"
   panes="$(tmux display-message -p -t "$win" '#{window_panes}' 2> /dev/null || printf '0')"
   case "$panes" in
@@ -966,7 +966,7 @@ tmux_session_path() {
     sess_path_for_name "$sess" 2> /dev/null || true
     return 0
   fi
-  tmux display-message -p -t "$sess" '#{session_path}' 2> /dev/null || true
+  tmux display-message -p -t "=${sess}:" '#{session_path}' 2> /dev/null || true
 }
 
 find_disambiguated_session_for_root() {
@@ -1042,7 +1042,7 @@ while IFS= read -r _line; do
             expected="$(tmux_sanitize_session_name "$expected" 2> /dev/null || printf '%s' "$expected")"
             if [ -n "$expected" ] && [ "$expected" != "$this_session" ]; then
               if ! tmux_has_session_exact "$expected"; then
-                tmux rename-session -t "$this_session" "$expected" 2> /dev/null || true
+                tmux rename-session -t "=${this_session}" "$expected" 2> /dev/null || true
                 if [ "${__sess_cache_loaded:-0}" -eq 1 ]; then
                   sess_rename "$this_session" "$expected" || true
                 fi
@@ -1226,9 +1226,6 @@ if [ "${#cache_session_lines[@]}" -gt 0 ]; then
   tmux run-shell -b "sleep 1; $HOME/.config/tmux/scripts/pickers/session/index_update.sh --force --quiet --quick-only" 2> /dev/null || true
 fi
 
-if [ "$target_session" = "~" ]; then
-  target_session="\\~"
-fi
 if ! tmux switch-client -t "=${target_session}" 2> /dev/null; then
   die "tmux: failed to switch to: ${target_session}"
 fi

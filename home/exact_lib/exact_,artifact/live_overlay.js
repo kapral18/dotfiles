@@ -1,6 +1,7 @@
 (() => {
   const NAME = __NAME_JSON__;
   const BASE_URL = __BASE_URL_JSON__;
+  const TOKEN = __TOKEN_JSON__;
   const LIVE_OVERLAY_CSS = __LIVE_OVERLAY_CSS_JSON__;
   const LIVE_OVERLAY_HTML = __LIVE_OVERLAY_HTML_JSON__;
   const HOST_ID = "__agent_artifact_live_overlay";
@@ -361,7 +362,7 @@
     try {
       const response = await fetch(BASE_URL + "/api/feedback/" + encodeURIComponent(NAME), {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", "x-artifact-token": TOKEN },
         body: JSON.stringify({ items }),
       });
       if (response.ok) {
@@ -438,7 +439,7 @@
     setStatus("Tray cleared.");
   });
   $("end").addEventListener("click", async () => {
-    await fetch(BASE_URL + "/api/end/" + encodeURIComponent(NAME), { method: "POST" });
+    await fetch(BASE_URL + "/api/end/" + encodeURIComponent(NAME), { method: "POST", headers: { "x-artifact-token": TOKEN } });
     setStatus("Live feedback ended.");
   });
   $("pause").addEventListener("click", () => {

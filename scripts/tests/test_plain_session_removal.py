@@ -28,14 +28,14 @@ from _test_support import TMUX_PICKERS, modern_bash
 
 ACTION_SCRIPT = TMUX_PICKERS / "session/executable_action_remove_worktrees.sh"
 
-# Logs each kill-session target and reports every session except `alive-session` as gone.
+# Logs each kill-session target (`=name`, an exact match) and reports every session except `alive-session` as gone.
 MOCK_TMUX = """#!/usr/bin/env bash
 case "$1" in
   kill-session)
     name="$3"
     printf '%s\\n' "$name" >> "$KILL_LOG"
     case "$name" in
-      alive-session) exit 0 ;;
+      =alive-session) exit 0 ;;
       *) exit 1 ;;
     esac
     ;;
@@ -130,7 +130,7 @@ class TestPlainSessionRemoval(unittest.TestCase):
             assert untouched_dir.exists(), "unrelated dir/session must survive"
 
             kill_names = kill_log.read_text().splitlines() if kill_log.exists() else []
-            assert kill_names == ["alive-session"], kill_names
+            assert kill_names == ["=alive-session"], kill_names
 
     def test_missing_session_is_harmless_and_directory_still_removed(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -151,7 +151,7 @@ class TestPlainSessionRemoval(unittest.TestCase):
 
             assert not ghost_dir.exists(), "dir removal must proceed even if the session is already gone"
             kill_names = kill_log.read_text().splitlines() if kill_log.exists() else []
-            assert kill_names == ["ghost-session"]
+            assert kill_names == ["=ghost-session"]
 
     def test_plain_dir_row_without_session_identity_skips_kill_session(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -194,13 +194,16 @@ class TestPlainSessionRemoval(unittest.TestCase):
 
             cache_dir, kill_log = self._run_removal(tmp_path, home, selection_lines)
 
-            _wait_for(lambda: not shared_dir.exists())
+            # Each row runs its own background removal, so the dir can vanish before the second kill lands.
+            _wait_for(
+                lambda: not shared_dir.exists() and kill_log.exists() and len(kill_log.read_text().splitlines()) == 2
+            )
 
             assert not shared_dir.exists(), "matching plain dir should be removed"
             assert unrelated_dir.exists(), "unrelated dir/session must survive"
 
             kill_names = kill_log.read_text().splitlines() if kill_log.exists() else []
-            assert sorted(kill_names) == ["session-a", "session-b"], kill_names
+            assert sorted(kill_names) == ["=session-a", "=session-b"], kill_names
 
     def test_session_name_with_spaces_is_killed_as_one_exact_value(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -225,7 +228,7 @@ class TestPlainSessionRemoval(unittest.TestCase):
 
             assert not spaced_dir.exists(), "matching plain dir should be removed"
             kill_names = kill_log.read_text().splitlines() if kill_log.exists() else []
-            assert kill_names == [session_name], kill_names
+            assert kill_names == [f"={session_name}"], kill_names
 
     def test_directory_tombstone_path_remains_intact(self):
         with tempfile.TemporaryDirectory() as tmp:

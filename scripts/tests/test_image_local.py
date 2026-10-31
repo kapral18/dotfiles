@@ -304,5 +304,34 @@ class TestEditThroughMain(unittest.TestCase):
             self.assertIn("input image", stderr.getvalue())
 
 
+class TestRunSdCli(unittest.TestCase):
+    """WHEN sd-cli runs against an output path that already holds a file."""
+
+    def test_it_should_keep_the_old_file_and_fail_when_sd_cli_writes_nothing(self) -> None:
+        for cli in ("/usr/bin/true", "/usr/bin/false"):
+            with self.subTest(cli=cli), tempfile.TemporaryDirectory() as tmp:
+                output = Path(tmp) / "keep.png"
+                output.write_bytes(b"old")
+                with mock.patch.object(sys, "stdout", io.StringIO()):
+                    rc = MOD.run_sd_cli([cli], output, dry_run=False)
+                self.assertNotEqual(rc, 0)
+                self.assertEqual(output.read_bytes(), b"old")
+
+
+class TestDefaultOutputCollision(unittest.TestCase):
+    """WHEN a derived default output name already exists."""
+
+    def test_it_should_pick_a_new_name_instead_of_overwriting(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            old = os.getcwd()
+            os.chdir(tmp)
+            try:
+                Path("red-fox.png").write_bytes(b"earlier")
+                Path("red-fox-1.png").write_bytes(b"earlier")
+                self.assertEqual(MOD.default_gen_output("red fox").name, "red-fox-2.png")
+            finally:
+                os.chdir(old)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -23,7 +23,7 @@ main() {
 
   if session_exists_prefix; then
     dismiss_session_list_page_from_view
-    tmux switch-client -t "${SESSION_NAME}"
+    tmux switch-client -t "=${SESSION_NAME}"
   else
     tmux command-prompt -p session: "run-shell -b '${CURRENT_DIR}/switch_or_loop.sh \"%%\"'"
   fi

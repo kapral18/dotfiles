@@ -53,7 +53,6 @@ _comma_w_issue_find_by_metadata() {
 _comma_w_issue_find_by_heuristics() {
   local issue_number="$1"
   local -a candidates=()
-  local -a preferred=()
   local candidates_seen=" "
   local line key value worktree_path="" branch_ref=""
 
@@ -66,29 +65,13 @@ _comma_w_issue_find_by_heuristics() {
     local p="$1"
     local br_ref="$2"
     [ -n "$p" ] || return 0
-
-    local branch=""
-    if [[ "$br_ref" == refs/heads/* ]]; then
-      branch="${br_ref#refs/heads/}"
-    fi
-
-    local matched=0
-    if [ -n "$branch" ] && printf '%s' "$branch" | grep -Eq "(^|[^0-9])${issue_number}([^0-9]|$)"; then
-      matched=1
-    elif printf '%s' "$p" | grep -Eq "(^|[^0-9])${issue_number}([^0-9]|$)"; then
-      matched=1
-    fi
-
-    if [ "$matched" -eq 1 ]; then
-      case "$candidates_seen" in
-        *" ${p} "*) return 0 ;;
-      esac
-      candidates+=("$p")
-      if [ -n "$branch" ] && _branch_prefers_issue_number "$branch"; then
-        preferred+=("$p")
-      fi
-      candidates_seen+="${p} "
-    fi
+    [[ "$br_ref" == refs/heads/* ]] || return 0
+    _branch_prefers_issue_number "${br_ref#refs/heads/}" || return 0
+    case "$candidates_seen" in
+      *" ${p} "*) return 0 ;;
+    esac
+    candidates+=("$p")
+    candidates_seen+="${p} "
   }
 
   while IFS= read -r line; do
@@ -107,11 +90,6 @@ _comma_w_issue_find_by_heuristics() {
   done < <(git worktree list --porcelain 2> /dev/null)
 
   _maybe_add_candidate "$worktree_path" "$branch_ref"
-
-  if [ "${#preferred[@]}" -gt 0 ]; then
-    printf '%s\n' "${preferred[0]}"
-    return 0
-  fi
 
   if [ "${#candidates[@]}" -gt 0 ]; then
     printf '%s\n' "${candidates[0]}"

@@ -125,11 +125,12 @@ def inject_client_script(content: str) -> str:
     return content + script
 
 
-def chrome_page(name: str) -> str:
+def chrome_page(name: str, token: str) -> str:
     safe_name = sanitize_name(name)
     return render_asset(
         "chrome.html",
         {
+            "__ARTIFACT_TOKEN_JSON__": json.dumps(token),
             "__ARTIFACT_TITLE__": html.escape(safe_name, quote=True),
             "__ARTIFACT_PATH__": html.escape(safe_name, quote=True),
             "__ARTIFACT_NAME_JSON__": json.dumps(safe_name),

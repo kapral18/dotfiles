@@ -33,17 +33,17 @@ customCommands:
         labelFormat: "{{ .pr | bold | cyan }} {{ .title }} {{ .branch }}"
     description: Check out PR branch
   - key: <c-b>
-    command: exec tig blame -- "{{ .SelectedFile.Name }}"
+    command: exec tig blame -- {{ .SelectedFile.Name | quote }}
     context: files
     description: Blame file at tree
     output: terminal
   - key: <c-b>
-    command: exec tig blame "{{ .SelectedSubCommit.Sha }}" -- "{{ .SelectedCommitFile.Name }}"
+    command: exec tig blame "{{ .SelectedSubCommit.Sha }}" -- {{ .SelectedCommitFile.Name | quote }}
     context: commitFiles
     description: Blame file at revision
     output: terminal
   - key: <c-s-b>
-    command: exec tig blame -- "{{ .SelectedCommitFile.Name }}"
+    command: exec tig blame -- {{ .SelectedCommitFile.Name | quote }}
     context: commitFiles
     description: Blame file at tree
     output: terminal
@@ -53,22 +53,22 @@ customCommands:
     description: tig commit (`t` again to browse files at revision)
     output: terminal
   - key: t
-    command: exec tig show "{{ .SelectedLocalBranch.Name }}"
+    command: exec tig show {{ .SelectedLocalBranch.Name | quote }}
     context: localBranches
     description: tig branch (`t` again to browse files at revision)
     output: terminal
   - key: t
-    command: exec tig show "{{ .SelectedRemoteBranch.RemoteName }}/{{ .SelectedRemoteBranch.Name }}"
+    command: exec tig show {{ printf "%s/%s" .SelectedRemoteBranch.RemoteName .SelectedRemoteBranch.Name | quote }}
     context: remoteBranches
     description: tig branch (`t` again to browse files at revision)
     output: terminal
   - key: t
-    command: exec tig {{ .SelectedSubCommit.Sha }} -- "{{ .SelectedCommitFile.Name }}"
+    command: exec tig {{ .SelectedSubCommit.Sha }} -- {{ .SelectedCommitFile.Name | quote }}
     context: commitFiles
     description: tig file (history of commits affecting file)
     output: terminal
   - key: t
-    command: exec tig -- "{{ .SelectedFile.Name }}"
+    command: exec tig -- {{ .SelectedFile.Name | quote }}
     context: files
     description: tig file (history of commits affecting file)
     output: terminal

@@ -39,7 +39,7 @@ fi
 # TMUX before backgrounding this script, so gating on `[ -n "${TMUX:-}" ]`
 # here would silently skip it.
 if [ -n "$explicit_session" ] && command -v tmux > /dev/null 2>&1; then
-  tmux kill-session -t "$explicit_session" 2> /dev/null || true
+  tmux kill-session -t "=$explicit_session" 2> /dev/null || true
 else
   # Fallback for callers with no known session name: scan by path. Only
   # usable while still attached (needs `$TMUX`).
@@ -50,7 +50,7 @@ else
         [ -z "$path" ] && continue
         path="$(realpath "$path" 2> /dev/null || printf '%s' "$path")"
         if [ "$path" = "$target" ]; then
-          tmux kill-session -t "$name" 2> /dev/null || true
+          tmux kill-session -t "=$name" 2> /dev/null || true
         fi
       done
   fi

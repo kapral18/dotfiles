@@ -92,10 +92,10 @@ def is_protected_dir(p: Path) -> bool:
 
 def rel_to_wrapper(p: Path) -> Path:
     try:
-        return p.resolve().relative_to(wrapper)
-    except Exception:
+        return p.relative_to(wrapper)
+    except ValueError:
         try:
-            return p.relative_to(wrapper)
+            return p.parent.resolve().relative_to(wrapper) / p.name
         except Exception:
             return Path("")
 
@@ -106,6 +106,10 @@ def move_to_bag(src: Path):
         return
     dest = bag_root / rel
     dest.parent.mkdir(parents=True, exist_ok=True)
+    n = 1
+    while os.path.lexists(dest):
+        dest = bag_root / rel.parent / f"{rel.name}.{n}"
+        n += 1
     try:
         shutil.move(str(src), str(dest))
         return True

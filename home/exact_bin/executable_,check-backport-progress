@@ -90,8 +90,10 @@ fi
 
 git fetch "$upstream_remote" "${branches[@]}"
 
+problems=0
+
 echo "=== Checking merged PRs for missing backport commits ==="
-merged_prs=$(gh pr list --state merged --label "$merged_label" --json number,url --jq '.[] | @base64')
+merged_prs=$(gh pr list --state merged --label "$merged_label" --limit 1000 --json number,url --jq '.[] | @base64')
 
 for pr in $merged_prs; do
   _jq() {
@@ -100,15 +102,16 @@ for pr in $merged_prs; do
   pr_number=$(_jq '.number')
   pr_url=$(_jq '.url')
   for branch in "${branches[@]}"; do
-    if ! git log "$upstream_remote/$branch" --grep="#${pr_number}" --oneline | grep -q .; then
+    if ! git log "$upstream_remote/$branch" -E --grep="#${pr_number}([^0-9]|$)" --oneline | grep -q .; then
       echo "Merged PR ${pr_url} has not been backported to branch ${branch}."
+      problems=1
     fi
   done
 done
 
 echo ""
 echo "=== Checking open PRs for missing backport labels ==="
-open_prs=$(gh pr list --state open --label "$merged_label" --json number,url,labels,isDraft --jq '.[] | select(.isDraft==false) | @base64')
+open_prs=$(gh pr list --state open --label "$merged_label" --limit 1000 --json number,url,labels,isDraft --jq '.[] | select(.isDraft==false) | @base64')
 
 for pr in $open_prs; do
   _jq() {
@@ -127,5 +130,8 @@ for pr in $open_prs; do
 
   if [ ${#missing_labels[@]} -gt 0 ]; then
     echo "Open PR ${pr_url} is missing label(s): ${missing_labels[*]}"
+    problems=1
   fi
 done
+
+exit "$problems"

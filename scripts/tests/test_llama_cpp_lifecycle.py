@@ -311,7 +311,7 @@ class TestLlamaCppLifecycle(unittest.TestCase):
         self.assertIn("active llama.cpp consumer(s)", refused.stderr)
         self.assertTrue(_router_reachable(port))
 
-        forced = subprocess.run(self.stop_command("--force"), env=self.env(port), capture_output=True, text=True)
+        forced = subprocess.run(self.stop_command("-f"), env=self.env(port), capture_output=True, text=True)
         self.assertEqual(0, forced.returncode, forced.stderr)
         self.assertEqual("Stopped lifecycle-owned llama.cpp router.\n", forced.stdout)
         self.assertFalse(_router_reachable(port))
@@ -421,6 +421,30 @@ class TestLlamaCppLifecycle(unittest.TestCase):
         self.assertTrue(_router_reachable(port))
         os.kill(int(owner["pid"]), 15)
         _wait_for(lambda: not _router_reachable(port), "fixture router did not stop")
+
+
+class TestLlamaCppAcquireWithLiveOwner(unittest.TestCase):
+    """WHEN the recorded owner process is alive but misses the reachability probe."""
+
+    def test_SHOULD_not_start_a_second_router(self) -> None:
+        from dataclasses import replace
+        from unittest import mock
+
+        module = load_module("llama_lifecycle_acquire", LIFECYCLE)
+        with tempfile.TemporaryDirectory() as tmp:
+            config = replace(module.Config.from_environment(), root=Path(tmp), host="127.0.0.1", port=1)
+            module.ensure_namespace(config)
+            identity = module.process_start_identity(os.getpid())
+            module.write_state(config.namespace / "owner.json", {"pid": os.getpid(), "start_identity": identity})
+            with (
+                mock.patch.object(module, "router_reachable", return_value=False),
+                mock.patch.object(module, "OWNER_WAIT_SECONDS", 0.2),
+                mock.patch.object(module, "start_owned_router") as start,
+            ):
+                with self.assertRaises(module.LifecycleError):
+                    module.acquire(config)
+            start.assert_not_called()
+            self.assertTrue((config.namespace / "owner.json").exists())
 
 
 class TestLlamaCppServerBinaryResolution(unittest.TestCase):

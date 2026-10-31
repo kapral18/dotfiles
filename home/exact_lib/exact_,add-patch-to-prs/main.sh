@@ -98,36 +98,53 @@ if [ ${#pr_numbers[@]} -eq 0 ]; then
   exit 0
 fi
 
+if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+  echo "Working tree has uncommitted changes; commit or stash them first." >&2
+  exit 1
+fi
+
+failed=()
+
+# Leaves the PR branch exactly as fetched and returns to the starting branch.
+abandon_pr() {
+  git reset --hard -q HEAD
+  git checkout -q - || true
+  failed+=("$1")
+}
+
 for pr in "${pr_numbers[@]}"; do
   echo "Processing PR #$pr"
 
   if ! branch=$(_safe_exec_cmd gh pr view "$pr" --json headRefName -q .headRefName); then
+    failed+=("$pr")
     continue
   fi
 
   if ! _safe_exec_cmd git fetch origin "$branch"; then
+    failed+=("$pr")
     continue
   fi
 
   if ! _safe_exec_cmd git checkout "$branch"; then
+    failed+=("$pr")
     continue
   fi
 
-  if ! _safe_exec_cmd git apply "$patch_file"; then
+  if ! _safe_exec_cmd git apply --index "$patch_file"; then
     echo "Patch failed on PR #$pr, skipping" >&2
-    _safe_exec_cmd git checkout - || true
-    continue
-  fi
-
-  if ! _safe_exec_cmd git add -u; then
+    abandon_pr "$pr"
     continue
   fi
 
   if ! _safe_exec_cmd git commit -m "$commit_msg"; then
+    abandon_pr "$pr"
     continue
   fi
 
   if ! _safe_exec_cmd git push; then
+    echo "Push failed on PR #$pr; the commit stays on local branch $branch" >&2
+    git checkout -q - || true
+    failed+=("$pr")
     continue
   fi
 
@@ -136,3 +153,8 @@ for pr in "${pr_numbers[@]}"; do
 
   read -p "Press enter to continue..."
 done
+
+if [ ${#failed[@]} -gt 0 ]; then
+  echo "Failed PRs: ${failed[*]}" >&2
+  exit 1
+fi

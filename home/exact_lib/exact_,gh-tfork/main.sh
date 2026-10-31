@@ -77,20 +77,31 @@ remote_url_for_repo() {
   fi
 }
 
+# Prints "true" when fork_repo is a fork of upstream_repo, "false" when it is another repo, nothing when missing.
+fork_parent_matches() {
+  local upstream_repo="$1"
+  local fork_repo="$2"
+  gh api "repos/${fork_repo}" --jq "(.fork and ((.parent.full_name // \"\") | ascii_downcase) == (\"${upstream_repo}\" | ascii_downcase))" 2> /dev/null || true
+}
+
 ensure_fork_exists() {
   local upstream_repo="$1"
   local fork_repo="$2"
 
-  if gh api "repos/${fork_repo}" > /dev/null 2>&1; then
-    return 0
-  fi
+  case "$(fork_parent_matches "$upstream_repo" "$fork_repo")" in
+    true) return 0 ;;
+    false)
+      echo "Error: ${fork_repo} exists but is not a fork of ${upstream_repo}." >&2
+      exit 1
+      ;;
+  esac
 
   # Fork creation is async; 202 is expected for new forks.
   gh api -X POST "repos/${upstream_repo}/forks" > /dev/null 2>&1 || true
 
   local i
   for i in $(seq 1 45); do
-    if gh api "repos/${fork_repo}" > /dev/null 2>&1; then
+    if [ "$(fork_parent_matches "$upstream_repo" "$fork_repo")" = true ]; then
       return 0
     fi
     sleep 2

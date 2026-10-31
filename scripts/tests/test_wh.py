@@ -273,5 +273,37 @@ class WhClipboardSendTests(unittest.TestCase):
         self.assertIn("Sending clipboard (text)", result.stdout)
 
 
+class WhStagedSendTests(unittest.TestCase):
+    """WHEN staged changes are sent as a patch."""
+
+    def test_WHEN_no_patch_path_is_set_SHOULD_send_from_a_private_dir_and_remove_it(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            repo = root / "repo"
+            repo.mkdir()
+            env = {**os.environ, "GIT_CONFIG_GLOBAL": os.devnull, "TMPDIR": str(root / "tmp")}
+            env.pop("WH_PATCH_FILE", None)
+            (root / "tmp").mkdir()
+            subprocess.run(["git", "init", "-q"], cwd=repo, check=True, env=env)
+            (repo / "a.txt").write_text("a\n")
+            subprocess.run(["git", "add", "a.txt"], cwd=repo, check=True, env=env)
+            bindir = root / "bin"
+            bindir.mkdir()
+            log = root / "sent"
+            (bindir / "wormhole").write_text(
+                f'#!/bin/sh\nfor a; do last="$a"; done\necho "$last" > "{log}"\ncat "$last" >> "{log}"\n'
+            )
+            (bindir / "wormhole").chmod(0o755)
+            env["PATH"] = f"{bindir}{os.pathsep}{env['PATH']}"
+
+            result = subprocess.run(["bash", str(WH_MAIN), "send"], cwd=repo, env=env, capture_output=True, text=True)
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            sent_path, *patch = log.read_text().splitlines()
+            self.assertTrue(sent_path.startswith(str(root / "tmp") + "/"), sent_path)
+            self.assertIn("+a", patch)
+            self.assertFalse(Path(sent_path).exists())
+
+
 if __name__ == "__main__":
     unittest.main()

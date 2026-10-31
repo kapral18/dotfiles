@@ -336,6 +336,10 @@ def start_owned_router(config: Config, owner_path: Path) -> None:
     raise LifecycleError(f"llama-server did not become ready; see {log_path}")
 
 
+# How long a live owned router may stay unanswering before acquire gives up instead of starting a second one.
+OWNER_WAIT_SECONDS = 30.0
+
+
 def acquire(config: Config) -> Lease:
     ensure_namespace(config)
     owner_path = config.namespace / "owner.json"
@@ -346,6 +350,18 @@ def acquire(config: Config) -> Lease:
         lease = Lease.create(config.namespace)
         if router_reachable(config):
             return lease
+        owner = read_owner(owner_path)
+        if owner is not None and owner_process_matches(owner):
+            # A busy router misses the short probe; starting a second one would orphan it.
+            deadline = time.monotonic() + OWNER_WAIT_SECONDS
+            while time.monotonic() < deadline:
+                if router_reachable(config):
+                    return lease
+                time.sleep(0.2)
+            lease.close()
+            raise LifecycleError(
+                f"owned llama-server (pid {owner.get('pid')}) is running but not answering at {config.base_url}"
+            )
         if not is_loopback(config.host):
             lease.close()
             raise LifecycleError(
@@ -530,11 +546,11 @@ def main(argv: list[str]) -> int:
         if argv and argv[0] == "reap" and len(argv) == 2:
             return wait_and_reap(config, argv[1])
         if argv and argv[0] == "stop":
-            if argv[1:] not in ([], ["--force"]):
-                raise LifecycleError("stop accepts only --force")
-            return stop(config, argv[1:] == ["--force"])
+            if argv[1:] not in ([], ["--force"], ["-f"]):
+                raise LifecycleError("stop accepts only -f/--force")
+            return stop(config, bool(argv[1:]))
         if not argv or argv[0] != "run":
-            print("Usage: lifecycle.py {run -- <command> [args...]|stop [--force]}", file=sys.stderr)
+            print("Usage: lifecycle.py {run -- <command> [args...]|stop [-f|--force]}", file=sys.stderr)
             return 2
         command = argv[1:]
         if command and command[0] == "--":

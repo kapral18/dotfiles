@@ -56,4 +56,4 @@ On commit, the hook first runs `bin/fmt --check` only on staged paths. If those 
 
 ## Documentation
 
-If a change under `home/`, `scripts/`, or `tools/` affects behavior, commands, or workflows, update the matching page under [`docs/`](docs/).
+If a change under `home/` or `scripts/` affects behavior, commands, or workflows, update the matching page under [`docs/`](docs/).

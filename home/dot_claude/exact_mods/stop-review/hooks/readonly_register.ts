@@ -67,7 +67,7 @@ const ends = (text: string) => {
 }
 
 // Quoted text can neither close a result nor open a section of the record.
-const quote = (text: string) => text.replaceAll('</result>', '<\\/result>').replace(/^#/gm, '\\#')
+const quote = (text: string) => text.replaceAll('</result>', '<\\/result>').replace(/^( {0,3})#/gm, '$1\\#')
 
 const call = (use: ToolUseSummary) => {
   const limit = use.tool === 'Edit' || use.tool === 'Write' ? CODE_CHARS : INPUT_CHARS
@@ -120,7 +120,7 @@ const record = (rows: readonly SessionMessage[], typed: string, ids: ReadonlySet
   const turn = newest(rows.slice(at >= 0 && typed !== '' ? start + 1 : start, end).flatMap(parts), TURN_CHARS)
   const request = typed === '' ? '(no typed prompt: a background task notice started this turn)' : cut(quote(typed), REQUEST_CHARS)
   const omitted = (count: number, what: string) => (count > 0 ? [`(${count} ${what} omitted)`] : [])
-  const current = [`# Turn under review\n## User request\n${request}`, ...omitted(turn.omitted, 'earlier parts of this turn'), ...turn.kept.map(part => part.text), `# Final answer\n${answer}`].join('\n\n')
+  const current = [`# Turn under review\n## User request\n${request}`, ...omitted(turn.omitted, 'earlier parts of this turn'), ...turn.kept.map(part => part.text), `# Final answer\n${quote(answer)}`].join('\n\n')
   return [{ text: current }]
 }
 

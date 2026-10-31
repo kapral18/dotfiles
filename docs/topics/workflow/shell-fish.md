@@ -23,7 +23,7 @@ Notable responsibilities in this file:
 - sets editor to `nvim`
 - exports `SSH_AUTH_SOCK` for 1Password
 - configures Homebrew path via `homebrewPrefix` prompt data
-- loads API keys from `pass` into environment variables
+- loads API keys from `pass` into environment variables (one decrypt per key; `NANOBANANA_API_KEY` reuses `GEMINI_API_KEY`)
 - adds `~/bin` and `~/.local/bin` to PATH on login
 
 It also initializes a few tools if present:

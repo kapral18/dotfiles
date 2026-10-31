@@ -63,6 +63,20 @@ def _validate_artifact_id(artifact_id: str) -> None:
         raise ValueError(f"invalid artifact id: {artifact_id!r}")
 
 
+# Fields evaluate_artifact reads from every row.
+ROW_KEYS = (
+    "inputs",
+    "transforms",
+    "input_hashes",
+    "transform_hashes",
+    "target",
+    "ownership",
+    "expected_semantic_hash",
+    "consumer",
+    "live_probe",
+)
+
+
 def _validate_ledger(payload: object) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise ValueError("ledger root must be an object")
@@ -75,6 +89,9 @@ def _validate_ledger(payload: object) -> dict[str, Any]:
         _validate_artifact_id(str(artifact_id))
         if not isinstance(row, dict) or row.get("artifact_id") != artifact_id:
             raise ValueError(f"invalid artifact row: {artifact_id!r}")
+        missing = [key for key in ROW_KEYS if key not in row]
+        if missing:
+            raise ValueError(f"artifact row {artifact_id!r} lacks {', '.join(missing)}")
     return payload
 
 

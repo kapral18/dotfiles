@@ -92,7 +92,10 @@ find_branch_for_worktree_path() {
 branch=""
 worktree_path=""
 
-if [ -e "$target" ]; then
+worktree_path="$(_comma_w_find_worktree_path_for_branch "$target" 2> /dev/null || true)"
+if [ -n "$worktree_path" ]; then
+  branch="$target"
+elif [ -e "$target" ]; then
   worktree_path="$target"
   branch="$(find_branch_for_worktree_path "$worktree_path" || true)"
   if [ -z "$branch" ]; then
@@ -100,12 +103,8 @@ if [ -e "$target" ]; then
     exit 1
   fi
 else
-  branch="$target"
-  worktree_path="$(_comma_w_find_worktree_path_for_branch "$branch" || true)"
-  if [ -z "$worktree_path" ]; then
-    echo "Failed to determine worktree path for branch: $branch" >&2
-    exit 1
-  fi
+  echo "Failed to determine worktree path for branch: $target" >&2
+  exit 1
 fi
 
 _add_worktree_tmux_session "$quiet_mode" "$parent_name" "$branch" "$worktree_path"

@@ -40,7 +40,7 @@ const SNAPSHOT =
   'git rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 3\n' +
   'git --no-optional-locks status --porcelain=v1\n' +
   'git diff HEAD --no-ext-diff --binary 2>/dev/null | git hash-object --stdin\n' +
-  'git ls-files --others --exclude-standard | git hash-object --stdin-paths | git hash-object --stdin'
+  'git ls-files -z --others --exclude-standard | xargs -0 shasum -- 2>/dev/null | git hash-object --stdin'
 
 // The ~/AGENTS.md §1 limits on acting without asking, kept whole so a send-back never pushes past them; ,task's hook_stop words them the same.
 export const STEP =

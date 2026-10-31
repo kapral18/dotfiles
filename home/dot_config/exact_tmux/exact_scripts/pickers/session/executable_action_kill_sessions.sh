@@ -120,7 +120,7 @@ fi
 
 if [ ${#sess[@]} -gt 0 ] && command -v tmux > /dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
   for s in "${sess[@]}"; do
-    tmux kill-session -t "$s" 2> /dev/null || true
+    tmux kill-session -t "=$s" 2> /dev/null || true
   done
 fi
 

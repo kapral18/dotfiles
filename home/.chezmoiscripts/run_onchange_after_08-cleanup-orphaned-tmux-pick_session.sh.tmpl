@@ -14,7 +14,7 @@ current_picker_dir="${HOME}/.config/tmux/scripts/pickers"
 # Terminate any still-running picker processes from the old path so they stop
 # writing caches.
 if command -v pgrep >/dev/null 2>&1; then
-  pids="$(pgrep -f "${old_picker_dir}/" 2>/dev/null || true)"
+  pids="$(pgrep -f "^([^ ]*/)?((ba)?sh|python3?)( -[^ ]+)* ${old_picker_dir}/" 2>/dev/null || true)"
   if [ -n "${pids:-}" ]; then
     # shellcheck disable=SC2086
     kill $pids 2>/dev/null || true

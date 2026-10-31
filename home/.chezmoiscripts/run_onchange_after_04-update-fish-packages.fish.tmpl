@@ -5,7 +5,7 @@ if type -q fisher
     echo "--------------------------"
     echo "fisher update: applying..."
     echo "--------------------------"
-    fisher update
+    fisher update; or exit 1
     echo "-------------------"
     echo "fisher update: done"
     echo "-------------------"
@@ -13,7 +13,10 @@ else
     echo "-------------------------"
     echo "fisher fetch: applying..."
     echo "-------------------------"
-    curl -sL https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish | source && fisher update
+    set -l fisher_src (mktemp)
+    curl -fsSL https://raw.githubusercontent.com/jorgebucaran/fisher/4.4.8/functions/fisher.fish -o $fisher_src; or exit 1
+    source $fisher_src; and rm -f $fisher_src
+    fisher update; or exit 1
     echo "------------------"
     echo "fisher fetch: done"
     echo "------------------"

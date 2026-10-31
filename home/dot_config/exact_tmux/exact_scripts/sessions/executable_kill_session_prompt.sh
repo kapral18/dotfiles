@@ -14,6 +14,6 @@ main() {
   local safe_id
   safe_id="${CURRENT_SESSION_ID//\\/\\\\}"
   safe_id="${safe_id//\$/\\$}"
-  tmux confirm -p "kill-session ${CURRENT_SESSION_NAME}? (y/n)" "run-shell -b '${CURRENT_DIR}/kill_session.sh \"${safe_id}\"'"
+  tmux confirm -p "kill-session ${CURRENT_SESSION_NAME//#/##}? (y/n)" "run-shell -b '${CURRENT_DIR}/kill_session.sh \"${safe_id}\"'"
 }
 main

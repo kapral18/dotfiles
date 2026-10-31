@@ -262,7 +262,9 @@ info "Issue #$issue_number -> branch: $branch"
 
 default_branch="$(_comma_w_detect_default_branch)"
 
-if _comma_w_branch_exists_locally_or_remote "$branch"; then
+if git show-ref --verify --quiet "refs/heads/$branch" \
+  || git show-ref --verify --quiet "refs/remotes/origin/$branch" \
+  || git show-ref --verify --quiet "refs/remotes/upstream/$branch"; then
   # When a local branch exists but has no unique commits relative to the
   # default branch, it is a stale pointer left over from a previous worktree
   # session.  Fast-forward it so the recreated worktree starts from the

@@ -508,28 +508,26 @@ for pr_number in "${pr_numbers[@]}"; do
 
   tracking_remote="$(_comma_w_preferred_tracking_remote_for_branch "$remote_name" "$branch_name")"
   [ -n "$tracking_remote" ] || tracking_remote="$remote_name"
-  base_ref="${tracking_remote}/${branch_name}"
+  base_ref="${remote_name}/${branch_name}"
 
   mkdir -p "$(dirname "$worktree_path")"
+  quiet_flag=()
+  [ "$quiet_mode" -eq 1 ] && quiet_flag=(-q)
   if git show-ref --verify --quiet "refs/heads/$local_branch"; then
-    if [ "$quiet_mode" -eq 1 ]; then
-      git worktree add -q "$worktree_path" "$local_branch"
-    else
-      git worktree add "$worktree_path" "$local_branch"
-    fi
+    add_args=("$worktree_path" "$local_branch")
   else
-    if [ "$quiet_mode" -eq 1 ]; then
-      git worktree add -q "$worktree_path" -b "$local_branch" "$base_ref"
-    else
-      git worktree add "$worktree_path" -b "$local_branch" "$base_ref"
-    fi
+    add_args=("$worktree_path" -b "$local_branch" "$base_ref")
+  fi
+  if ! git worktree add "${quiet_flag[@]+"${quiet_flag[@]}"}" "${add_args[@]}"; then
+    echo "Failed to create worktree for PR #$pr_number at $worktree_path." >&2
+    continue
   fi
 
   _add_worktree_tmux_session "$quiet_mode" "$parent_name" "$local_branch" "$worktree_path"
   _print_created_worktree_message "$quiet_mode" "$local_branch" "$worktree_path" "$base_ref"
 
   if [[ "$local_branch" != *__* ]]; then
-    git branch --set-upstream-to="$base_ref" "$local_branch" > /dev/null 2>&1 || true
+    git branch --set-upstream-to="${tracking_remote}/${branch_name}" "$local_branch" > /dev/null 2>&1 || true
   fi
 
   if [[ "$local_branch" == *__* ]] && ! _comma_w_remote_is_first_party "$remote_name"; then

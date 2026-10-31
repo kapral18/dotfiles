@@ -37,4 +37,4 @@ mise ls --current
 - `mise` respects project `.tool-versions` files if they exist.
 - `activate_aggressive = true` keeps mise-managed tool paths ahead of later `PATH` changes so Homebrew binaries do not shadow pinned runtimes.
 - `.nvmrc` support is enabled for Node via `idiomatic_version_file_enable_tools = ["node"]`.
-- Project `.mise.toml` files are trusted globally via `trusted_config_paths = ["/"]` so generated worktrees and cloned repos do not need individual `mise trust` runs.
+- Project `.mise.toml` files are trusted only under `~/code` and this repo (`trusted_config_paths`), so worktrees there need no `mise trust`. Anything cloned elsewhere asks first; add your own work roots to that list.

@@ -10,12 +10,16 @@ echo "-----------------------"
 echo "brew install fish: done"
 echo "-----------------------"
 
-if ! grep -q "$(which fish)" /etc/shells; then
+fish_path="$(command -v fish)"
+if ! grep -qxF "$fish_path" /etc/shells; then
+  printf '%s\n' "$fish_path" | sudo tee -a /etc/shells > /dev/null
+fi
+
+if [ "$(dscl . -read "$HOME" UserShell 2> /dev/null | awk '{print $2}')" != "$fish_path" ]; then
   echo "---------------------------------------"
   echo "setting fish as main shell: applying..."
   echo "---------------------------------------"
-  which fish | sudo tee -a /etc/shells
-  chsh -s "$(which fish)"
+  chsh -s "$fish_path"
   echo "--------------------------------"
   echo "setting fish as main shell: done"
   echo "--------------------------------"

@@ -50,7 +50,13 @@ while [[ $# -gt 0 ]]; do
     shift
     ;;
   --type)
-    type_filter="$2"
+    case "${2:-}" in
+    md | json | yaml | sh | lua | fish | py | go) type_filter="$2" ;;
+    *)
+      printf 'error: --type needs one of: md, json, yaml, sh, lua, fish, py, go\n' >&2
+      exit 2
+      ;;
+    esac
     shift 2
     ;;
   --help | -h) usage ;;

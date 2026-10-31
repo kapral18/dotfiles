@@ -181,7 +181,7 @@ for s in "${sess[@]}"; do
   rc=0
   (
     set +e
-    panes="$(tmux list-panes -s -t "$s" -F '#{window_index}.#{pane_index} #{pane_current_command}' 2> /dev/null)"
+    panes="$(tmux list-panes -s -t "=${s}:" -F '#{window_index}.#{pane_index} #{pane_current_command}' 2> /dev/null)"
     panes_rc=$?
     if [ "$panes_rc" -ne 0 ] || [ -z "$panes" ]; then
       exit 2

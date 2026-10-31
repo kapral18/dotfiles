@@ -127,3 +127,4 @@ Current externals:
 | `EmmyLua.spoon`    | Hammerspoon Lua annotations |
 | `lowfi` data files | Background music tracklists |
 | `bat` themes       | Syntax highlighting themes  |
+| `yazi` flavors     | yazi color themes           |

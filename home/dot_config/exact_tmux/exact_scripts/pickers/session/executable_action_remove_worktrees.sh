@@ -231,7 +231,7 @@ kill_tmux_sessions_for_paths() {
         *) continue ;;
       esac
     fi
-    tmux kill-session -t "$s" 2> /dev/null || true
+    tmux kill-session -t "=$s" 2> /dev/null || true
   done
 }
 

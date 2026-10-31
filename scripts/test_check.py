@@ -13,12 +13,20 @@ import unittest
 from pathlib import Path
 
 from _test_support import REPO
-from check import SLOW_SHARDS, collect_changed, plan_check, production_probe_paths
+from check import SLOW_SHARDS, TEST_RULES, collect_changed, plan_check, production_probe_paths
 from test_runner import discover_files, resolve_files
 
 
 class TestCheckPlan(unittest.TestCase):
     """WHEN planning make check from a changed-path set."""
+
+    def test_SHOULD_name_only_test_files_that_exist(self):
+        missing = sorted(
+            {test for rule in TEST_RULES for test in rule.tests if not (REPO / "scripts" / test).is_file()}
+        )
+        self.assertEqual(
+            missing, [], "TEST_RULES maps to missing test files; a renamed test would silently stop running"
+        )
 
     def test_WHEN_only_nvim_lua_changes_SHOULD_skip_tmux_picker_shards(self):
         plan = plan_check(

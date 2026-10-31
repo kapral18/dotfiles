@@ -10,16 +10,20 @@ CURRENT_WINDOW_NAME="${3:-}"
 WINDOW_CURRENT_PATH="${4:-}"
 
 number_of_windows() {
-  tmux list-windows -t "${CURRENT_SESSION_NAME}" | wc -l | tr -d ' '
+  tmux list-windows -t "=${CURRENT_SESSION_NAME}" | wc -l | tr -d ' '
 }
 
 create_new_session() {
-  TMUX="" tmux -S "$(tmux_socket)" new-session -c "${WINDOW_CURRENT_PATH}" -s "${CURRENT_WINDOW_NAME}" -d -P -F "#{session_name}"
+  local name_args=(-s "${CURRENT_WINDOW_NAME}")
+  if tmux has-session -t "=${CURRENT_WINDOW_NAME}" 2> /dev/null; then
+    name_args=()
+  fi
+  TMUX="" tmux -S "$(tmux_socket)" new-session -c "${WINDOW_CURRENT_PATH}" ${name_args[@]+"${name_args[@]}"} -d -P -F "#{session_name}"
 }
 
 new_session_window_id() {
   local session_name="$1"
-  tmux list-windows -t "${session_name}" -F "#{window_id}"
+  tmux list-windows -t "=${session_name}" -F "#{window_id}"
 }
 
 promote_window() {

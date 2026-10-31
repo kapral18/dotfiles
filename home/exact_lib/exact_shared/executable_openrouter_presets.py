@@ -77,10 +77,14 @@ def _preset_exists(preset_path: str, expected_slug: str, api_key: str) -> bool:
     return True
 
 
+# OpenRouter's reasoning efforts; anything else would create a junk preset in the workspace.
+EFFORTS = ("none", "minimal", "low", "medium", "high", "xhigh", "max")
+
+
 def ensure_preset(effort: str, api_key: str) -> None:
     """Create the account-local effort preset when its slug is absent."""
-    if not effort:
-        raise PresetError("reasoning effort must not be empty")
+    if effort not in EFFORTS:
+        raise PresetError(f"unsupported reasoning effort {effort!r}; choose: {', '.join(EFFORTS)}")
     if not api_key:
         raise PresetError("OPENROUTER_API_KEY must not be empty")
 

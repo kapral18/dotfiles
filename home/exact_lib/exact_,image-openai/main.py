@@ -287,13 +287,22 @@ def request_image(
     return image
 
 
+def _unused(path: Path) -> Path:
+    """`path`, or `stem-N.ext` when a derived default would overwrite an earlier result."""
+    candidate, n = path, 1
+    while candidate.exists():
+        candidate = path.with_name(f"{path.stem}-{n}{path.suffix}")
+        n += 1
+    return candidate
+
+
 def default_output(prompt: str, inputs: list[Path], output_format: str) -> Path:
     if inputs:
         name = f"{inputs[0].stem}-openai-edit"
     else:
         slug = "".join(char if char.isalnum() else "-" for char in prompt.lower())
         name = "-".join(filter(None, slug.split("-")))[:50] or "image-openai"
-    return Path(name + _EXT_BY_FORMAT[output_format]).resolve()
+    return _unused(Path(name + _EXT_BY_FORMAT[output_format]).resolve())
 
 
 def resolve_output(requested: str | None, prompt: str, inputs: list[Path], output_format: str) -> Path:

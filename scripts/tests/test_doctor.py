@@ -353,6 +353,16 @@ def _pi_shim(root: Path, target: Path) -> Path:
     return shim
 
 
+class TestLedgerRows(unittest.TestCase):
+    """WHEN a ledger row lacks a field the doctor reads."""
+
+    def test_row_without_live_probe_is_refused_at_load(self) -> None:
+        row = _ledger_artifact("/x", {"kind": "file"}, "h")
+        del row["live_probe"]
+        with self.assertRaisesRegex(ValueError, "live_probe"):
+            generated_artifact_ledger._validate_ledger({"schema_version": 1, "artifacts": {row["artifact_id"]: row}})
+
+
 class TestPiRuntimeProbe(unittest.TestCase):
     PEERS = (
         "@earendil-works/pi-coding-agent",

@@ -65,6 +65,8 @@ if ! mkdir "$lock_dir" 2> /dev/null; then
     if [ -n "$pid" ] && kill -0 "$pid" 2> /dev/null; then
       exit 0
     fi
+  elif [ "$(($(date +%s) - $(mtime_epoch "$lock_dir" 2> /dev/null || printf '0')))" -lt 10 ]; then
+    exit 0
   fi
   rm -rf "$lock_dir" 2> /dev/null || exit 0
   mkdir "$lock_dir" 2> /dev/null || exit 0
@@ -73,8 +75,10 @@ fi
 tmp_out=""
 cleanup() {
   rm -f "${tmp_out:-}" 2> /dev/null || true
-  rm -f "${lock_dir}/pid" 2> /dev/null || true
-  rmdir "$lock_dir" 2> /dev/null || true
+  if [ "$(cat "${lock_dir}/pid" 2> /dev/null || true)" = "$$" ]; then
+    rm -f "${lock_dir}/pid" 2> /dev/null || true
+    rmdir "$lock_dir" 2> /dev/null || true
+  fi
 }
 trap cleanup EXIT
 printf '%s\n' "$$" > "${lock_dir}/pid" 2> /dev/null || true

@@ -145,9 +145,6 @@ if [ -z "$new_path" ]; then
   new_path="$parent_dir/$(_comma_w_sanitize_path_component "$to_branch")"
 fi
 
-old_session="$(_comma_w_tmux_session_name "$parent_name" "$from_branch")"
-_remove_worktree_tmux_session "$quiet_mode" "$from_path" "$old_session"
-
 if [ "$from_branch" != "$to_branch" ]; then
   if git show-ref --verify --quiet "refs/heads/$to_branch"; then
     echo "Branch '$to_branch' already exists locally." >&2
@@ -159,6 +156,12 @@ if [ "$from_branch" != "$to_branch" ]; then
   fi
 fi
 
+if [ "$keep_path" -eq 0 ] && [ "$from_path" != "$new_path" ] && [ -e "$new_path" ]; then
+  echo "Destination already exists: $new_path" >&2
+  exit 1
+fi
+
+old_session="$(_comma_w_tmux_session_name "$parent_name" "$from_branch")"
 if [ "$keep_path" -eq 0 ] && [ "$from_path" != "$new_path" ]; then
   mkdir -p "$(dirname "$new_path")"
   git worktree move "$from_path" "$new_path"
@@ -166,12 +169,22 @@ if [ "$keep_path" -eq 0 ] && [ "$from_path" != "$new_path" ]; then
 fi
 
 if [ "$from_branch" != "$to_branch" ]; then
-  if ! git branch -m "$from_branch" "$to_branch" 2> /dev/null; then
-    git -C "$from_path" branch -m "$from_branch" "$to_branch"
+  if ! git branch -m "$from_branch" "$to_branch" 2> /dev/null \
+    && ! git -C "$from_path" branch -m "$from_branch" "$to_branch"; then
+    # Undo the move so a failed rename leaves the worktree where it was.
+    [ "$from_path" = "$old_path" ] || git worktree move "$from_path" "$old_path"
+    exit 1
   fi
 fi
 
 new_session="$(_comma_w_tmux_session_name "$parent_name" "$to_branch")"
+# Same name at a new path: move the old session aside so a fresh one starts in the new directory.
+if { [ -n "${TMUX:-}" ] || [ -n "${OUTER_TMUX_SOCKET:-}" ]; } \
+  && [ "$old_session" = "$new_session" ] && [ "$old_path" != "$from_path" ] \
+  && _comma_w_tmux has-session -t "=$old_session" 2> /dev/null \
+  && _comma_w_tmux rename-session -t "=$old_session" "${old_session}~moved-$$" 2> /dev/null; then
+  old_session="${old_session}~moved-$$"
+fi
 _add_worktree_tmux_session "$quiet_mode" "$parent_name" "$to_branch" "$from_path"
 
 if command -v zoxide &> /dev/null; then
@@ -187,4 +200,14 @@ fi
 
 if [ "$quiet_mode" -eq 0 ]; then
   printf '%s\t%s\n' "$to_branch" "$from_path"
+fi
+
+# Last: the old session may be the one running this script.
+if [ "$old_path" = "$from_path" ]; then
+  # The folder stays, so other sessions in it stay valid; only the old named session goes.
+  if [ "$old_session" != "$new_session" ] && { [ -n "${TMUX:-}" ] || [ -n "${OUTER_TMUX_SOCKET:-}" ]; }; then
+    _comma_w_tmux kill-session -t "=$old_session" 2> /dev/null || true
+  fi
+else
+  _remove_worktree_tmux_session "$quiet_mode" "$old_path" "$old_session" "$new_session"
 fi

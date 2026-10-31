@@ -24,7 +24,7 @@ echo "Tracked Branch: '$remote_branch'"
 
 echo ------------------------------------
 
-git fetch "$remote_branch_remote" "$remote_branch_name" 2> /dev/null
+git fetch "$remote_branch_remote" "$remote_branch_name" 2> /dev/null || true
 
 if git ls-remote --exit-code --heads "$remote_branch_remote" "$remote_branch_name" > /dev/null 2>&1; then
   echo "Tracked Branch Exists: Yes"

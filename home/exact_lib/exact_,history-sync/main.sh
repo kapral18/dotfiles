@@ -32,31 +32,50 @@ if op document get "$item_name" --out-file "$temp_file" 2> "$op_err"; then
   fi
 
   merge_script="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/fish-history-merge.py"
-  if ! "$merge_script" "$history_file" "$temp_file" "$merged_file"; then
-    echo "Failed to merge histories"
-    exit 1
-  fi
-  if [ ! -s "$merged_file" ]; then
-    echo "Failed to merge histories"
+  local_snapshot="$tmp_dir/local"
+  # Merge from a snapshot, and merge again if fish appended while the merge ran.
+  for _attempt in 1 2 3; do
+    if [ -f "$history_file" ]; then cp -p "$history_file" "$local_snapshot"; else : > "$local_snapshot"; fi
+    if ! python3 "$merge_script" "$local_snapshot" "$temp_file" "$merged_file" || [ ! -s "$merged_file" ]; then
+      echo "Failed to merge histories"
+      exit 1
+    fi
+    if [ ! -f "$history_file" ] || cmp -s "$history_file" "$local_snapshot"; then
+      break
+    fi
+  done
+  if [ -f "$history_file" ] && ! cmp -s "$history_file" "$local_snapshot"; then
+    echo "Fish history kept changing during the merge; run the sync again" >&2
     exit 1
   fi
 
-  # Never shrink the synced history below the remote copy: the merge is a
-  # union, so a smaller result means parse/merge corruption. Refuse to
-  # install or push it.
-  merged_count="$(grep -c '^- cmd: ' "$merged_file" || true)"
-  remote_count="$(grep -c '^- cmd: ' "$temp_file" || true)"
-  if [ "${merged_count:-0}" -lt "${remote_count:-0}" ]; then
-    echo "Merged history ($merged_count entries) is smaller than remote ($remote_count); aborting to avoid data loss"
-    exit 1
-  fi
+  # The merge is a union of unique commands, so it never holds fewer than
+  # either side; fewer means parse/merge corruption. Refuse to install or push it.
+  unique_cmds() { { grep '^- cmd: ' "$1" 2> /dev/null || true; } | sort -u | wc -l | tr -d ' '; }
+  merged_count="$(unique_cmds "$merged_file")"
+  for side in remote:"$temp_file" local:"$local_snapshot"; do
+    side_count="$(unique_cmds "${side#*:}")"
+    if [ "$merged_count" -lt "$side_count" ]; then
+      echo "Merged history ($merged_count commands) is smaller than ${side%%:*} ($side_count); aborting to avoid data loss"
+      exit 1
+    fi
+  done
 
+  backup=""
   if [ -s "$history_file" ]; then
-    cp -p "$history_file" "$history_file.bak"
+    backup="$history_file.bak.$(date +%Y%m%d%H%M%S)"
+    cp -p "$history_file" "$backup"
+    # Keep the three newest backups.
+    ls -1t "$history_file".bak.* 2> /dev/null | tail -n +4 | while IFS= read -r old; do rm -f "$old"; done
+    rm -f "$history_file.bak" # the old fixed-name backup
+  fi
+  if [ -f "$history_file" ] && ! cmp -s "$history_file" "$local_snapshot"; then
+    echo "Fish history changed during the sync; run it again" >&2
+    exit 1
   fi
   mv "$merged_file" "$history_file"
   chmod 600 "$history_file" # history may hold secrets; match fish's own perms
-  echo "History merged successfully (backup: $history_file.bak)"
+  echo "History merged successfully${backup:+ (backup: $backup)}"
 else
   # The pull failed. Distinguish "no remote item yet" (first run) from a
   # transient/auth/network error: in the latter case the item exists, so

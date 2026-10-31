@@ -26,8 +26,11 @@ d = json.load(open(sys.argv[1]))
 for m in d["data"]:
     efforts = (m.get("reasoning") or {}).get("supported_efforts") or []
     print(m["id"] + "\t" + ",".join(efforts))
-' $tmp >$__openrouter_catalog_cache
-    rm -f $tmp
+' $tmp >$tmp.tsv
+    and mv $tmp.tsv $__openrouter_catalog_cache
+    set -l parsed $status
+    rm -f $tmp $tmp.tsv
+    return $parsed
 end
 
 function __openrouter_catalog_load

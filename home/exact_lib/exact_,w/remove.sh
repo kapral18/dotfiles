@@ -235,12 +235,16 @@ default_branch="$(_comma_w_detect_default_branch)"
 parent_dir=$(_get_worktree_parent_dir)
 parent_name="$(_comma_w_tmux_parent_name_from_dir "$parent_dir")"
 
+main_worktree="$(list_worktrees_porcelain | awk -F'\t' 'NR == 1 { print $1 }')"
+main_worktree_rp="$(realpath "$main_worktree" 2> /dev/null || printf '%s' "$main_worktree")"
+
 selectable_worktrees=()
 while IFS= read -r _line; do
   [ -n "$_line" ] || continue
   selectable_worktrees+=("$_line")
 done < <(
   list_worktrees_porcelain | awk -F'\t' -v default_branch="$default_branch" '
+    NR == 1 { next }
     {
       path=$1
       branch_ref=$2
@@ -298,6 +302,10 @@ if [ "$paths_mode" -eq 1 ]; then
       continue
     fi
     _tsv_assign "$rec" p_found branch_ref detached locked
+    if [ "$(realpath "$p_found" 2> /dev/null || printf '%s' "$p_found")" = "$main_worktree_rp" ]; then
+      notify "Skipping main worktree: $p_found"
+      continue
+    fi
     case "$locked" in
       1)
         notify "Skipping locked worktree: $p_found"
@@ -408,6 +416,10 @@ for worktree in "${worktrees[@]}"; do
         continue
         ;;
     esac
+    if [ "$worktree_path_rp" = "$main_worktree_rp" ] || [ -d "$worktree_path_rp/.git" ]; then
+      notify "Refusing to delete main worktree: $worktree_path_rp"
+      continue
+    fi
     notify "Worktree dir still exists; deleting: $worktree_path_rp"
     rm -rf "$worktree_path_rp" 2> /dev/null || true
   fi

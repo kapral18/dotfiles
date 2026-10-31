@@ -109,7 +109,7 @@ printf '%s' "$prompt" | ,q
 
 Safety behavior:
 
-- Before replacing local history, it writes `~/.local/share/fish/fish_history.bak`.
+- Before replacing local history, it writes a timestamped `~/.local/share/fish/fish_history.bak.<time>` and keeps the three newest.
 - It refuses to install/push a merged result with fewer entries than the remote copy.
 - If remote pull fails but the `fish-history-sync` item exists, it aborts instead of overwriting good remote history with local-only history.
 

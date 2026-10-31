@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import secrets
 import subprocess
 import sys
 import time
@@ -10,6 +11,7 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
+from urllib.parse import parse_qs
 
 from assets import ASSET_TYPES, asset_text, chrome_page, inject_client_script, render_asset
 from feedback import clear_ended, normalize_feedback_batch
@@ -51,6 +53,12 @@ def server_base_url(sdir: Path) -> str | None:
     return None
 
 
+def server_token(sdir: Path) -> str:
+    state = read_server_state(sdir) or {}
+    token = state.get("token")
+    return token if isinstance(token, str) else ""
+
+
 def start_server(sdir: Path) -> str:
     existing = server_base_url(sdir)
     if existing:
@@ -80,10 +88,12 @@ def live_info(name: str) -> dict[str, str]:
     safe_name = sanitize_name(name)
     clear_ended(safe_name)
     base_url = start_server(session_dir())
+    token = server_token(session_dir())
     return {
         "artifact": safe_name,
         "server_url": base_url,
-        "script_url": f"{base_url}/live/{safe_name}.js",
+        "token": token,
+        "script_url": f"{base_url}/live/{safe_name}.js?token={token}",
         "feedback_url": f"{base_url}/api/feedback/{safe_name}",
         "end_url": f"{base_url}/api/end/{safe_name}",
     }
@@ -99,15 +109,16 @@ def live_start_command(args: argparse.Namespace) -> None:
 
 def live_script_command(args: argparse.Namespace) -> None:
     info = live_info(args.name)
-    print(live_overlay_script(info["artifact"], info["server_url"]), end="")
+    print(live_overlay_script(info["artifact"], info["server_url"], info["token"]), end="")
 
 
-def live_overlay_script(name: str, base_url: str) -> str:
+def live_overlay_script(name: str, base_url: str, token: str) -> str:
     return render_asset(
         "live_overlay.js",
         {
             "__NAME_JSON__": json.dumps(name),
             "__BASE_URL_JSON__": json.dumps(base_url),
+            "__TOKEN_JSON__": json.dumps(token),
             "__LIVE_OVERLAY_CSS_JSON__": json.dumps(asset_text("live_overlay.css")),
             "__LIVE_OVERLAY_HTML_JSON__": json.dumps(asset_text("live_overlay.html")),
         },
@@ -131,6 +142,7 @@ def run_server(args: argparse.Namespace) -> None:
     adir.mkdir(parents=True, exist_ok=True)
     fdir.mkdir(parents=True, exist_ok=True)
     base_url = ""
+    token = secrets.token_urlsafe(24)
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, fmt: str, *values: Any) -> None:
@@ -139,7 +151,7 @@ def run_server(args: argparse.Namespace) -> None:
         def send_cors_headers(self) -> None:
             self.send_header("access-control-allow-origin", "*")
             self.send_header("access-control-allow-methods", "GET, POST, OPTIONS")
-            self.send_header("access-control-allow-headers", "content-type")
+            self.send_header("access-control-allow-headers", "content-type, x-artifact-token")
             self.send_header("access-control-max-age", "600")
 
         def send_json(self, value: dict[str, Any], status: int = 200) -> None:
@@ -175,8 +187,12 @@ def run_server(args: argparse.Namespace) -> None:
                 self.wfile.write(body)
                 return
             if self.path.startswith("/live/"):
-                name = sanitize_name(self.path.removeprefix("/live/").removesuffix(".js").split("?", 1)[0])
-                body = live_overlay_script(name, base_url).encode()
+                route, _, query = self.path.partition("?")
+                if parse_qs(query).get("token") != [token]:
+                    self.send_error(403)
+                    return
+                name = sanitize_name(route.removeprefix("/live/").removesuffix(".js"))
+                body = live_overlay_script(name, base_url, token).encode()
                 self.send_response(200)
                 self.send_header("content-type", "application/javascript; charset=utf-8")
                 self.send_cors_headers()
@@ -194,17 +210,15 @@ def run_server(args: argparse.Namespace) -> None:
                 body = inject_client_script(content).encode()
                 self.send_response(200)
                 self.send_header("content-type", "text/html; charset=utf-8")
-                self.send_cors_headers()
                 self.send_header("content-length", str(len(body)))
                 self.end_headers()
                 self.wfile.write(body)
                 return
             if self.path.startswith("/session/"):
                 name = sanitize_name(self.path.removeprefix("/session/").split("?", 1)[0])
-                body = chrome_page(name).encode()
+                body = chrome_page(name, token).encode()
                 self.send_response(200)
                 self.send_header("content-type", "text/html; charset=utf-8")
-                self.send_cors_headers()
                 self.send_header("content-length", str(len(body)))
                 self.end_headers()
                 self.wfile.write(body)
@@ -212,6 +226,9 @@ def run_server(args: argparse.Namespace) -> None:
             self.send_error(404)
 
         def do_POST(self) -> None:
+            if not secrets.compare_digest(self.headers.get("x-artifact-token", ""), token):
+                self.send_json({"error": "forbidden"}, 403)
+                return
             if self.path.startswith("/api/feedback/"):
                 name = sanitize_name(self.path.removeprefix("/api/feedback/"))
                 payload = read_request_body(self)
@@ -233,7 +250,9 @@ def run_server(args: argparse.Namespace) -> None:
     server = ThreadingHTTPServer((HOST, 0), Handler)
     port = int(server.server_address[1])
     base_url = f"http://{HOST}:{port}"
-    server_state_path(sdir).write_text(json.dumps({"pid": os.getpid(), "port": port}) + "\n", encoding="utf-8")
+    server_state_path(sdir).write_text(
+        json.dumps({"pid": os.getpid(), "port": port, "token": token}) + "\n", encoding="utf-8"
+    )
     try:
         server.serve_forever()
     finally:

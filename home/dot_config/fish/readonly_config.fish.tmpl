@@ -83,8 +83,8 @@ if type -q pass; and test -z "$GEMINI_API_KEY"
     set -gx GEMINI_API_KEY (pass google/gemini/api/token)
 end
 
-if type -q pass; and test -z "$NANOBANANA_API_KEY"
-    set -gx NANOBANANA_API_KEY (pass google/gemini/api/token)
+if test -z "$NANOBANANA_API_KEY"; and test -n "$GEMINI_API_KEY"
+    set -gx NANOBANANA_API_KEY $GEMINI_API_KEY
 end
 
 # Do not export GOOGLE_CLOUD_PROJECT / GOOGLE_GENAI_USE_VERTEXAI / GOOGLE_CLOUD_LOCATION here.
@@ -120,19 +120,19 @@ if status --is-interactive
     end
     alias fzfi='git ls-files --cached --others --exclude-standard 2>/dev/null || fd --type f --type l'
     function g --wraps git --description 'git with fsmonitor auto-recovery'
-        set -l tmpfile (mktemp)
-        command git $argv 2>$tmpfile
+        command git $argv
         set -l git_status $status
-        if test $git_status -ne 0; and string match -q '*could not read IPC response*' <$tmpfile
-            rm -f $tmpfile
+        # Retry only read-only commands, and only when a configured fsmonitor daemon is down.
+        if test $git_status -ne 0
+            and contains -- "$argv[1]" status log show ls-files rev-parse
+            and test "$(command git config --bool core.fsmonitor 2>/dev/null)" = true
+            and not command git fsmonitor--daemon status >/dev/null 2>&1
             command git fsmonitor--daemon stop 2>/dev/null
             command git fsmonitor--daemon start 2>/dev/null
             command git $argv
-        else
-            test -s $tmpfile; and command cat $tmpfile >&2
-            rm -f $tmpfile
-            return $git_status
+            return $status
         end
+        return $git_status
     end
     alias t=tmux
     alias tree='tree -I ".git|node_modules"'

@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it, mock } from "bun:test"
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import { createIntentGuard, lastAnswer, writePaths } from "../../home/exact_lib/exact_shared/intent_guard.ts"
@@ -41,7 +41,9 @@ async function load(name: "pi" | "omp", answers: Record<string, unknown> = {}) {
     sendMessage: (message: unknown, options: unknown) => { messages.push({ message, options }) },
     exec: async (command: string, args: string[], options?: { cwd?: string }) => {
       expect(command).toBe(",task")
-      calls.push({ event: args[1], input: JSON.parse(args[5]), cwd: options?.cwd })
+      expect(args[4]).toBe("--input-file")
+      expect(statSync(args[5]).mode & 0o077).toBe(0)
+      calls.push({ event: args[1], input: JSON.parse(readFileSync(args[5], "utf8")), cwd: options?.cwd })
       const answer = answers[args[1]]
       return { stdout: JSON.stringify(typeof answer === "function" ? await answer() : answer ?? {}), stderr: "", code: 0, killed: false }
     },
@@ -54,6 +56,17 @@ async function load(name: "pi" | "omp", answers: Record<string, unknown> = {}) {
 }
 
 describe("shared intent guard", () => {
+  it("answers nothing when it cannot make its payload file", async () => {
+    const before = process.env.TMPDIR
+    process.env.TMPDIR = join(temp, "missing")
+    try {
+      const guard = createIntentGuard("pi", async () => ({ stdout: '{"deny":"x"}', stderr: "", code: 0, killed: false }))
+      expect(await guard("prompt", {}, { cwd: "/repo", sessionManager: { getSessionId: () => "s1" } } as any)).toEqual({})
+    } finally {
+      process.env.TMPDIR = before
+    }
+  })
+
   it("names the paths only of file-writing tools", () => {
     expect(writePaths("bash", { command: "ls" })).toBeUndefined()
     expect(writePaths("edit", { path: "a.ts", paths: ["b.ts", 3] })).toEqual(["a.ts", "b.ts"])
@@ -77,6 +90,20 @@ describe("shared intent guard", () => {
     expect(await garbage("stop", {}, ctx)).toEqual({})
     const thrown = createIntentGuard("pi", async () => { throw new Error("ENOENT") })
     expect(await thrown("stop", {}, ctx)).toEqual({})
+  })
+
+  it("passes a large payload through a private file that is removed afterwards", async () => {
+    const ctx = { cwd: "/repo", sessionManager: { getSessionId: () => "s1" } }
+    let seen: { args: string[]; text: string } | undefined
+    const guard = createIntentGuard("pi", async (_command, args) => {
+      seen = { args, text: readFileSync(args[5], "utf8") }
+      return { stdout: JSON.stringify({ deny: "no card" }), code: 0 }
+    })
+    const content = "x".repeat(2_000_000)
+    expect(await guard("tool", { tool: "write", content }, ctx)).toEqual({ deny: "no card" })
+    expect(seen?.args.join(" ").length).toBeLessThan(1000)
+    expect(JSON.parse(seen?.text ?? "{}").content).toBe(content)
+    expect(existsSync(seen?.args[5] ?? "")).toBe(false)
   })
 })
 
@@ -297,13 +324,13 @@ describe("omp adapter", () => {
 })
 
 describe("opencode adapter", () => {
-  // A fake `~/bin/,task` that logs its arguments and answers from a JSON map keyed by event.
+  // A fake `~/bin/,task` that logs its arguments with the input file inlined and answers from a JSON map keyed by event.
   function fakeTask(answers: Record<string, unknown>) {
     const home = mkdtempSync(join(temp, "home-"))
     mkdirSync(join(home, "bin"))
     writeFileSync(join(home, "answers.json"), JSON.stringify(answers))
     const script = join(home, "bin", ",task")
-    writeFileSync(script, `#!/bin/sh\nprintf '%s\\n' "$*" >> "${home}/calls.log"\npython3 -c 'import json,sys; print(json.dumps(json.load(open(sys.argv[1])).get(sys.argv[2], {})))' "${home}/answers.json" "$2"\n`)
+    writeFileSync(script, `#!/bin/sh\ntest "$5" = --input-file && printf '%s %s %s %s --input %s\\n' "$1" "$2" "$3" "$4" "$(cat "$6")" >> "${home}/calls.log"\npython3 -c 'import json,sys; print(json.dumps(json.load(open(sys.argv[1])).get(sys.argv[2], {})))' "${home}/answers.json" "$2"\n`)
     chmodSync(script, 0o755)
     return home
   }

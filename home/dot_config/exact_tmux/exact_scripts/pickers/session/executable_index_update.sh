@@ -128,7 +128,7 @@ pid_file="${lock_dir}/pid"
 while ! mkdir "$lock_dir" 2> /dev/null; do
   pid=""
   [ -f "$pid_file" ] && pid="$(cat "$pid_file" 2> /dev/null || true)"
-  if [ -n "$pid" ] && kill -0 "$pid" 2> /dev/null; then
+  if [ -n "$pid" ] && kill -0 "$pid" 2> /dev/null && ps -p "$pid" -o command= 2> /dev/null | grep -q 'index_update\.sh'; then
     if [ "$force" -eq 1 ] && [ "$defer_if_busy" -ne 1 ]; then
       kill "$pid" 2> /dev/null || true
       waited=0
@@ -211,9 +211,15 @@ publish_cache_from() {
       PENDING_FILE="$pending_file" \
       MUTATIONS_FILE="$mutation_file" \
       MUTATION_TTL="$mutation_ttl" \
-      CACHE_OUT="$out_tmp" python3 "$script_dir/lib/publish_cache_filter.py"
+      CACHE_OUT="$out_tmp" python3 "$script_dir/lib/publish_cache_filter.py" || {
+      rm -f "$out_tmp"
+      return 1
+    }
   else
-    cp "$src" "$out_tmp"
+    cp "$src" "$out_tmp" || {
+      rm -f "$out_tmp"
+      return 1
+    }
   fi
   if [ -f "$cache_file" ] && cmp -s "$out_tmp" "$cache_file"; then
     rm -f "$out_tmp"

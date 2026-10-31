@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import io
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -35,6 +36,29 @@ class TestGeneratePayload(unittest.TestCase):
 
 class TestEditPayload(unittest.TestCase):
     """WHEN local images are passed with -i."""
+
+    def setUp(self) -> None:
+        # A stand-in for `magick IN -auto-orient -strip OUT` that copies the bytes and records the call.
+        self.magick_calls: list[list[str]] = []
+
+        def fake_magick(cmd, **_kwargs):
+            self.magick_calls.append(cmd)
+            Path(cmd[-1]).write_bytes(Path(cmd[1]).read_bytes())
+            return mock.Mock(returncode=0, stderr="", stdout="")
+
+        for patcher in (
+            mock.patch.object(MOD.shutil, "which", return_value="/usr/bin/magick"),
+            mock.patch.object(MOD.subprocess, "run", side_effect=fake_magick),
+        ):
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def test_it_should_strip_metadata_from_every_upload(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            photo = _tiny_png(Path(tmp) / "photo.png")
+            MOD.build_payload("edit", inputs=[photo], urls=[])
+        self.assertEqual([call[1] for call in self.magick_calls], [str(photo)])
+        self.assertIn("-strip", self.magick_calls[0])
 
     def test_it_should_send_inline_images_without_the_generate_prefix(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -83,7 +107,10 @@ class TestEditPayload(unittest.TestCase):
             shrunk = b"\xff\xd8\xff" + b"y" * 64
 
             def fake_run(cmd, **_kwargs):
-                Path(cmd[cmd.index("--out") + 1]).write_bytes(shrunk)
+                if "--out" in cmd:
+                    Path(cmd[cmd.index("--out") + 1]).write_bytes(shrunk)
+                else:
+                    Path(cmd[-1]).write_bytes(Path(cmd[1]).read_bytes())
                 return mock.Mock(returncode=0, stderr="", stdout="")
 
             with (
@@ -174,6 +201,37 @@ class TestGenerateWritesStdoutPath(unittest.TestCase):
                 MOD.main(["a red square", "-o", str(out)])
             self.assertEqual(stdout.getvalue(), f"{out}\n")
             self.assertEqual(out.read_bytes(), jpeg)
+
+
+class TestDefaultOutputCollision(unittest.TestCase):
+    """WHEN the derived default output name already exists."""
+
+    def test_it_should_pick_a_new_name_instead_of_overwriting(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            old = os.getcwd()
+            os.chdir(tmp)
+            try:
+                Path("red-fox.png").write_bytes(b"earlier")
+                Path("red-fox-1.png").write_bytes(b"earlier")
+                self.assertEqual(MOD._unused(MOD._default_output("red fox", "image/png")), "red-fox-2.png")
+            finally:
+                os.chdir(old)
+
+
+class TestApiKeyFallback(unittest.TestCase):
+    """WHEN no API key is in the environment."""
+
+    def test_it_should_read_the_first_line_of_the_pass_entry(self) -> None:
+        done = mock.Mock(returncode=0, stdout="from-pass\nnotes\n")
+        env = {
+            k: v for k, v in os.environ.items() if k not in ("NANOBANANA_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY")
+        }
+        with (
+            mock.patch.dict(os.environ, env, clear=True),
+            mock.patch.object(MOD.subprocess, "run", return_value=done) as run,
+        ):
+            self.assertEqual(MOD._api_key(), "from-pass")
+        self.assertEqual(run.call_args.args[0], ["pass", "show", MOD.PASS_ENTRY])
 
 
 if __name__ == "__main__":

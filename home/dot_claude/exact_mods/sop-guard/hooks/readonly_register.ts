@@ -36,10 +36,71 @@ const printsSecret = ([name, ...args]: string[]) => {
   }
 }
 
-const isConsumed = (command: Simple) => {
-  if (command.isSubstituted || command.isRedirected) return true
+// Commands that print their arguments; a secret substituted into one still reaches the transcript.
+const ECHOES = new Set([...PRINTS, 'echo', 'printf', 'print'])
+const SHELLS = new Set(['sh', 'bash', 'zsh', 'dash', 'fish', 'ksh'])
+
+// Commands that take a secret as an argument without printing it.
+const CONSUMERS = new Set(['curl', 'wget', 'gh', 'op', 'pass', 'security', 'pbcopy', 'xclip', 'wl-copy', 'xh', 'http', 'docker', 'podman', 'helm', 'kubectl', 'npm', 'gpg', 'ssh-add', 'git', 'wc', 'shasum', 'sha256sum', 'md5'])
+
+// A pipe consumes a secret only when it ends in a known consumer; anything else (an interpreter,
+// `rev`, `ls` echoing a bad path into stderr) counts as printing. xargs also needs no printer or shell.
+const printsInput = (words: string[]) => {
+  const [word, ...args] = words
+  if (base(word) !== 'xargs') return !CONSUMERS.has(base(word))
+  return !args.some(arg => CONSUMERS.has(base(arg))) || args.some(arg => ECHOES.has(base(arg)) || SHELLS.has(base(arg)))
+}
+
+const isConsumed = (command: Simple, outer: Simple | undefined) => {
+  if (command.isRedirected) return true
   const last = command.after[command.after.length - 1]
-  return last !== undefined && (last.isRedirected || !PRINTS.has(base(last.words[0])))
+  if (last !== undefined && (last.isRedirected || !printsInput(last.words))) return true
+  return command.isSubstituted && !(outer && ECHOES.has(base(outer.words[0])))
+}
+
+// The bodies of `$(...)` and backticks inside one word, outermost first.
+const substitutions = (word: string) => {
+  const bodies: string[] = []
+  for (let i = 0; i < word.length; i++) {
+    if (word.startsWith('$(', i)) {
+      let depth = 0
+      for (let j = i + 1; j < word.length; j++) {
+        if (word[j] === '(') depth++
+        else if (word[j] === ')' && --depth === 0) {
+          bodies.push(word.slice(i + 2, j))
+          i = j
+          break
+        }
+      }
+    } else if (word[i] === '`') {
+      const end = word.indexOf('`', i + 1)
+      if (end > i) {
+        bodies.push(word.slice(i + 1, end))
+        i = end
+      }
+    }
+  }
+  return bodies
+}
+
+// Whether `script` prints a secret into the transcript, looking into quoted substitutions and `sh -c` strings.
+const leaksSecret = (script: string, depth = 0): boolean => {
+  if (depth > 3) return false
+  const commands = simpleCommands(script)
+  return commands.some((command, i) => {
+    const outer = command.isSubstituted ? commands.slice(0, i).reverse().find(c => !c.isSubstituted) : undefined
+    if (printsSecret(command.words) && !isConsumed(command, outer)) return true
+    const [word, ...args] = command.words
+    if (SHELLS.has(base(word))) {
+      const at = args.findIndex(arg => /^-[a-z]*c[a-z]*$/.test(arg))
+      if (at >= 0 && args[at + 1] !== undefined && leaksSecret(args[at + 1] ?? '', depth + 1)) return true
+    }
+    return (
+      ECHOES.has(base(word)) &&
+      !isConsumed(command, undefined) &&
+      args.some(arg => substitutions(arg).some(body => simpleCommands(body).some(inner => printsSecret(inner.words) && !isConsumed(inner, undefined))))
+    )
+  })
 }
 
 // Global flags, then the first subcommand and each one after `\;`.
@@ -87,13 +148,11 @@ export const register: Register = on => {
 
   on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
     const name = $.plugin.name
-    const commands = simpleCommands(e.command)
-
-    for (const command of commands) {
+    if (leaksSecret(e.command)) {
+      return { deny: `${name}: this command prints a secret into the transcript (~/AGENTS.md §5). Pass it by reference: $(...) into a variable or a consuming command's argument, a pipe into its consumer, or pass -c.` }
+    }
+    for (const command of simpleCommands(e.command)) {
       const [word, ...args] = command.words
-      if (printsSecret(command.words) && !isConsumed(command)) {
-        return { deny: `${name}: this command prints a secret into the transcript (~/AGENTS.md §5). Pass it by reference: $(...) into a variable or argument, a pipe into its consumer, or pass -c.` }
-      }
       if (base(word) !== 'tmux') continue
       for (const sub of tmuxSubcommands(args) ?? []) {
         if (sub === 'kill-server') {

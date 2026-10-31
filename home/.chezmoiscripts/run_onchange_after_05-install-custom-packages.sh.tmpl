@@ -122,7 +122,14 @@ install_dmg_app() (
     return 1
   fi
 
-  cp -r "$mount_dir/$app_bundle" /Applications/ || return 1
+  # Copy under a temporary name so an interrupted copy never looks installed.
+  local staging="/Applications/.${app_bundle}.partial"
+  rm -rf "$staging"
+  if ! cp -R "$mount_dir/$app_bundle" "$staging"; then
+    rm -rf "$staging"
+    return 1
+  fi
+  mv "$staging" "$app_path" || return 1
 
   echo "$app_name installed successfully"
 )
@@ -321,5 +328,7 @@ if [[ $status -ne 0 ]]; then
 fi
 
 # Install command-line tools
-curl -o ~/.local/bin/ytsurf https://raw.githubusercontent.com/kapral18/ytsurf/reduce-deps/ytsurf.sh
-chmod +x ~/.local/bin/ytsurf
+mkdir -p ~/.local/bin
+curl -fsSL -o ~/.local/bin/ytsurf.partial https://raw.githubusercontent.com/kapral18/ytsurf/reduce-deps/ytsurf.sh
+chmod +x ~/.local/bin/ytsurf.partial
+mv ~/.local/bin/ytsurf.partial ~/.local/bin/ytsurf

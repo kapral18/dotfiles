@@ -162,18 +162,35 @@ At Path: $worktree_path
   return 0
 }
 
+# The path with symlinks resolved, even after the directory itself was removed.
+_comma_w_resolved_path() {
+  local parent
+  [ -n "$1" ] || return 0
+  realpath "$1" 2> /dev/null && return 0
+  parent="$(realpath "$(dirname "$1")" 2> /dev/null)" || {
+    printf '%s\n' "$1"
+    return 0
+  }
+  printf '%s/%s\n' "${parent%/}" "$(basename "$1")"
+}
+
 _remove_worktree_tmux_session() {
   if [ -n "${TMUX:-}" ] || [ -n "${OUTER_TMUX_SOCKET:-}" ]; then
     local quiet_mode="${1:-0}"
     local worktree_path="$2"
     local session_name_hint="${3:-}"
+    # A session this caller just created at the same path; never kill it.
+    local keep_session="${4:-}"
     local -a session_names=()
     local session_names_seen=" "
     local session_name
     local session_path
 
+    [ -n "$worktree_path" ] || return 0
+
     _add_session_name() {
       local name="$1"
+      [ "$name" != "$keep_session" ] || return 0
       case "$session_names_seen" in
         *" ${name} "*)
           return 0
@@ -184,7 +201,13 @@ _remove_worktree_tmux_session() {
     }
 
     if [ -n "$session_name_hint" ] && _comma_w_tmux has-session -t "=$session_name_hint" 2> /dev/null; then
-      _add_session_name "$session_name_hint"
+      session_path="$(_comma_w_tmux display-message -p -t "=${session_name_hint}:" '#{session_path}' 2> /dev/null || true)"
+      local real_session_path real_worktree_path
+      real_session_path="$(_comma_w_resolved_path "$session_path")"
+      real_worktree_path="$(_comma_w_resolved_path "$worktree_path")"
+      case "$real_session_path" in
+        "$real_worktree_path" | "$real_worktree_path"/*) _add_session_name "$session_name_hint" ;;
+      esac
     fi
 
     while IFS=$'\t' read -r session_name session_path; do

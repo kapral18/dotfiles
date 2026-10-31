@@ -18,7 +18,7 @@ fi
 
 base_branch="$1"
 
-if ! prs=$(_safe_exec_cmd gh pr list --base "$base_branch" --state open --json number --jq '.[].number'); then
+if ! prs=$(_safe_exec_cmd gh pr list --base "$base_branch" --state open --limit 1000 --json number --jq '.[].number'); then
   exit 1
 fi
 

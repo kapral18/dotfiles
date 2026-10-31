@@ -34,7 +34,7 @@ chezmoi apply
 
 ## What To Expect
 
-- Xcode Command Line Tools install + license acceptance: [`home/.chezmoiscripts/run_once_before_00-install-xcode.sh`](../../home/.chezmoiscripts/run_once_before_00-install-xcode.sh)
+- Xcode Command Line Tools install (license acceptance only when full Xcode is present): [`home/.chezmoiscripts/run_once_before_00-install-xcode.sh`](../../home/.chezmoiscripts/run_once_before_00-install-xcode.sh)
 - Homebrew install: [`home/.chezmoiscripts/run_once_after_01-install-brew.sh`](../../home/.chezmoiscripts/run_once_after_01-install-brew.sh)
 - Fish install + switching login shell: [`home/.chezmoiscripts/run_once_after_02-install-fish.sh`](../../home/.chezmoiscripts/run_once_after_02-install-fish.sh)
 - Brew bundle install + cleanup: [`home/.chezmoiscripts/run_onchange_after_03-install-brew-packages.fish.tmpl`](../../home/.chezmoiscripts/run_onchange_after_03-install-brew-packages.fish.tmpl)

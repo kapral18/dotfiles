@@ -50,7 +50,8 @@ Options (recv):
                        instead of loading it into the clipboard.
 
 Environment:
-  WH_PATCH_FILE        Override patch path (default: /tmp/staged.patch)
+  WH_PATCH_FILE        Override patch path (default: a private temp file when sending,
+                       /tmp/staged.patch when receiving)
 
 Examples:
   ,wh send                 # send staged diff
@@ -87,9 +88,14 @@ send_staged_diff() {
     exit 1
   fi
 
-  git diff --cached --binary > "$PATCH_FILE"
-  echo "Sending staged patch: $PATCH_FILE"
-  wormhole send --code-length 1 "$PATCH_FILE"
+  local patch="${WH_PATCH_FILE:-}"
+  if [ -z "$patch" ]; then
+    SEND_STAGE="$(mktemp -d "${TMPDIR:-/tmp}/wh_send.XXXXXX")"
+    patch="$SEND_STAGE/staged.patch"
+  fi
+  git diff --cached --binary > "$patch"
+  echo "Sending staged patch: $patch"
+  wormhole send --code-length 1 "$patch"
 }
 
 send_path() {

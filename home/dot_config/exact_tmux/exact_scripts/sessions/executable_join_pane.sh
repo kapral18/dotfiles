@@ -9,7 +9,10 @@ JOIN_PANE_FLAG="${3:-}"
 
 join_pane() {
   local join_pane_flag="$1"
-  tmux join-pane "${join_pane_flag}" || tmux display-message "Mark a(nother) pane first"
+  if ! tmux join-pane "${join_pane_flag}"; then
+    tmux display-message "Mark a(nother) pane first"
+    return 0
+  fi
 
   if [ "${BREAK_PANE_FLAG}" == "${join_pane_flag}" ]; then
     tmux break-pane || true

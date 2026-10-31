@@ -280,5 +280,63 @@ class TestArtifactCommand(unittest.TestCase):
                 subprocess.run([*command, "stop"], cwd=REPO, env=env, capture_output=True, text=True)
 
 
+class TestArtifactServerAuth(unittest.TestCase):
+    """WHEN a request reaches the local artifact server."""
+
+    def setUp(self):
+        import json as _json
+        import subprocess as _sp
+        import tempfile as _tf
+        import time as _time
+
+        self._json = _json
+        tmp = _tf.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.sdir = Path(tmp.name)
+        self.proc = _sp.Popen(
+            [sys.executable, str(ARTIFACT_MODULE_DIR / "main.py"), "server", "--session-dir", str(self.sdir)],
+            stdout=_sp.DEVNULL,
+            stderr=_sp.DEVNULL,
+        )
+        self.addCleanup(self.proc.wait)
+        self.addCleanup(self.proc.terminate)
+        state_file = self.sdir / "server.json"
+        deadline = _time.time() + 5
+        while not state_file.exists() and _time.time() < deadline:
+            _time.sleep(0.05)
+        state = _json.loads(state_file.read_text())
+        self.base = f"http://127.0.0.1:{state['port']}"
+        self.token = state["token"]
+
+    def request(self, path, token=None, body=None):
+        import urllib.error
+        import urllib.request
+
+        headers = {"content-type": "text/plain"}
+        if token is not None:
+            headers["x-artifact-token"] = token
+        data = None if body is None else self._json.dumps(body).encode()
+        req = urllib.request.Request(self.base + path, data=data, headers=headers, method="POST" if data else "GET")
+        try:
+            with urllib.request.urlopen(req, timeout=5) as response:
+                return response.status
+        except urllib.error.HTTPError as error:
+            return error.code
+
+    def test_feedback_without_token_is_refused(self):
+        body = {"items": [{"prompt": "injected"}]}
+        self.assertEqual(self.request("/api/feedback/live", body=body), 403)
+        self.assertEqual(self.request("/api/feedback/live", token="guess", body=body), 403)
+        self.assertFalse((self.sdir / "feedback" / "live.html.jsonl").exists())
+
+    def test_feedback_with_token_is_queued(self):
+        self.assertEqual(self.request("/api/feedback/live", token=self.token, body={"items": [{"prompt": "ok"}]}), 200)
+        self.assertTrue((self.sdir / "feedback" / "live.html.jsonl").exists())
+
+    def test_live_overlay_script_requires_token(self):
+        self.assertEqual(self.request("/live/live.js"), 403)
+        self.assertEqual(self.request(f"/live/live.js?token={self.token}"), 200)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -4,7 +4,7 @@ echo "---------------------------------------"
 echo "brew install pass: applying..."
 echo "---------------------------------------"
 
-brew install pass
+brew install pass; or exit 1
 
 echo "---------------------------------------"
 echo "brew install pass: done"
@@ -18,13 +18,19 @@ gpg-connect-agent reloadagent /bye
 
 if ! op account get >/dev/null 2>&1
     echo "Please sign in to 1Password CLI"
-    op signin
+    op signin; or exit 1
 end
 
-git clone git@github.com:kapral18/.password-store.git ~/.password-store
+if not test -d ~/.password-store/.git
+    git clone git@github.com:kapral18/.password-store.git ~/.password-store; or exit 1
+end
 op read 'op://Personal/personal_pgp_keys/notesPlain' | gpg --import
+if test $pipestatus[1] -ne 0 -o $pipestatus[2] -ne 0
+    echo "Failed to import the PGP key from 1Password" >&2
+    exit 1
+end
 
-echo -e "5\ny\n" | gpg --batch --yes  --command-fd 0 --edit-key {{ .primaryEmail }} trust
+echo -e "5\ny\n" | gpg --batch --yes  --command-fd 0 --edit-key {{ .primaryEmail }} trust; or exit 1
 
 echo "---------------------------------------"
 echo "pass setup: done"

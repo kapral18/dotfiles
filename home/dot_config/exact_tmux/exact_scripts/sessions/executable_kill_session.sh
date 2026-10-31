@@ -39,7 +39,7 @@ switch_session() {
   else
     # `client_last_session` can be stale (session was killed/renamed elsewhere).
     # Don't fail the entire kill flow if we can't switch to it.
-    if tmux has-session -t "${alt}" 2> /dev/null; then
+    if tmux has-session -t "=${alt}" 2> /dev/null; then
       switch_to_alternate_session
     else
       switch_to_next_session

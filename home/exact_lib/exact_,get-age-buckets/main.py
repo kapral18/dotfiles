@@ -15,7 +15,7 @@ Usage:
 
 Flags:
   --pattern PAT1,PAT2,...   Comma-separated git pathspec patterns (required)
-  --rename-limit N          Adjust git rename detection effort (passed through to -M)
+  --rename-limit N          Cap rename detection effort (passed to git log as -lN)
   --format FORMAT           Output format: table (markdown), tsv, json, text
   --buckets SPEC            Custom bucket spec, e.g. "0-7,8-30,31-90,91-180,181-365,>365"
   --no-header               Suppress header row for tsv/text formats
@@ -106,12 +106,9 @@ def assign_bucket(age_days: int, buckets: List[Bucket]) -> str:
 
 
 def build_git_command(patterns: List[str], rename_limit: int | None) -> List[str]:
-    cmd = ["git", "log", "--reverse", "--raw", "--format=commit %H %ct"]
+    cmd = ["git", "log", "--reverse", "--raw", "--format=commit %H %ct", "-M"]
     if rename_limit is not None:
-        # Use -M with a lower similarity threshold if desired; leave default
-        cmd.append("-M")
-    else:
-        cmd.append("-M")
+        cmd.append(f"-l{rename_limit}")
     cmd.append("--")
     cmd.extend(patterns)
     return cmd

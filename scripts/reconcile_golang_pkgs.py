@@ -2,7 +2,7 @@
 """Reconcile globally `go install`-ed tool binaries against the desired list.
 
 Usage:
-    reconcile_golang_pkgs.py <desired_file> <gobin_dir> <state_file>
+    reconcile_golang_pkgs.py <desired_file> <gobin_dir> <state_file> [<installed_file>]
 
 - <desired_file>: rendered default-golang-pkgs list (module paths, one per
   line; `#` comments and blank lines ignored).
@@ -10,6 +10,9 @@ Usage:
   $(go env GOPATH)/bin).
 - <state_file>: newline-delimited record of the module paths this tooling has
   installed. Created if missing.
+- <installed_file>: module paths this run actually `go install`-ed. A desired
+  module whose binary already existed is never added to the ledger, so a
+  hand-installed binary of the same name is never removed later.
 
 Why a state file instead of "remove everything in GOBIN not in the list":
 `go install` does not track which binaries came from this dotfiles list, and
@@ -19,7 +22,8 @@ ever remove binaries we ourselves installed. The state file is that ledger.
 This script does NOT install anything (the shell hook runs `go install`). It:
   1. derives the binary name for each module path,
   2. removes managed binaries whose module is no longer desired,
-  3. rewrites the state file to the current desired set.
+  3. rewrites the state file to the desired modules it already managed plus
+     the ones installed this run.
 
 Binary name = last path segment, skipping a trailing major-version segment
 (`/v2`, `/v10`, ...) and any `@version` suffix. This matches `go install`.
@@ -60,8 +64,8 @@ def load_modules(path: Path) -> list[str]:
 
 
 def main() -> int:
-    if len(sys.argv) != 4:
-        sys.stderr.write("usage: reconcile_golang_pkgs.py <desired_file> <gobin_dir> <state_file>\n")
+    if len(sys.argv) not in (4, 5):
+        sys.stderr.write("usage: reconcile_golang_pkgs.py <desired_file> <gobin_dir> <state_file> [<installed_file>]\n")
         return 2
 
     desired_file = Path(sys.argv[1])
@@ -70,6 +74,7 @@ def main() -> int:
 
     desired = load_modules(desired_file)
     previously_managed = load_modules(state_file)
+    installed_now = set(load_modules(Path(sys.argv[4]))) if len(sys.argv) == 5 else set(desired)
 
     desired_set = set(desired)
     to_remove = [m for m in previously_managed if m not in desired_set]
@@ -91,7 +96,8 @@ def main() -> int:
                 sys.stderr.write(f"warning: failed to remove {binary}: {exc}\n")
 
     state_file.parent.mkdir(parents=True, exist_ok=True)
-    state_file.write_text("".join(f"{m}\n" for m in desired), encoding="utf-8")
+    managed = [m for m in desired if m in installed_now or m in previously_managed]
+    state_file.write_text("".join(f"{m}\n" for m in managed), encoding="utf-8")
     return 0
 
 

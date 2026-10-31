@@ -3,7 +3,7 @@
 [settings]
 activate_aggressive = true
 idiomatic_version_file_enable_tools = ["node"]
-trusted_config_paths = ["/"]
+trusted_config_paths = ["{{ .chezmoi.homeDir }}/code", "{{ .chezmoi.sourceDir | dir }}"]
 
 [tools]
 bun = "1.3.14"

@@ -551,6 +551,14 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
                 assert kb._schema_state(db) == "ok"
                 assert db.execute("SELECT COUNT(*) FROM capsule_fts").fetchone()[0] == 1
 
+    def test_remember_rejects_multiline_header_fields(self):
+        import ai_kb
+
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, {"AI_KB_DISABLE_EMBED": "1"}):
+            kb = ai_kb.KnowledgeBase(home=Path(tmp))
+            with self.assertRaisesRegex(ValueError, "title must be a single line"):
+                kb.remember("a\nid: other", "b")
+
     def test_remember_rejects_unknown_kind_or_scope(self):
         import ai_kb
 

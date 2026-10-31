@@ -12,8 +12,6 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 # Allow only one concurrent deployment; cancel any queued runs in favor of
 # the latest push so a stale build can never overwrite a fresher one.
@@ -28,6 +26,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Full history so "last updated" dates come from each page's own commits.
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -57,6 +58,10 @@ jobs:
     name: Deploy
     needs: build
     runs-on: ubuntu-latest
+    # Only this job can deploy; the build job runs third-party install scripts.
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

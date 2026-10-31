@@ -93,9 +93,10 @@ resolve_issues() {
     fi
   fi
 
-  # 3. PR body
+  # 3. PR body. Only the current branch's own PR: a commit-based lookup can return
+  # whatever PR merged the base tip, whose closing issues are someone else's.
   local pr_num
-  if pr_num=$(,gh-prw --number 2>/dev/null); then
+  if pr_num=$(gh pr view --json number -q .number 2>/dev/null); then
     if [ -n "$pr_num" ]; then
       local pr_body
       pr_body=$(gh pr view "$pr_num" --json body -q .body 2>/dev/null || true)

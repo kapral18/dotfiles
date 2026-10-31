@@ -9,7 +9,7 @@ CURRENT_PANE_ID="${2:-}"
 PANE_CURRENT_PATH="${3:-}"
 
 number_of_panes() {
-  tmux list-panes -s -t "${CURRENT_SESSION_NAME}" | wc -l | tr -d ' '
+  tmux list-panes -s -t "=${CURRENT_SESSION_NAME}:" | wc -l | tr -d ' '
 }
 
 create_new_session() {
@@ -18,7 +18,7 @@ create_new_session() {
 
 new_session_pane_id() {
   local session_name="$1"
-  tmux list-panes -t "${session_name}" -F "#{pane_id}"
+  tmux list-panes -t "=${session_name}:" -F "#{pane_id}"
 }
 
 promote_pane() {

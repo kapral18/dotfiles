@@ -262,7 +262,7 @@ kill_sessions_under_prefixes() {
     # Never kill the initiating/current session from an async picker action.
     # This avoids "alt-x on sibling worktree" tearing down the active session.
     [ -n "${current_session:-}" ] && [ "$s" = "${current_session:-}" ] && continue
-    tmux kill-session -t "$s" 2> /dev/null || true
+    tmux kill-session -t "=$s" 2> /dev/null || true
   done
 }
 
