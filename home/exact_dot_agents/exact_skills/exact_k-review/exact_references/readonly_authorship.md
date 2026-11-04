@@ -4,6 +4,7 @@ Resolve `authorship` before selecting a mode. Allowed values: `self`, `other`, `
 Plan review has no code target: record `authorship: n/a`, skip the probes below, and give feedback only.
 
 Resolve `self` only from verified evidence; a locally checked-out change alone is not proof.
+Use `unknown` only after the applicable probes fail, not in place of running them.
 
 When a PR is involved:
 
@@ -26,10 +27,12 @@ When there is no PR (local changes, branch delta, commit range):
 
 ## Write scope
 
+Apply `~/AGENTS.md` §1 to the whole task: a later review or verification request does not revoke existing fix authorization.
+Keep that authorization's scope; only the user can narrow it.
+
 - `self`: fix supported findings in the same pass when the user asked for a review of their own work or for fixes, or when the `~/AGENTS.md` §3 step 5 review of your own finished change ran.
   Find and fix are one pass.
-- `other` or `unknown`: draft comments and suggestions only; keep code unchanged.
-  Edit only when the user explicitly says so ("fix these", "take over this branch").
+- `other` or `unknown` without explicit fix authorization for this scope: draft comments and suggestions only; keep code unchanged.
 - A reviewer subagent is read-only regardless of authorship; it reports findings and never edits.
 
 Write scope on a file never grants commit, push, reply, resolve, or publication authority; `~/AGENTS.md` §5 decides it.

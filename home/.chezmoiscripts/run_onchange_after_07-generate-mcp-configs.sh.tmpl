@@ -36,6 +36,7 @@ chezmoi_record_artifact --id claude-mcp \
   --transform "$source_dir/../scripts/mcp_registry.py" \
   --transform "$source_dir/../scripts/yaml_parser.py" \
   --transform "$source_dir/../scripts/chezmoi_lib.sh" \
+  --transform "$source_dir/.chezmoiscripts/run_onchange_after_07-generate-mcp-configs.sh.tmpl" \
   --consumer claude
 
 python3 "$gen" "$yaml_src" pi >"$tmp"
@@ -48,6 +49,7 @@ chezmoi_record_artifact --id pi-mcp \
   --transform "$source_dir/../scripts/mcp_registry.py" \
   --transform "$source_dir/../scripts/yaml_parser.py" \
   --transform "$source_dir/../scripts/chezmoi_lib.sh" \
+  --transform "$source_dir/.chezmoiscripts/run_onchange_after_07-generate-mcp-configs.sh.tmpl" \
   --consumer pi
 
 python3 "$gen" "$yaml_src" omp >"$tmp"
@@ -60,4 +62,5 @@ chezmoi_record_artifact --id omp-mcp \
   --transform "$source_dir/../scripts/mcp_registry.py" \
   --transform "$source_dir/../scripts/yaml_parser.py" \
   --transform "$source_dir/../scripts/chezmoi_lib.sh" \
+  --transform "$source_dir/.chezmoiscripts/run_onchange_after_07-generate-mcp-configs.sh.tmpl" \
   --consumer omp

@@ -3,11 +3,13 @@
 
 from __future__ import annotations
 
+import importlib.util
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 SCRIPT = Path(__file__).resolve().parents[1] / "reconcile_golang_pkgs.py"
 
@@ -40,6 +42,29 @@ class ReconcileGolangPkgsTests(unittest.TestCase):
         self.reconcile(["example.com/tool"], installed=[])
         self.reconcile([], installed=[])
         self.assertTrue(mine.exists())
+
+    def test_failed_removal_stays_owned_until_the_next_reconciliation(self) -> None:
+        spec = importlib.util.spec_from_file_location("reconcile_golang_pkgs", SCRIPT)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        binary = self.gobin / "tool"
+        binary.write_text("installed by the hook")
+        self.state.write_text("example.com/tool\n")
+        self.desired.write_text("")
+        self.installed.write_text("")
+        unlink = Path.unlink
+
+        def deny_owned(path, *args, **kwargs):
+            if path == binary:
+                raise PermissionError("fixture denied removal")
+            return unlink(path, *args, **kwargs)
+
+        argv = [str(SCRIPT), str(self.desired), str(self.gobin), str(self.state), str(self.installed)]
+        with mock.patch.object(sys, "argv", argv), mock.patch.object(Path, "unlink", deny_owned):
+            self.assertEqual(module.main(), 0)
+        self.assertEqual(self.state.read_text(), "example.com/tool\n")
+        self.reconcile([], [])
+        self.assertFalse(binary.exists())
 
     def test_binary_this_tooling_installed_is_removed_when_unlisted(self) -> None:
         (self.gobin / "tool").write_text("installed by the hook")

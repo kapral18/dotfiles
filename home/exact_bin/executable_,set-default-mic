@@ -4,6 +4,19 @@
 
 set -euo pipefail
 
+if [ "$#" -gt 0 ]; then
+  case "$1" in
+  -h | --help)
+    printf '%s\n' 'Usage: ,set-default-mic' '' 'Select the preferred available microphone, falling back to the built-in microphone.'
+    exit 0
+    ;;
+  *)
+    printf 'Unknown argument: %s\n' "$1" >&2
+    exit 2
+    ;;
+  esac
+fi
+
 PREFERRED="PHL34E1C5600"
 FALLBACK="MacBook Pro Microphone"
 

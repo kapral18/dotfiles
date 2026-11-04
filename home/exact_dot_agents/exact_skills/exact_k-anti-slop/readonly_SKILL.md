@@ -26,7 +26,7 @@ In-session replies also follow that section's response format.
 4. Finish when the requested work is complete and each supported finding is fixed within scope or accounted for under the SOP.
    Use the existing verification and reporting workflow.
    Do not add a mode question, approval step, audit file, or compulsory browser session.
-   A review-only request does not authorize edits. A narrow correction does not authorize a whole-artifact rewrite.
+   A narrow correction does not authorize a whole-artifact rewrite.
 
 Never invent claims, measurements, people, quotations, credentials, product behavior, or sources to make an example more convincing.
 Keep unknowns explicit; use visibly labelled examples or placeholders only when the task needs them.

@@ -56,6 +56,13 @@ def git(*args: str, cwd: Path | None = None) -> str:
     return result.stdout.strip()
 
 
+def git_paths(*args: str, cwd: Path) -> list[str]:
+    result = subprocess.run(["git", *args], capture_output=True, cwd=cwd)
+    if result.returncode != 0:
+        raise MapError(f"git {' '.join(args)} failed: {os.fsdecode(result.stderr).strip()}")
+    return [os.fsdecode(path) for path in result.stdout.split(b"\0") if path]
+
+
 def git_ok(*args: str, cwd: Path | None = None) -> bool:
     return subprocess.run(["git", *args], capture_output=True, cwd=cwd).returncode == 0
 
@@ -355,10 +362,10 @@ def fingerprint(ctx: Context, anchors: list[str]) -> str:
         rel = anchor.split("::", 1)[0]
         names = [rel]
         if rel.endswith("/"):
-            names = git("ls-files", "-co", "--exclude-standard", "--", rel, cwd=ctx.toplevel).splitlines()
+            names = git_paths("ls-files", "-coz", "--exclude-standard", "--", rel, cwd=ctx.toplevel)
         for name in sorted(names):
             path = ctx.toplevel / name
-            digest.update(name.encode() + b"\0" + (path.read_bytes() if path.is_file() else b"<missing>") + b"\0")
+            digest.update(os.fsencode(name) + b"\0" + (path.read_bytes() if path.is_file() else b"<missing>") + b"\0")
     return digest.hexdigest()[:12]
 
 
@@ -571,8 +578,8 @@ def _changed_files(ctx: Context, since: str | None) -> set[str]:
                 if ref_exists(target):
                     since = git("merge-base", "HEAD", target, cwd=ctx.toplevel)
                     break
-    changed = git("diff", "--name-only", since, cwd=ctx.toplevel).splitlines()
-    untracked = git("ls-files", "--others", "--exclude-standard", cwd=ctx.toplevel).splitlines()
+    changed = git_paths("diff", "--name-only", "-z", since, cwd=ctx.toplevel)
+    untracked = git_paths("ls-files", "-z", "--others", "--exclude-standard", cwd=ctx.toplevel)
     return {path for path in (*changed, *untracked) if path}
 
 

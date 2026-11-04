@@ -17,7 +17,7 @@ Turn the request into the smallest actionable plan.
    Read `~/.agents/skills/k-spec/references/check-strength.md` for check design.
    Do not run checks merely to approve the plan; unrun checks are `planned`, not passed.
 6. Write the plan with `~/.agents/skills/k-spec/references/packet-template.md` and show it in chat.
-   When the user wants it kept or will continue in another session, include it in `,handoff save <topic>` (see `k-handoff`).
+   When the user wants it kept or will continue in another session, include it in `,task handoff save <topic>` (see `k-handoff`).
 
 Keep target, constraints, in and out of scope, side effects, compatibility intent, and decisions owned by others explicit.
 Criteria cover intended and preserved behavior when both exist; a test command alone is not proof of coverage.

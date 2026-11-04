@@ -28,6 +28,18 @@ The global gitconfig avoids repository-size-specific defaults such as `core.fsmo
 
 For very large worktrees, keep maintenance, index, and untracked-cache settings repo-local. Avoid `scalar register` as durable setup in this chezmoi-managed environment because it writes `scalar.repo` and `maintenance.repo` paths into the managed global gitconfig, and the next `chezmoi apply` removes them. Keep `core.fsmonitor=false` unless a repo-specific benchmark proves the daemon is safe and worthwhile for that worktree.
 
+## Pull from upstream
+
+`git pup` pulls from the `upstream` branch whose name matches the current branch and rebases local commits onto it. Configure the `upstream` remote before running it.
+
+## Transfer tracked changes
+
+From the receiving checkout, run `git wtgrab "/path/to/source checkout"`. Staged and unstaged changes transfer separately, including binary files, additions, and deletions. Untracked source files stay at the source. The source clears only after both patches apply successfully; a conflict leaves its changes intact and rolls back the receiving checkout's staged patch.
+
+If the source changes during transfer, cleanup stops and both checkouts retain the transferred changes. The error prints the recovery patch directory when cleanup or rollback needs attention. Inspect both checkouts before retrying.
+
+`,fzf-git-changed-lines` emits added lines as `path:line:col:text`. Hunk counts distinguish source text such as `++ count;` from file headers. Status mode includes text from untracked files and skips deleted and binary files.
+
 ## Signing
 
 Commit signing uses SSH signing through the 1Password signing helper. The public key selector lives on disk; the private key stays in 1Password.

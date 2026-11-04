@@ -46,16 +46,14 @@ scope="$(cat "$scope_file" 2> /dev/null || echo all)"
 row_loader_targets_file=""
 row_loader_pid=""
 
-# Parse selected/cursor items. Each line is the full picker TSV row, so cols
-# 2/3/4 are kind/repo/num. Skip header rows (cols 2 == "header").
+selected_targets="$(python3 "$script_dir/gh_selected_targets.py" "$items_file")" || exit 1
 declare -a kinds=() repos=() nums=()
-while IFS=$'\t' read -r _disp kind repo num _rest; do
-  if [ "$kind" = "pr" ] || [ "$kind" = "issue" ]; then
-    kinds+=("$kind")
-    repos+=("$repo")
-    nums+=("$num")
-  fi
-done < "$items_file"
+while IFS=$'\t' read -r kind repo num; do
+  [ -n "$kind" ] || continue
+  kinds+=("$kind")
+  repos+=("$repo")
+  nums+=("$num")
+done <<< "$selected_targets"
 
 count="${#kinds[@]}"
 if [ "$count" -eq 0 ]; then
@@ -140,7 +138,7 @@ _restore_selection_loading() {
 }
 
 _refresh_after_mutation() {
-  [ -n "${FZF_PORT:-}" ] || {
+  [ -n "${FZF_SOCK:-}" ] || {
     _restore_selection_loading
     return 0
   }
@@ -159,7 +157,7 @@ _refresh_after_mutation() {
     return 0
   fi
   reload_cmd="GH_PICKER_SCOPE=$(printf %q "$scope") $(printf %q "$items_cmd") --refresh"
-  curl -s --max-time 5 -XPOST "http://127.0.0.1:${FZF_PORT}" -d "reload(${reload_cmd})+track" > /dev/null 2>&1 || true
+  curl -s --max-time 5 --unix-socket "$FZF_SOCK" -XPOST http://localhost -d "reload(${reload_cmd})+track" > /dev/null 2>&1 || true
 }
 
 chosen="$(

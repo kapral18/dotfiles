@@ -79,6 +79,6 @@ tar_gz_bin|enola|TheYahya/enola|{{ $enolaTag }}|{{ $enolaAsset }}|enola|enola
 # sd-cli (stable-diffusion.cpp). Metal runner for ,image-local.
 # Zip ships sd-cli + libstable-diffusion.dylib; zip_opt keeps the dylib beside the binary.
 # https://github.com/leejet/stable-diffusion.cpp
-{{ if eq $os "darwin" }}
+{{ if and (eq $os "darwin") (eq $arch "arm64") }}
 zip_opt|sd-cli|leejet/stable-diffusion.cpp|master-820-de298c2|sd-*-bin-Darwin-macOS-*-arm64.zip|sd-cli|sd-cli
 {{ end }}

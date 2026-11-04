@@ -26,4 +26,5 @@ chezmoi_record_artifact --id claude-global-config \
   --input "$src" \
   --transform "$merge" \
   --transform "$source_dir/../scripts/chezmoi_lib.sh" \
+  --transform "$source_dir/.chezmoiscripts/run_onchange_after_07-merge-claude-global-config.sh.tmpl" \
   --consumer claude

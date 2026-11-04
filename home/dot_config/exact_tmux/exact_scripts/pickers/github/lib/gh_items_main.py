@@ -24,6 +24,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "lib"))
 from gh_ci_state import extract_ci_state  # noqa: E402
+from resource_lock import resource_lock  # noqa: E402
 
 IO_FANOUT_CAP = 32
 
@@ -138,22 +139,21 @@ def _git_worktree_entries(repo_path: str) -> list[tuple[str, str]]:
     return entries
 
 
-def _wt_issue_number(wt_path: str) -> str:
-    """Read issue number from worktree-local git config (comma.w.issue.number).
-
-    Set by `,w issue` when creating worktrees linked to issues. Zero-cost local lookup.
-    """
+def _wt_issue_metadata(wt_path: str) -> tuple[str, str]:
     try:
         r = subprocess.run(
-            ["git", "-C", wt_path, "config", "--worktree", "--get", "comma.w.issue.number"],
+            ["git", "-C", wt_path, "config", "--worktree", "--get-regexp", r"^comma\.w\.issue\.(repo|number)$"],
             check=False,
             capture_output=True,
             text=True,
             timeout=3,
         )
-        return r.stdout.strip() if r.returncode == 0 else ""
+        if r.returncode == 0:
+            metadata = dict(line.split(" ", 1) for line in r.stdout.splitlines() if " " in line)
+            return metadata.get("comma.w.issue.repo", "").strip(), metadata.get("comma.w.issue.number", "").strip()
     except Exception:
-        return ""
+        pass
+    return "", ""
 
 
 class _ItemInfo:
@@ -181,7 +181,10 @@ def _scan_local_worktrees(nwo: str, repo_path: str) -> tuple[set[int], set[str],
     branch_num_source: dict[int, str] = {}
 
     for wt_path, branch in entries:
-        meta_num = _wt_issue_number(wt_path)
+        branches.add(branch)
+        meta_repo, meta_num = _wt_issue_metadata(wt_path)
+        if meta_repo and meta_repo.casefold() != nwo.casefold():
+            continue
         if meta_num:
             try:
                 wt_nums.add(int(meta_num))
@@ -193,8 +196,6 @@ def _scan_local_worktrees(nwo: str, repo_path: str) -> tuple[set[int], set[str],
             num = int(m.group(1))
             wt_nums.add(num)
             branch_num_source[num] = branch
-
-        branches.add(branch)
 
     return wt_nums, branches, branch_num_source
 
@@ -291,7 +292,7 @@ def _graphql_pr_metadata_chunk(items: list[tuple[str, int]]) -> dict[str, dict[i
     alias_map: dict[str, tuple[str, int]] = {}
     for nwo, n in items:
         owner, name = nwo.split("/", 1) if "/" in nwo else ("", nwo)
-        alias = f"_p{owner}_{name}_{n}".replace("-", "_")
+        alias = f"_p{len(alias_map)}"
         aliases.append(
             f'{alias}: repository(owner: "{owner}", name: "{name}") '
             f"{{ pullRequest(number: {n}) {{ number headRefName baseRefName title body "
@@ -462,7 +463,7 @@ def _graphql_phantom_parents(keys: list[tuple[str, int]]) -> dict[tuple[str, int
     alias_map: dict[str, tuple[str, int]] = {}
     for nwo, n in keys[:_PHANTOM_PARENT_CAP]:
         owner, name = nwo.split("/", 1) if "/" in nwo else ("", nwo)
-        alias = f"_ph{owner}_{name}_{n}".replace("-", "_")
+        alias = f"_ph{len(alias_map)}"
         aliases.append(
             f'{alias}: repository(owner: "{owner}", name: "{name}") '
             f"{{ pullRequest(number: {n}) {{ number title state url "
@@ -700,7 +701,7 @@ def _graphql_issue_metadata_chunk(items: list[tuple[str, int]]) -> dict[str, dic
     alias_map: dict[str, tuple[str, int]] = {}
     for nwo, n in items:
         owner, name = nwo.split("/", 1) if "/" in nwo else ("", nwo)
-        alias = f"_i{owner}_{name}_{n}".replace("-", "_")
+        alias = f"_i{len(alias_map)}"
         aliases.append(
             f'{alias}: repository(owner: "{owner}", name: "{name}") '
             f"{{ issue(number: {n}) {{ number "
@@ -1219,8 +1220,8 @@ def _filter_lines_for_scope(lines: list[str], scope: str, scope_map: dict[str, s
     include_current = False
     for line in lines:
         parts = line.split("\t")
-        if len(parts) >= 4 and parts[1] == "header":
-            section_id = parts[3].strip()
+        section_id = _section_id_of(parts)
+        if section_id:
             include_current = _scope_matches(section_id, scope, scope_map)
         if include_current:
             out.append(line)
@@ -1243,13 +1244,14 @@ _COL_TREE_ROLE = 12
 _COL_TREE_BRANCH = 13
 _TSV_COLS = 14
 
-# Regex matching real section-header section_ids (`pr:0`, `issue:3`). Backport
-# placeholder rows use `kind=header` with `num=0` and must not be treated as
-# section anchors by the jump/offsets pipeline.
-_SECTION_ID_RE = re.compile(r"^(pr|issue):\d+$")
-
-
 SORT_KEYS = ("created-desc", "updated-desc", "age-asc", "repo-asc")
+
+
+def _section_id_of(parts: list[str]) -> str:
+    if len(parts) <= _COL_NUM or parts[_COL_KIND] != "header" or parts[_COL_REPO]:
+        return ""
+    section_id = parts[_COL_NUM].strip()
+    return section_id if re.fullmatch(r"(?:pr|issue):[0-9]+", section_id) else ""
 
 
 def _parent_identity_of(parts: list[str]) -> str:
@@ -1279,10 +1281,8 @@ def _sort_within_sections(lines: list[str], sort_key: str) -> list[str]:
 
     Blocks are sorted using the parent (or loose) row's key. Children inside
     a block are re-sorted by the same key so the visible hierarchy stays
-    consistent across all four sort modes. Section headers and section-level
-    backport placeholders (`kind=header` with no `kind:repo:num` identity)
-    stay anchored in their original positions; the sort runs section-by-
-    section between them.
+    consistent across all four sort modes. Section headers stay anchored;
+    missing-backport placeholders remain children of their parent block.
     """
     if not sort_key or sort_key == "created-desc":
         return list(lines)
@@ -1330,10 +1330,9 @@ def _sort_within_sections(lines: list[str], sort_key: str) -> list[str]:
 
     for line in lines:
         parts = line.split("\t")
-        kind = parts[_COL_KIND] if len(parts) > _COL_KIND else ""
         role = _tree_role_of(parts)
 
-        if kind == "header" and _parent_identity_of(parts) == "":
+        if _section_id_of(parts):
             close_pending()
             flush()
             out.append(line)
@@ -1370,49 +1369,6 @@ def _desc_key(value: str) -> str:
     return "".join(chr(0x10FFFE - (ord(ch) & 0xFFFF)) for ch in value)
 
 
-def _write_offsets(
-    cache_dir: str,
-    scope: str,
-    lines: list[str],
-) -> None:
-    """Persist a 1-indexed row index per real section header.
-
-    Consumed by `alt-n` / `alt-p` (jump) and `alt-S` (sort cycler). Only true
-    section headers — `kind=header` whose `num` column (col 4) matches
-    `(pr|issue):\\d+` — are emitted. Family parents are `kind=pr`/`issue` and
-    are excluded by design, as are backport placeholder rows that re-use
-    `kind=header` for visual layout. The file is overwritten on every scope
-    or sort change.
-    """
-    try:
-        cache_dir_path = Path(cache_dir)
-        cache_dir_path.mkdir(parents=True, exist_ok=True)
-    except Exception:
-        return
-
-    headers: list[dict[str, Any]] = []
-    for idx, line in enumerate(lines, start=1):
-        parts = line.split("\t")
-        if len(parts) >= 4 and parts[1] == "header":
-            section_id = parts[3].strip()
-            if not _SECTION_ID_RE.match(section_id):
-                continue
-            title = parts[5].strip() if len(parts) > 5 else ""
-            headers.append({"row": idx, "section_id": section_id, "title": title})
-
-    payload = {
-        "version": 1,
-        "scope": scope,
-        "total_rows": len(lines),
-        "headers": headers,
-    }
-    out_path = cache_dir_path / f"gh_picker_offsets_{scope}.json"
-    try:
-        _atomic_write_text(str(out_path), json.dumps(payload))
-    except Exception:
-        pass
-
-
 def _read_collapsed_set(cache_dir: str) -> set[str]:
     """Read the collapsed-parents state file.
 
@@ -1435,30 +1391,25 @@ def _read_collapsed_set(cache_dir: str) -> set[str]:
 
 
 def _apply_collapsed_state(lines: list[str], collapsed: set[str]) -> list[str]:
-    """Hide children of collapsed parents and decorate parent display.
-
-    For every line whose `parent_id` (col 11) is in `collapsed`, the row is
-    dropped. For every line whose `kind:repo:num` matches a key in
-    `collapsed`, the display is suffixed with ` ▸ (N hidden)`. Expanded
-    parents get a `▾` glyph for symmetry. Glyphs are dim cyan and placed
-    after the existing display so they don't shift the column alignment of
-    the body content.
-
-    Returns a new list; the input is left untouched.
-    """
+    """Collapse logical parents globally; count hidden children within each section."""
     if not lines:
         return list(lines)
-    hidden_counts: dict[str, int] = {}
+    hidden_counts: dict[tuple[str, str], int] = {}
+    section_id = ""
     if collapsed:
         for line in lines:
             parts = line.split("\t")
+            section_id = _section_id_of(parts) or section_id
             parent_ref = _parent_id_of(parts)
-            if parent_ref and parent_ref in collapsed:
-                hidden_counts[parent_ref] = hidden_counts.get(parent_ref, 0) + 1
+            if _tree_role_of(parts) == "child" and parent_ref in collapsed:
+                key = (section_id, parent_ref)
+                hidden_counts[key] = hidden_counts.get(key, 0) + 1
 
     out: list[str] = []
+    section_id = ""
     for line in lines:
         parts = line.split("\t")
+        section_id = _section_id_of(parts) or section_id
         role = _tree_role_of(parts)
         parent_ref = _parent_id_of(parts)
         identity = _parent_identity_of(parts)
@@ -1468,7 +1419,7 @@ def _apply_collapsed_state(lines: list[str], collapsed: set[str]) -> list[str]:
 
         if role == "parent" and identity:
             if identity in collapsed:
-                hidden = hidden_counts.get(identity, 0)
+                hidden = hidden_counts.get((section_id, identity), 0)
                 suffix = c("2;38;5;81", "  ▸") + (c("2;38;5;244", f" ({hidden} hidden)") if hidden else "")
                 parts[_COL_DISPLAY] = parts[_COL_DISPLAY] + suffix
                 line = "\t".join(parts)
@@ -1671,11 +1622,11 @@ def _read_prior_sections(cache_file: str) -> dict[str, list[str]]:
         parts = line.split("\t")
         if len(parts) < 4:
             continue
-        kind = parts[1]
-        if kind == "header":
+        section_id = _section_id_of(parts)
+        if section_id:
             if cur_id and cur_lines:
                 out[cur_id] = cur_lines
-            cur_id = parts[3].strip()
+            cur_id = section_id
             cur_lines = [line]
         else:
             if cur_id:
@@ -1683,6 +1634,32 @@ def _read_prior_sections(cache_file: str) -> dict[str, list[str]]:
     if cur_id and cur_lines:
         out[cur_id] = cur_lines
     return out
+
+
+def _deduplicate_standalone_items(
+    items: list[dict[str, Any]],
+    retained_sections: dict[str, list[str]],
+) -> list[dict[str, Any]]:
+    seen: set[tuple[str, str, str]] = set()
+    for lines in retained_sections.values():
+        for line in lines:
+            parts = line.split("\t")
+            if len(parts) >= 4 and parts[_COL_KIND] in {"pr", "issue"} and _tree_role_of(parts) != "child":
+                seen.add((parts[_COL_KIND], parts[_COL_REPO], parts[_COL_NUM]))
+
+    result: list[dict[str, Any]] = []
+    for item in items:
+        if item.get("_header"):
+            result.append(item)
+            continue
+        key = (str(item.get("kind") or ""), str(item.get("repo") or ""), str(item.get("num") or ""))
+        role = item.get("_tree_role")
+        if all(key) and role != "child":
+            if role != "parent" and key in seen:
+                continue
+            seen.add(key)
+        result.append(item)
+    return result
 
 
 def _current_login() -> str:
@@ -2217,7 +2194,7 @@ def fetch_backport_failures(kind: str, idx: int, title: str, filters: str, limit
         owner, name = nwo.split("/", 1) if "/" in nwo else ("", nwo)
         for item in repo_items:
             n = item["num"]
-            alias = f"_bp{owner}_{name}_{n}".replace("-", "_")
+            alias = f"_bp{len(alias_map)}"
             aliases.append(
                 f'{alias}: repository(owner: "{owner}", name: "{name}") '
                 f"{{ pullRequest(number: {n}) {{ number baseRefName "
@@ -2240,9 +2217,13 @@ def fetch_backport_failures(kind: str, idx: int, title: str, filters: str, limit
                 text=True,
                 timeout=30,
             )
-            if not r.stdout.strip():
+            if r.returncode != 0 or not r.stdout.strip():
                 return {}
-            return json.loads(r.stdout).get("data", {})
+            payload = json.loads(r.stdout)
+            data = payload.get("data") or {}
+            if payload.get("errors") or any(not (data.get(alias) or {}).get("pullRequest") for alias in alias_map):
+                return {}
+            return data
         except Exception:
             return {}
 
@@ -2254,7 +2235,8 @@ def fetch_backport_failures(kind: str, idx: int, title: str, filters: str, limit
         manual_finds_all = f_manual.result()
 
     if not data:
-        return []
+        header["_fetch_error"] = True
+        return [header]
 
     # Filter branches by current labels: a branch whose ``v<X>.<Y>.*`` label was
     # removed is no longer a needed target (e.g. team decided not to backport).
@@ -2312,7 +2294,7 @@ def fetch_backport_failures(kind: str, idx: int, title: str, filters: str, limit
         for n in nums:
             if (nwo, n) in bp_info:
                 continue
-            alias = f"_bps{owner}_{name}_{n}".replace("-", "_")
+            alias = f"_bps{len(bp_alias_map)}"
             bp_aliases.append(
                 f'{alias}: repository(owner: "{owner}", name: "{name}") '
                 f"{{ pullRequest(number: {n}) {{ number state title url }} }}"
@@ -2459,15 +2441,7 @@ def _ci_badge2(state: str, stale: bool) -> str:
 
 
 def _annotate_is_last_child(items: list[dict[str, Any]]) -> None:
-    """Mark `_is_last_child=True` on the final child of every (section, parent) block.
-
-    Walks the post-`group_into_families` list in order: each header opens a new
-    section bucket; consecutive children with the same `_parent_id` form a
-    sibling group; the highest-index child in that group is the "last" one and
-    drives the `└─` vs `├─` glyph choice in `format_lines`. Children whose
-    `_parent_id` doesn't match the most recent parent in the section (orphans
-    after filtering) are treated as their own group of one.
-    """
+    """Mark `_is_last_child=True` on the final child of every (section, parent) block."""
     section_idx = -1
     last_by_key: dict[tuple[int, str], int] = {}
     for i, item in enumerate(items):
@@ -2478,9 +2452,6 @@ def _annotate_is_last_child(items: list[dict[str, Any]]) -> None:
             continue
         key = (section_idx, str(item.get("_parent_id", "")))
         last_by_key[key] = i
-    for i, item in enumerate(items):
-        if item.get("_tree_role") != "child":
-            continue
     section_idx = -1
     for i, item in enumerate(items):
         if item.get("_header"):
@@ -2852,15 +2823,7 @@ def main():
     collapsed = _read_collapsed_set(cache_dir)
 
     if args.filter_cache:
-        # Cache-only render path (the instant `start:reload(cache-only)` open).
-        # The cached rows already encode their section/scope, so we only need
-        # the parsed config for scope filtering, and only when a non-`all`
-        # scope is active. Parsing unconditionally here means every picker
-        # open shells out to `yq`; under restore-time CPU/IO contention that
-        # `yq` call can exceed parse_config's 5s timeout, and its "Failed to
-        # parse config" stderr leaks into the fzf popup even though the config
-        # is not actually needed to render the cache. Defer the parse so the
-        # common `scope=all` open never touches `yq`.
+        # All-scope cache renders must stay independent of yq.
         scope_map: dict[str, set[str]] = {}
         effective_scope = scope
         if scope and scope != "all":
@@ -2880,7 +2843,6 @@ def main():
         filtered = _filter_lines_for_scope(lines, effective_scope, scope_map)
         sorted_lines = _sort_within_sections(filtered, sort_key)
         collapsed_lines = _apply_collapsed_state(sorted_lines, collapsed)
-        _write_offsets(cache_dir, scope, collapsed_lines)
         output = "\n".join(collapsed_lines)
         if output.strip():
             sys.stdout.write(output + "\n")
@@ -2930,10 +2892,11 @@ def main():
                 sec = fut.result()
             except Exception:
                 sec = []
-            if sec and sec[0].get("_header"):
-                _kind, _idx, _title, filters, source, scopes = tasks[task_idx]
-                sec[0]["_scopes"] = scopes
-                sec[0]["_reason"] = _section_reason(filters, source)
+            kind, idx, title, filters, source, scopes = tasks[task_idx]
+            if not sec or not sec[0].get("_header"):
+                sec = [{"_header": True, "kind": kind, "idx": idx, "title": title, "_fetch_error": True}]
+            sec[0]["_scopes"] = scopes
+            sec[0]["_reason"] = _section_reason(filters, source)
             results[task_idx] = sec
 
     errored_sections: set[str] = set()
@@ -2944,7 +2907,6 @@ def main():
                 errored_sections.add(f"{sec[0].get('kind')}:{sec[0].get('idx')}")
 
     all_items: list[dict[str, Any]] = []
-    seen_items: set[tuple[str, str, str]] = set()
     wt_repos: set[str] = set()
     pr_nums_by_repo: dict[str, set[int]] = {}
     issue_nums_by_repo: dict[str, set[int]] = {}
@@ -2965,15 +2927,6 @@ def main():
                     if num > 0:
                         pr_nums_by_repo.setdefault(str(repo), set()).add(num)
                 continue
-
-            k = str(item.get("kind") or "")
-            r = str(item.get("repo") or "")
-            n = str(item.get("num") or "")
-            if k and r and n:
-                key = (k, r, n)
-                if key in seen_items:
-                    continue
-                seen_items.add(key)
 
             all_items.append(item)
             if not item.get("_header") and item.get("repo"):
@@ -3098,11 +3051,15 @@ def main():
     _attach_cross_links(all_items, gql_data, issue_meta)
     _group_cross_link_pairs(all_items)
 
+    prior_sections = _read_prior_sections(args.cache_file) if errored_sections else {}
+    all_items = _deduplicate_standalone_items(
+        all_items,
+        {section_id: lines for section_id, lines in prior_sections.items() if section_id in errored_sections},
+    )
     _annotate_section_counts(all_items)
     all_lines = format_lines(all_items, wt_index, prior_pr_badges=prior_pr_badges)
 
     if errored_sections:
-        prior_sections = _read_prior_sections(args.cache_file)
         if prior_sections:
             merged: list[str] = []
             cur_id = ""
@@ -3110,10 +3067,11 @@ def main():
             ordered_sections: list[tuple[str, list[str]]] = []
             for line in all_lines:
                 parts = line.split("\t")
-                if len(parts) >= 4 and parts[1] == "header":
+                section_id = _section_id_of(parts)
+                if section_id:
                     if cur_id:
                         ordered_sections.append((cur_id, cur_lines))
-                    cur_id = parts[3].strip()
+                    cur_id = section_id
                     cur_lines = [line]
                 else:
                     if cur_id:
@@ -3131,14 +3089,14 @@ def main():
     cache_output = "\n".join(all_lines)
     if cache_output.strip():
         try:
-            _atomic_write_text(args.cache_file, cache_output + "\n")
+            with resource_lock(args.cache_file):
+                _atomic_write_text(args.cache_file, cache_output + "\n")
         except Exception:
             pass
 
     filtered = _filter_lines_for_scope(all_lines, scope, scope_map)
     sorted_lines = _sort_within_sections(filtered, sort_key)
     collapsed_lines = _apply_collapsed_state(sorted_lines, collapsed)
-    _write_offsets(cache_dir, scope, collapsed_lines)
     output = "\n".join(collapsed_lines)
     sys.stdout.write(output + "\n")
     sys.stdout.flush()

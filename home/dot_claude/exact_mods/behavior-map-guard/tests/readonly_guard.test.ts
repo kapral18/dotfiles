@@ -24,6 +24,13 @@ test('stops the first edit in an unmapped directory, then lets the retry through
   expect(retry.deny).toBeUndefined()
 })
 
+test('logs the refusal to the guard ledger', async ($, on) => {
+  const argv = engine(on, 'unmapped: src\n')
+  on('session.id', () => ({ value: 's1' }))
+  expect((await $.tool.call(edit('/repo/src/a.ts'))).deny).toBeDefined()
+  expect(argv).toContainEqual([',task', 'guard', 'log', 'behavior-map-guard:unmapped-edit', '--harness', 'claude', '--session', 's1', '--detail', 'src/a.ts'])
+})
+
 test('lets docs-only and test-only edits through in an unmapped directory', async ($, on) => {
   engine(on, 'unmapped: src\n')
   for (const path of ['/repo/src/README.md', '/repo/src/tests/a.py', '/repo/src/a.test.ts', '/repo/src/test_a.py']) {

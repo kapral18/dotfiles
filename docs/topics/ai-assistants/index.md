@@ -16,9 +16,10 @@ OMP's native advisor adds main-session notes; child advisors stay off.
 | Skills              | `home/exact_dot_agents/exact_skills/`                      | `~/.agents/skills/`                                               | [Skills](skills.md)                           |
 | Subagent profiles   | `k-agent-reviewer` (Claude, Pi, OMP), `k-agent-scout` (Pi) | each harness's agents dir                                         | [Subagents](subagents.md)                     |
 | Knowledge base      | `,ai-kb`                                                   | `~/bin/,ai-kb`, data in `~/.local/share/ai-kb`                    | [Memory and handoffs](memory-and-handoffs.md) |
-| Session handoffs    | `,handoff`                                                 | `~/bin/,handoff`, notes in `~/.local/share/agent-handoffs`        | [Memory and handoffs](memory-and-handoffs.md) |
+| Session handoffs    | `,task handoff`                                            | notes and saved cards in `~/.local/share/agent-handoffs`          | [Memory and handoffs](memory-and-handoffs.md) |
 | Behavior maps       | `,behavior-map`                                            | `~/bin/,behavior-map`, maps in `~/.local/share/k-ai-behavior-map` | [Memory and handoffs](memory-and-handoffs.md) |
 | Intent cards        | `,task` and the intent-guard hooks                         | `~/bin/,task`, cards in `~/.local/share/agent-tasks`              | [Staying on the goal](staying-on-goal.md)     |
+| Board, guard ledger | `,task board`, `,task guards`                              | status and `guards.jsonl` in `~/.local/share/agent-tasks`         | [Staying on the goal](staying-on-goal.md)     |
 | MCP servers         | `home/.chezmoidata/mcp_servers.yaml`                       | rendered per harness                                              | [MCP servers](mcp.md)                         |
 | Harness configs     | per-harness files under `home/`                            | `~/.claude`, `~/.pi`, `~/.omp`, `~/.codex`, …                     | [Tool configs](tool-configs/index.md)         |
 | Local inference     | llama.cpp router and launchers                             | `~/bin/,llama-cpp`, `,*-llama-cpp`                                | [llama.cpp](llama-cpp/index.md)               |
@@ -39,11 +40,11 @@ The [global operating rules](../../../home/readonly_AGENTS.md) define the exact 
 
 - **Inline by default.** Subagents handle broad read-only searches and independent reviews. Reviews required by a risky code or instruction change use two fresh reviewers in parallel.
 - **Static verification.** Run affected unit and static checks once on the finished change, under time limits. Use source reads and isolated local runs for evidence. Live checks require the user's request, a hard timeout, and a copy when they would change external state or overwrite user data.
-- **Fix before finishing.** Resolve every supported issue in the request's scope and every defect in the change's impact, including low-severity findings. Review fixes and continue until a full review round is clean. Before reporting, finish every doable step in scope or the change's impact, and cleanup; then report evidence, assumptions, proposals, and blockers.
+- **Fix before finishing.** Resolve every supported issue in the request's scope and every defect in the change's impact, including low-severity findings. Review fixes and continue until a full review round is clean; a cause parked after returning twice or a mechanism parked for fix churn goes to the user in the final report. Before reporting, finish every doable step in scope or the change's impact, and cleanup; then report evidence, assumptions, proposals, and blockers.
 
 - **On-demand memory.** `,ai-kb search` when it can help; `,ai-kb remember` only for verified, reusable gotchas, or `--supersedes` to retire a stale capsule.
 - **Intent card.** Before its first edit the agent writes the task's goal, reading, `Done when` items, and scope; hooks in every harness check each iteration against it ([Staying on the goal](staying-on-goal.md)).
-- **Explicit handoffs.** "handoff X" writes a short note with `,handoff`; "continue X" reads it in any harness.
+- **Explicit handoffs.** "handoff X" saves a short note and the intent card with `,task handoff`; "continue X" resumes both in any harness.
 - **Behavior maps.** Each repo keeps a short map of critical behaviors seen from the user side; agents update only the entries their diff touches.
 
 Related: [Reviewing agent diffs](reviewing-diffs.md).

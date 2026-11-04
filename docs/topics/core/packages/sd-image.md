@@ -35,7 +35,7 @@ Input and mask are converted to matching PNGs. A grayscale mask becomes its alph
 
 ## Preconditions
 
-- macOS Darwin (the pinned `sd-cli` zip is the Darwin Metal build).
+- Apple Silicon macOS (`arm64`); the pinned Metal archive does not support Intel Macs.
 - `gh` and `hf` are on PATH (Homebrew; `hf` is already in the AI Brewfile slice).
 - You want on-device generate/edit because the image cannot leave the machine.
 
@@ -64,11 +64,14 @@ Default quality pick (64 GB unified memory): FLUX.2 klein 9B `Q8_0` + Qwen3-8B `
 
 ## Steps
 
-1. Apply so `sd-cli` and `,image-local` exist:
+1. Deploy the managed launcher and manifest, then install custom packages (including `sd-cli`):
 
 ```bash
-chezmoi apply --no-tty ~/.local/bin/sd-cli ~/bin/,image-local ~/.config/sd-image/models.txt
+chezmoi apply --no-tty --exclude scripts ~/bin/,image-local ~/lib/,image-local ~/.config/sd-image/models.txt
+,update --only manual
 ```
+
+The `sd-cli` wrapper is an installer output, not a chezmoi target. The manual update reconciles all declared custom packages.
 
 1. Download weights:
 

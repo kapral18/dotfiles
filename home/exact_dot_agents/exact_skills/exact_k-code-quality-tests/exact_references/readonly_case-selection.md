@@ -3,10 +3,10 @@
 Apply the minimum sufficient test protection rule in `~/.agents/skills/k-code-quality-tests/SKILL.md` before choosing cases.
 Do not derive a test list from the implementation's branches, fields or error variants.
 
-## Include only what protects material behavior
+## Include only protection worth its maintenance cost
 
 - Intended new/changed material behavior and concrete material failure paths through public behavior, with independent expected results.
-  Do not wait for a reported bug to protect new behavior.
+  Include a case only when its distinct protection justifies its maintenance; a change alone does not require one.
 - The nearest contrasting input or preserved behavior only when the same defect could break it and existing protection is insufficient.
 - A boundary, malformed input or state sequence only when it distinguishes that concrete failure.
   Combine related cases when it improves the behavioral test.
@@ -25,4 +25,4 @@ Do not derive a test list from the implementation's branches, fields or error va
 Isolate the intended failure by keeping unrelated constraints satisfied.
 Use multiple invalid constraints only when their interaction or validation precedence is the behavior being protected.
 
-Done when the smallest sufficient set protects the new/changed material behavior, catches the relevant failures, preserves necessary behavior, and contains no redundant case.
+Done when every retained case protects a distinct outcome worth its maintenance cost, with no redundant case; the set may be empty.

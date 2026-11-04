@@ -65,16 +65,16 @@ def _wait_for(predicate, *, timeout=5.0, interval=0.05):
 class TestPlainSessionRemoval(unittest.TestCase):
     """WHEN pick_session removes plain-directory rows backed by a tmux session."""
 
-    def _run_removal(self, tmp: Path, home: Path, selection_lines: list[str]):
+    def _run_removal(self, tmp: Path, home: Path, selection_lines: list[str], args=("--force",), expect: int = 0):
         cache_dir = home / ".cache/tmux"
-        cache_dir.mkdir(parents=True)
+        cache_dir.mkdir(parents=True, exist_ok=True)
         mock_bin = tmp / "bin"
-        mock_bin.mkdir()
+        mock_bin.mkdir(exist_ok=True)
         kill_log = tmp / "kill.log"
 
         # The action dispatches via the deployed path, and source `executable_` files lack +x.
         deployed_dir = home / ".config/tmux/scripts/pickers/session"
-        deployed_dir.mkdir(parents=True)
+        deployed_dir.mkdir(parents=True, exist_ok=True)
         deployed_script = deployed_dir / "remove_plain_dir.sh"
         deployed_script.write_text((TMUX_PICKERS / "session/executable_remove_plain_dir.sh").read_text())
         deployed_script.chmod(0o755)
@@ -98,13 +98,28 @@ class TestPlainSessionRemoval(unittest.TestCase):
         }
 
         result = subprocess.run(
-            [modern_bash(), str(ACTION_SCRIPT), str(selection)],
+            [modern_bash(), str(ACTION_SCRIPT), *args, str(selection)],
             capture_output=True,
             text=True,
             env=env,
         )
-        assert result.returncode == 0, result.stderr
+        assert result.returncode == expect, result.stderr
         return cache_dir, kill_log
+
+    def test_plain_dir_delete_requires_force(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            home = tmp_path / "home"
+            repo = home / "code/repo"
+            repo.mkdir(parents=True)
+            (repo / "notes.txt").write_text("only copy\n")
+            selection_lines = [f"row\tdir\t{home / 'code'}\t\t\n"]
+
+            self._run_removal(tmp_path, home, selection_lines, ("--check",), expect=3)
+            self._run_removal(tmp_path, home, selection_lines, ())
+
+            assert (repo / "notes.txt").exists()
+            assert not (home / ".cache/tmux/pick_session_mutations.tsv").exists()
 
     def test_matching_session_removed_and_unrelated_sessions_survive(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -34,6 +34,7 @@
   let multiBoxes = [];
   let context = {};
   let tray = [];
+  let sending = false;
   let pendingBatches = [];
   let paused = false;
   let manifestCache = null;
@@ -338,10 +339,10 @@
       setStatus("Write feedback before adding to the tray.");
       return false;
     }
-    let item = { prompt, ...context };
+    let item = { ...context, prompt };
     if (multiSelected.length) {
       const targets = multiSelected.map((entry) => entry.context);
-      item = { prompt, ...targets[0], targets };
+      item = { ...targets[0], targets, prompt };
       clearMulti();
     }
     tray.push(item);
@@ -352,12 +353,15 @@
   }
 
   async function sendFeedbackBatch() {
+    if (sending) return;
     if ($("prompt").value.trim() && !addCurrentToTray()) return;
     if (!tray.length) {
       setStatus("Add at least one feedback item before sending.");
       return;
     }
     const items = tray.slice();
+    sending = true;
+    $("send").disabled = true;
     setStatus("Sending " + items.length + " live feedback item(s)...");
     try {
       const response = await fetch(BASE_URL + "/api/feedback/" + encodeURIComponent(NAME), {
@@ -366,16 +370,20 @@
         body: JSON.stringify({ items }),
       });
       if (response.ok) {
-        const result = await response.json();
-        tray = [];
+        tray = tray.filter((item) => !items.includes(item));
         renderTray();
-        setStatus("Queued batch " + result.batch_id + " with " + result.count + " item(s).");
+        setStatus("Queued " + items.length + " feedback item(s).");
       } else {
         setStatus("Failed to queue feedback batch.");
       }
     } catch (error) {
       pendingBatches.push({ items, error: String((error && error.message) || error || "fetch failed") });
+      tray = tray.filter((item) => !items.includes(item));
+      renderTray();
       setStatus("Local post blocked. Batch kept in window.__agentArtifactLiveOverlay.drain().");
+    } finally {
+      sending = false;
+      $("send").disabled = false;
     }
   }
 

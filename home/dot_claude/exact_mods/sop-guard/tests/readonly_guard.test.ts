@@ -7,204 +7,196 @@ const edit = (file_path: string) => ({ tool: 'Edit', file_path, old_string: 'a',
 
 type World = { managed?: string[]; links?: Record<string, string> }
 
-// The engine beneath the plugin: HOME is /home/u, the dotfiles repo is /home/u/dots.
 const engine = (on: On, world: World = {}) => {
+  const argv: string[][] = []
+  on('session.id', () => ({ value: 's1' }))
   on('env.get', () => ({ value: '/home/u' }))
   on('clock.now', () => ({ value: 0 }))
   on('fs.stat', ($, e) => ({ value: { kind: 'file', size: 1, mtimeMs: 0, isLink: false, realPath: world.links?.[e.path] ?? e.path } }))
   on('process.run', ($, e) => {
-    const argv = e.argv.join(' ')
-    if (argv.includes('chezmoi source-path') && argv.startsWith('sh')) return { value: ran('/home/u/dots\n') }
-    if (argv.startsWith('chezmoi managed')) return { value: ran((world.managed ?? []).join('\n')) }
-    if (argv.startsWith('chezmoi source-path')) return { value: ran(`/home/u/dots/home/src-of${e.argv[2]}\n`) }
+    argv.push([...e.argv])
+    const command = e.argv.join(' ')
+    if (command.includes('chezmoi source-path') && command.startsWith('sh')) return { value: ran('/home/u/dots\n') }
+    if (command.startsWith('chezmoi managed')) return { value: ran((world.managed ?? []).join('\n')) }
+    if (command.startsWith('chezmoi source-path')) return { value: ran(`/home/u/dots/home/src-of${e.argv[2]}\n`) }
     return { value: ran('', 127) }
   })
   on('tool.call', () => ({ result: {} as never }))
+  return argv
 }
 
 const denied = async (call: Promise<{ deny?: string }>) => (await call).deny
 
-test('refuses commands that print a secret', async ($, on) => {
+test('passes unsupported shell syntax without inspecting nested commands', async ($, on) => {
   engine(on)
   for (const command of [
-    'pass show work/token',
-    'pass work/token',
-    'echo $(gh auth token)',
-    'echo "$(gh auth token)"',
-    'printf "%s\\n" "$(pass show work/token)"',
-    'gh auth token | xargs echo',
-    'gh auth token | xargs -n 1 echo',
-    'pass show x | xargs -I {} echo {}',
-    'gh auth token | xargs --max-args 1 echo',
-    "pass show x | xargs sh -c 'echo $1' _",
-    'pass show x | xargs env echo',
-    "pass show x | xargs fish -c 'echo $argv'",
-    'pass show x | xargs ls',
-    "pass show x | python3 -c 'import sys;print(sys.stdin.read())'",
-    'pass show x | rev',
-    'bash -c "gh auth token"',
-    'bash -lc "gh auth token"',
-    "sh -c 'pass show work/token | cat'",
     'pass show work/token | head -1',
-    'security find-generic-password -s svc -w',
-    'op read op://vault/item/field',
-    'gh auth token',
-    'cat .env',
-    'cd app && cat config/.env | grep KEY',
-    'pass show work/token >&2',
-    'pass show work/token 2>/dev/null',
-    'cat <<< "x"\npass show work/token',
-    'echo "a <<EOF"\npass show work/token',
-    "echo 'a <<X\nfoo'\nX\npass show work/token",
-    'echo "\\$("; pass show work/token',
-    'x="$(git log --format="%s (%h)")"; pass show work/token',
-    'x="$(printf "%s" ")")"; pass show work/token',
-    "echo hi # don't\npass show work/token",
-    'echo $((1<<2))\npass show work/token',
-    'echo a\\b#c; pass show work/token',
-    'echo \\ #x; pass show work/token',
-    'echo "$(echo a#b)"; pass show work/token',
-    'echo "$(echo a#b)"\npass show work/token',
-    'echo $((1<<n))\npass show work/token',
-    'echo "$((1<<2))"\npass show work/token',
-    '((x <<= 1))\npass show work/token',
-    'while read -r l; do [[ $l =~ ^(#|$) ]] && continue; done < f; pass show work/token',
-    'echo ${x:- #}; pass show work/token',
-    'gh auth \\\ntoken',
-    "echo $'it\\'s'; pass show work/token",
-    "cat <<\\EOF\nit's\nEOF\npass show work/token",
-    "cat <<END-X\nit's\nEND-X\npass show work/token",
-    "cat <<EOF\n  EOF\nit's\nEOF\npass show work/token",
-    "ls |# it's\npass show work/token",
-    "(# it's\npass show work/token\n)",
-    "echo ${line%%(*}; ls # don't\npass show work/token",
-    "echo $$'\\'; pass show work/token #'",
-    'gh auth tok\\\nen',
-    "ls # it's\necho ${x/ #/}; pass show work/token",
-    'name=$(echo ${line%%(*}); pass show work/token',
-    "echo ${x%((}; cat <<EOF\nit's\nEOF\npass show work/token",
-    'while read -r l; do [[ $l =~ ^[[:space:]]*(#|$) ]] && continue; done < f; pass show work/token',
-    '(( x # )); pass show work/token',
-    "echo [[ ; cat <<EOF\nit's\nEOF\npass show work/token",
-    'echo [[ x; (pass show work/token)',
-    'if [[ -n x ]]; then pass show work/token; fi',
-    '{ [[ $l =~ ^(#|$) ]] && continue; }; pass show work/token',
-    'time [[ $l =~ ^(#|$) ]]; pass show work/token',
-    'case $x in a) [[ $l =~ ^(#|$) ]];; esac; pass show work/token',
-    'foo() { [[ $l =~ ^(#|$) ]]; }; pass show work/token',
-    "echo \\\\ # it's\npass show work/token",
-    "ls \\\n# it's\npass show work/token",
-    "((cd /tmp; ls) ); cat <<EOF\nit's\nEOF\npass show work/token",
-    "cat <<'%%'\nit's\n%%\npass show work/token",
-    "cat <<E\\OF\nit's\nEOF\npass show work/token",
-    'echo "${x:-"it\'s"}"; pass show work/token',
-    'for ((i=1; i<100; i<<=1)); do\n  echo $i\ndone\npass show work/token',
-    '(( a = 1 << 2 +\n 3 ))\npass show work/token',
-    "echo $(date) [[ x; cat <<EOF\nit's\nEOF\npass show work/token",
-    'echo "${a:-${b:-x} "it\'s"}"; pass show work/token',
-    "cat <<E\"O\"F\nit's\nEOF\npass show work/token",
-    'echo "${x:-it\'s}"; pass show work/token',
-    'case $l in (a) [[ $l =~ ^(#|a) ]] && pass show work/token;; esac',
-    '(case $l in a) [[ $l =~ ^(#|a) ]] && pass show work/token;; esac)',
-    'f() [[ $l =~ ^(#|$) ]] && pass show work/token',
-    'cat <<"E O F"\nhi\nE O F\npass show work/token',
-    'x=$(echo *(N) [[ ); pass show work/token',
-    "cat <<E\\'OF\nbody\nE'OF\npass show work/token",
+    'echo "$(gh auth token)"',
+    'env pass show work/token',
+    'true; tmux kill-server',
+    "bash -c 'pass show work/token'",
+    'cat <<EOF\n$(pass show work/token)\nEOF',
   ]) {
-    expect(await denied($.tool.call(bash(command)))).toMatch(/prints a secret/)
+    expect(await denied($.tool.call(bash(command))), command).toBeUndefined()
   }
 })
 
-test('lets a secret pass by reference', async ($, on) => {
+test('records only fixed provider IDs for Bash refusals', async ($, on) => {
+  const argv = engine(on)
+  expect(await denied($.tool.call(bash('pass show private/fixture-token')))).toBeDefined()
+  expect(await denied($.tool.call(bash('tmux kill-server private-fixture')))).toBeDefined()
+  expect(await denied($.tool.call(bash('tmux send-keys private-fixture')))).toBeDefined()
+  expect(argv.filter(args => args[0] === ',task')).toEqual([
+    [',task', 'guard', 'log', 'sop-guard:secret', '--harness', 'claude', '--session', 's1', '--detail', 'pass'],
+    [',task', 'guard', 'log', 'sop-guard:tmux-kill-server', '--harness', 'claude', '--session', 's1', '--detail', 'tmux'],
+    [',task', 'guard', 'log', 'sop-guard:tmux-default-server', '--harness', 'claude', '--session', 's1', '--detail', 'tmux'],
+  ])
+})
+
+test('keeps refusals when the guard ledger is missing', async ($, on) => {
+  engine(on)
+  expect(await denied($.tool.call(bash('pass show work/token')))).toMatch(/common secret-output command/)
+})
+
+test('refuses common direct pass output forms including grep and generate', async ($, on) => {
+  engine(on)
+  for (const command of [
+    'pass work/token',
+    'pass show work/token',
+    'pass show -',
+    'pass ls work/token',
+    'pass list work/token',
+    'pass grep token',
+    'pass grep -etoken',
+    'pass grep --regexp=token',
+    'pass grep -f /tmp/patterns',
+    'pass generate work/token 32',
+    'pass generate --qrcode work/token',
+    'pass generate -nq work/token',
+    'pass otp --qrcode work/token',
+  ]) {
+    expect(await denied($.tool.call(bash(command))), command).toMatch(/common secret-output command/)
+  }
+})
+
+test('passes explicit leading clipboard modes and non-output pass commands', async ($, on) => {
+  engine(on)
+  for (const command of [
+    'pass -c work/token',
+    'pass show --clip=2 work/token',
+    'pass generate -nc work/token 32',
+    'pass otp -c work/token',
+    'pass find token',
+    'pass insert work/token',
+    'pass show',
+    'pass grep --help',
+    'pass generate',
+  ]) {
+    expect(await denied($.tool.call(bash(command))), command).toBeUndefined()
+  }
+})
+
+test('refuses common direct provider and environment-file output forms', async ($, on) => {
+  engine(on)
+  for (const command of [
+    'security find-generic-password -s svc -w',
+    'security find-internet-password -a account -s svc -g',
+    'security dump-keychain -d /tmp/keychain',
+    'op read op://vault/item/field',
+    'op --account work item get fixture --fields label=password',
+    'op item get fixture --reveal',
+    'op item get fixture --otp',
+    'op signin --raw',
+    'op inject --in-file /tmp/template',
+    'gh auth token --hostname github.example',
+    '/bin/cat ".env"',
+    "cat 'app/.env.local'",
+  ]) {
+    expect(await denied($.tool.call(bash(command))), command).toMatch(/common secret-output command/)
+  }
+})
+
+test('passes unknown provider flags and modes without inferring their behavior', async ($, on) => {
+  engine(on)
+  for (const command of [
+    'pass show --unknown work/token',
+    'pass grep --reg=token',
+    'security find-generic-password -x -w',
+    'op read --unknown op://vault/item/field',
+    'op item get fixture',
+    'op inject --in-file /tmp/template --out-file /tmp/output',
+    'gh --repo fixture/project auth token',
+    'cat -n .env',
+  ]) {
+    expect(await denied($.tool.call(bash(command))), command).toBeUndefined()
+  }
+})
+
+test('keeps quoted command text as data and excludes environment-file templates', async ($, on) => {
+  engine(on)
+  for (const command of [
+    'rg "pass show work/token|gh auth token" docs',
+    "echo '$(pass show work/token)'",
+    String.raw`printf %s \$\(pass\ show\ work/token\)`,
+    'cat .env.example',
+    'cat .envrc',
+    'tmux display-message "tmux kill-server"',
+  ]) {
+    expect(await denied($.tool.call(bash(command))), command).toBeUndefined()
+  }
+})
+
+test('keeps secret-by-reference workflows available', async ($, on) => {
   engine(on)
   for (const command of [
     'TOKEN=$(pass show work/token) ./run',
     'curl -H "Authorization: $(gh auth token)" https://api.github.com',
     'pass show work/token | pbcopy',
-    'gh auth token | xargs -I{} curl -H {} https://x',
-    'pass show x | xargs gh secret set NAME --body',
-    'gh auth token | docker login ghcr.io -u me --password-stdin',
-    'printf %s "$(pass show work/token)" | pbcopy',
-    'echo "$(gh auth token | wc -c)"',
-    'echo $(gh auth token | wc -c)',
-    'echo start; TOKEN=$(gh auth token) ./run',
-    'pass show ${ENTRY} | pbcopy',
-    'pass -c work/token',
-    'pass ls',
-    'pass show work/token > /tmp/x/token',
-    'gh auth token >/dev/null 2>&1 || gh auth login',
-    'rg "pass show" docs',
-    'cat .envrc',
+    'pass grep token | gh secret set TOKEN',
+    'pass generate work/token > /tmp/token',
   ]) {
     expect(await denied($.tool.call(bash(command))), command).toBeUndefined()
   }
 })
 
-test('refuses bare tmux kill-server every time', async ($, on) => {
+test('refuses direct default-server kill-server every time and passes literal isolation', async ($, on) => {
   engine(on)
   expect(await denied($.tool.call(bash('tmux kill-server')))).toMatch(/never run bare tmux kill-server/)
   expect(await denied($.tool.call(bash('tmux kill-server')))).toMatch(/kill-server/)
   expect(await denied($.tool.call(bash('tmux -L probe kill-server')))).toBeUndefined()
-  expect(await denied($.tool.call(bash('tmux -S "$sock" kill-server')))).toBeUndefined()
+  expect(await denied($.tool.call(bash('tmux -S /tmp/probe.sock kill-server')))).toBeUndefined()
+  expect(await denied($.tool.call(bash('tmux -L probe run-shell "tmux kill-server"')))).toBeUndefined()
 })
 
-test('stops a default-server mutation once and lets reads through', async ($, on) => {
+test('reminds once per default-server mutation and resets at session end', async ($, on) => {
   engine(on)
+  on('session.end', () => ({ sessionId: 's1' }))
   expect(await denied($.tool.call(bash('tmux send-keys -t 1 ls Enter')))).toMatch(/send-keys without -S or -L/)
   expect(await denied($.tool.call(bash('tmux send-keys -t 1 ls Enter')))).toBeUndefined()
-  expect(await denied($.tool.call(bash('tmux -f ~/.tmux.conf source-file x')))).toMatch(/source-file/)
-  expect(await denied($.tool.call(bash('tmux list-panes -a && tmux capture-pane -p -t 1')))).toBeUndefined()
-  expect(await denied($.tool.call(bash('rg "tmux kill-server" docs')))).toBeUndefined()
+  expect(await denied($.tool.call(bash('tmux -f /tmp/tmux.conf source-file fixture')))).toMatch(/source-file/)
+  expect(await denied($.tool.call(bash('tmux list-panes -a')))).toBeUndefined()
+  await $.session.end({ reason: 'clear', sessionId: 's1', resume: { id: 's1' } })
+  expect(await denied($.tool.call(bash('tmux send-keys -t 1 ls Enter')))).toMatch(/send-keys without -S or -L/)
 })
 
-test('refuses edits to chezmoi targets and names the source', async ($, on) => {
-  engine(on, { managed: ['/home/u/.zshrc', '/home/u/AGENTS.md'], links: { '/home/u/.claude/CLAUDE.md': '/home/u/AGENTS.md' } })
+test('refuses structured writes to chezmoi targets and names their source', async ($, on) => {
+  engine(on, {
+    managed: ['/home/u/.zshrc', '/home/u/AGENTS.md'],
+    links: {
+      '/home/u/.claude/CLAUDE.md': '/home/u/AGENTS.md',
+      '/home/u/dots/managed-link': '/home/u/.zshrc',
+      '/tmp/managed-link': '/home/u/.zshrc',
+      '/home/u/source-link': '/home/u/dots/home/dot_zshrc',
+    },
+  })
   expect(await denied($.tool.call(edit('/home/u/.zshrc')))).toMatch(/\/home\/u\/\.zshrc is managed by chezmoi.*src-of\/home\/u\/\.zshrc/)
+  expect(await denied($.tool.call({ tool: 'Write', file_path: '/home/u/.zshrc', content: 'fixture' }))).toMatch(/is managed by chezmoi/)
+  expect(await denied($.tool.call({ tool: 'NotebookEdit', notebook_path: '/home/u/.zshrc', new_source: 'fixture', cell_type: 'code' }))).toMatch(/is managed by chezmoi/)
   expect(await denied($.tool.call(edit('/home/u/.claude/CLAUDE.md')))).toMatch(/\/home\/u\/AGENTS\.md is managed/)
+  expect(await denied($.tool.call(edit('/home/u/dots/managed-link')))).toMatch(/\/home\/u\/\.zshrc is managed/)
+  expect(await denied($.tool.call(edit('/tmp/managed-link')))).toMatch(/\/home\/u\/\.zshrc is managed/)
+  expect(await denied($.tool.call(edit('/home/u/source-link')))).toBeUndefined()
   expect(await denied($.tool.call(edit('/home/u/notes.txt')))).toBeUndefined()
   expect(await denied($.tool.call(edit('/home/u/dots/home/dot_zshrc')))).toBeUndefined()
-})
-
-test('sees commands behind assignments, wrappers, keywords, and braces', async ($, on) => {
-  engine(on)
-  for (const command of [
-    'GH_HOST=x gh auth token',
-    'env pass show x',
-    'if true; then gh auth token; fi',
-    '{ gh auth token; }',
-    'pass show "work/token"',
-    'cat ".env"',
-    'cat ${DIR}/.env',
-    "pass show x | grep -E 'a|b'",
-    "pass show x | jq -r '.a | .b'",
-  ]) {
-    expect(await denied($.tool.call(bash(command))), command).toMatch(/prints a secret/)
-  }
-  expect(await denied($.tool.call(bash('TMUX= tmux kill-server'))), 'tmux env').toMatch(/kill-server/)
-  expect(await denied($.tool.call(bash(String.raw`tmux display -p x \; display-popup -E ls`)))).toMatch(/display-popup/)
-})
-
-test('ignores quoted text and heredoc bodies', async ($, on) => {
-  engine(on)
-  for (const command of [
-    "rg -n 'TOKEN|gh auth token' docs",
-    'rg "foo|pass show" home',
-    "git commit -F - <<'EOF'\nfix: pass the token through env\nop read is not used\nEOF",
-    "git commit -m \"$(cat <<'EOF'\npass the token\nEOF\n)\"",
-    'pass show -c work/token',
-    'pass show',
-    'cat .env.example',
-    "python3 - <<'EOF'\nprint('user\\'s')\nEOF\ngrep -E 'fail|pass' x",
-    'rg "a\npass show x" docs',
-    '# pass show work/token\nls',
-    'ls #pass show x',
-    'cat <<1\npass show x\n1',
-    'echo ${#x} $#; ls',
-    'cat <<-EOF\n\tpass show x\n\tEOF\nls',
-    'ls # (gh auth token prints it)',
-    'make check # then; cat .env',
-    'cat notes.txt # then edit .env',
-  ]) {
-    expect(await denied($.tool.call(bash(command))), command).toBeUndefined()
-  }
+  expect(await denied($.tool.call(edit('relative.txt')))).toBeUndefined()
 })

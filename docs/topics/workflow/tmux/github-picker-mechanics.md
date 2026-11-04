@@ -12,7 +12,7 @@ Items come from a standalone YAML config:
 
 - `~/.config/tmux/scripts/pickers/github/gh-picker.yml`
 
-The file defines PR and issue sections using GitHub Search syntax. `lib/gh_items_main.py` parses the config, uses GraphQL review-request actors for direct and selected-team review queues, and formats rows as fzf TSV. It reduces each PR's status-check rollup to a CI badge through `pickers/lib/gh_ci_state.py`, which the session picker's `lib/index_main.py` shares.
+The file defines PR and issue sections using GitHub Search syntax. `lib/gh_items_main.py` parses the config, uses GraphQL review-request actors for direct and selected-team review queues, and formats rows as fzf TSV. GraphQL batch aliases use opaque counters, preserving repository names containing dots, hyphens, or underscores without invalid names or alias collisions. It reduces each PR's status-check rollup to a CI badge through `pickers/lib/gh_ci_state.py`, which the session picker's `lib/index_main.py` shares.
 
 ## Scopes and sorting
 
@@ -33,7 +33,7 @@ Headers stay anchored; only rows between headers move.
 
 ## Header navigation
 
-`alt-n` and `alt-p` jump to next/previous section headers. The fetcher writes `~/.cache/tmux/gh_picker_offsets_{scope}.json`; the bash jump helper reads that sidecar and emits fzf `pos(N)`.
+`alt-n` and `alt-p` jump to next/previous section headers in the current fzf matches. Section jumps, family marking, and collapse read the current matched rows from fzf’s `{*f}` snapshot, so a query cannot turn a visible row position into another cached item. Family marking includes matched siblings even when their parent is filtered out.
 
 The helper is intentionally pure bash in the hot path. An older `cat + python3` implementation cost enough per keypress that held `alt-n`/`alt-p` queued faster than they drained.
 
@@ -56,7 +56,7 @@ Visual cues:
 | `├─` / `└─`            | Family child             |
 | `↳ #N` / `↳ closes #N` | Cross-linked PR or issue |
 
-A `Maintenance: Pending backports` section, when the config defines one, is the source of truth for missing backports. It combines bot comments, current version labels, and title search for manually-created backports.
+A `Maintenance: Pending backports` section, when the config defines one, is the source of truth for missing backports. It combines bot comments, current version labels, and title search for manually-created backports. Non-clickable missing-backport rows remain children of their parent when sorting, filtering scopes, or retaining a section after a failed refresh.
 
 ## Inline badges
 
@@ -78,6 +78,8 @@ The hidden match key includes repo, author, assignee, labels, state, local workt
 
 Local worktree markers come from git worktree state plus branch/metadata heuristics. Issue markers can also be inferred from the session picker cache when a worktree is already linked to an issue.
 
+Issue metadata includes its repository. An explicit association with another repository suppresses both its issue-number marker and branch-suffix fallback in the current repository. The branch still participates in PR-head matching. Worktrees without repository metadata retain the legacy number and suffix heuristics.
+
 ## Actions
 
 | Key      | Action                                              |
@@ -94,13 +96,15 @@ Local worktree markers come from git worktree state plus branch/metadata heurist
 
 Mutating actions are delegated to helper scripts and use the standard GitHub side-effect gates outside the read-only dashboard view.
 
+Palette actions and batch checkout run once per selected PR or issue, even when several marked family contexts contain that item. Distinct repositories remain separate targets. The palette counts those targets before choosing single-item or batch verbs; the displayed families and their marks remain intact.
+
 Batch worktree creation (`ctrl-t`) captures the launching picker's scope, port, cache file, and tmux socket into an immutable dispatch packet, then detaches a `nohup` background job (not `tmux run-shell -b`) so closing the dashboard popup cannot cancel in-flight clones. Selected worktrees are created one at a time across detached batches because one Git checkout can already use every configured worker; a shared BSD `lockf` lock prevents overlapping full-repo checkouts from starving tmux or racing marker updates. Lock wait counts against the same total deadline as creation. An item failure before the batch deadline does not cancel later items or poison the next batch; once the hard deadline expires, unstarted items are not launched. Issue creation invokes the read-only `~/lib/,w/add.sh` and `open.sh` command libraries through `bash`, and detached creates carry the captured socket as `OUTER_TMUX_SOCKET` after `TMUX` is intentionally removed. Worktree session existence and focus use tmux's `=` exact-target form, so a longer session with the requested name as its prefix cannot suppress creation or receive the switch. Completion markers still target the popup that started the batch, even if another popup rewrites the shared mode/scope globals before the background work finishes.
 
 Detached survival is bounded so hung clones cannot linger as rogue processes with stuck amber spinners: each `,gh-worktree` call runs under `timeout --kill-after=10s` (`GH_BATCH_ITEM_TIMEOUT_SECS`, default 600), the batch waits with a hard deadline (`GH_BATCH_TOTAL_TIMEOUT_SECS`, default 1800) that TERM/KILL-reaps remaining create trees, and a per-batch job ledger under `~/.cache/tmux/gh_batch_worktree_jobs/<batch-pid>.tsv` records create/spinner PIDs, process-start identities, and `(kind,repo,num)`. A create child retains the cross-batch lock through ledger publication and EXIT cleanup, while spinner, curl, and `,gh-worktree` descendants close that descriptor; the next batch therefore cannot pass an unrecorded orphan or reap a ledger during an active drop. On batch exit, unsettled ledger rows are killed and their loading markers cleared. Once every create has exited, finalization reclaims any ledger lock stranded by a deadline kill before removing the ledger and its rewrite temporaries. A later lock holder treats every remaining ledger as stale, removes ledger-less lock directories left by an interrupted reap before a batch PID can reuse them, and signals a recorded process only when both its start identity and detached `gh_batch_worktree.sh --background` argv still match; reused ledger filenames and row PIDs cannot suppress cleanup or target unrelated processes. Ledger append, drop, and reap remain mkdir-lock serialized so cleanup cannot race publication or lose a row before finalization. Spinner subshells are started as direct children of their create subshell (no `$(...)` capture), so the tree kill reaps them even when a create is SIGKILLed before its EXIT trap.
 
 Row-loader spinner frames are ephemeral full-list renders POSTed fire-and-forget, and fzf applies whatever arrives last. Each spinner carries a token file named by its pid (`gh_row_loader_spin_<pid>.tok`): the loop re-checks it after every slow render and aborts before POSTing once `stop_spinner` has removed it, while the spinner tracks and waits for its direct curl children before the authoritative re-render. Direct comment/palette callers also stop and join their spinner from EXIT cleanup, so interruption cannot orphan the infinite frame loop. Without this, a stale loading frame could clobber the final render, leaving rows stuck on amber spinners after the work finished.
 
-When a batch includes issues, the foreground phase opens the branch-naming scratch buffer in `$EDITOR`. Each issue is a row in `<repo>#<number>|<branch>` form (e.g. `owner/repo#123|`), so the repo and issue are right in the fillable row rather than a bare number. When the editor is nvim, it also opens a vertical-split terminal to the right running an interactive `,claude-openrouter` agent (MiMo V2.6 Flash, `--effort high`) with the fixed prompt from `gh_batch_branch_prompt.txt` (scratch path substituted at launch). That prompt tells the agent to fetch each issue title via `gh`, invent a conventional-commit branch name, write it after the pipe, and stop — no git/worktree side effects. The terminal auto-closes when the agent exits (`util.terminal.run_in_split` with `close_on_exit`); the scratch buffer remains the focused window and is still edited and saved directly. An empty branch skips that issue, and each created branch is `<branch>-<number>`.
+When a batch includes issues, the foreground phase opens the branch-naming scratch buffer in `$EDITOR`. Each issue is a row in `<repo>#<number>|<branch>` form (e.g. `owner/repo#123|`), so the repo and issue are right in the fillable row rather than a bare number. When the editor is nvim, it also opens a vertical-split terminal to the right running an interactive `,claude-openrouter` agent (MiMo V2.6 Flash, `--effort high`) with the fixed prompt from `gh_batch_branch_prompt.txt` (scratch path substituted at launch). That prompt tells the agent to fetch each issue title via `gh`, invent a conventional-commit branch name, write it after the pipe, and stop — no git/worktree side effects. Scratch paths remain unique with both BSD and GNU `mktemp`. The branch-naming helper uses a unique terminal owner for each batch, so opening another batch in an existing Neovim process preserves in-flight helpers and unrelated terminals. The terminal auto-closes when the agent exits (`util.terminal.run_in_split` with `close_on_exit`); the scratch buffer remains the focused window and is still edited and saved directly. Each selected issue uses its first matching branch row; later duplicate or conflicting assignments are ignored. The final row does not need a trailing newline. An empty first branch skips that issue, and each created branch is `<branch>-<number>`.
 
 ## Create issue / epic
 
@@ -138,11 +142,13 @@ Main cache:
 ~/.cache/tmux/gh_picker.tsv
 ```
 
-The picker paints cache immediately, starts a background fetch, and posts a reload to fzf's listen socket only when the fresh fetch succeeds. Failed refreshes leave the visible cache intact.
+The picker paints cache immediately, starts a background fetch, and posts a reload to fzf's listen socket when the fetch completes. The listener is a per-picker Unix socket (`gh_picker_fzf.<pid>.sock`, mode 0600), never a localhost TCP port: fzf runs `execute`/`reload` commands from any local listener, and a web page can reach a TCP port. Failed section searches or required backport-comment metadata requests retain that section's cached rows while successful sections refresh. Retained items take precedence over redundant standalone copies. PR and issue families keep their section context, including overlapping ordinary queries and scope views, even when their logical parent or child also appears elsewhere. De-duplication cannot hide a matched family child. Collapsing a logical parent affects each matching section; each parent label counts only that section's hidden children. Fresh standalone copies follow configured section order. A successful empty section clears its obsolete rows. Optional backport-title and status lookups remain best effort. Fetch cleanup forgets completed workers before releasing its ownership generation.
 
-The fetch lock is publication-safe: a waiter that loses the `mkdir` race never reaps an owner that has claimed the lock directory but not yet written its pid file. It backs off during a short publish grace instead, so two popups can never launch competing fetches for the same cache.
+The shared picker-owner backend also serves session indexing; each resource keeps its own lock namespace. Fetch ownership uses `gh_picker.tsv.fetch.lock` with a PID, process start identity, command digest, and random generation. Acquire, stale-owner recovery, release, and signal decisions serialize under `gh_picker.tsv.fetch.flock`. A PID-only live legacy owner remains unverified: ordinary waiters use cache, while manual refresh refuses without signaling it or deleting its lock. A missing PID gets a short publication grace before orphan recovery.
 
-`ctrl-r` pre-empts any in-flight fetch, releases the fetch lock safely, and starts a fresh request.
+`ctrl-r` pre-empts a verified fetch owner and starts a fresh request. The helper checks the recorded generation and current process identity before each TERM or KILL. Cleanup only releases its own generation and verifies fetch-child identity before signaling children; a late cleanup preserves a successor's lock. These checks avoid signaling a PID solely because it is alive; they do not provide an atomic operating-system process handle between inspection and signal.
+
+Cache publication and local marker patches share the separate advisory lock `gh_picker.tsv.flock`. Advisory lock files remain in place so competing writers always lock the same inode. Their namespace differs from former `.lock` directories, so a leftover directory cannot block publication.
 
 ## Preview pane
 
@@ -151,6 +157,8 @@ The preview uses `gh_preview.sh`, cached per repo/kind/number under:
 ```text
 ~/.cache/tmux/gh_preview/
 ```
+
+Preview fetches acquire advisory locks for the global limiter and selected item. A worker that exhausts the acquisition timeout exits without fetching or releasing another worker’s lock.
 
 Collapsed previews show summary/body/activity in bounded form. `alt-e` cycles collapsed → body expanded → all expanded.
 

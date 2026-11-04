@@ -112,6 +112,11 @@ _rmdir_upwards_ignoring_ds_store() {
   cur="$(realpath "$start_dir" 2> /dev/null || printf '%s' "$start_dir")"
   stop_at="$(realpath "$stop_at" 2> /dev/null || printf '%s' "$stop_at")"
 
+  case "$cur" in
+    "$stop_at"/*) ;;
+    *) return 0 ;;
+  esac
+
   while [ -n "$cur" ] && [ "$cur" != "/" ] && [ "$cur" != "$stop_at" ]; do
     if ! _dir_is_effectively_empty_ignoring_ds_store "$cur"; then
       break
@@ -131,6 +136,10 @@ _bag_and_rmdir_upwards_ignoring_ds_store() {
   cur="$(realpath "$start_dir" 2> /dev/null || printf '%s' "$start_dir")"
   stop_at="$(realpath "$stop_at" 2> /dev/null || printf '%s' "$stop_at")"
   anchor="$stop_at"
+  case "$cur" in
+    "$stop_at"/*) ;;
+    *) return 0 ;;
+  esac
 
   while [ -n "$cur" ] && [ "$cur" != "/" ] && [ "$cur" != "$stop_at" ]; do
     if _dir_is_effectively_empty_ignoring_ds_store "$cur"; then
@@ -139,16 +148,8 @@ _bag_and_rmdir_upwards_ignoring_ds_store() {
       continue
     fi
 
-    # If this directory contains any *other* worktree roots, do not bag or
-    # delete it. The bag is only for leftover non-worktree items between the
-    # wrapper and a removed worktree.
-    if [ -e "$cur/.git" ]; then
-      break
-    fi
-    # Worktrees are often nested (e.g. backport/8.19/pr-123, chore/team/foo).
-    # Only checking direct children would miss these and could bag/move entire
-    # worktree subtrees unintentionally.
-    if find "$cur" -mindepth 2 -maxdepth 6 -name '.git' -print -quit 2> /dev/null | grep -q .; then
+    local git_entry
+    if ! git_entry="$(find "$cur" -mindepth 1 -name '.git' -print -quit 2> /dev/null)" || [ -n "$git_entry" ]; then
       break
     fi
 
@@ -176,17 +177,16 @@ _bag_and_rmdir_upwards_ignoring_ds_store() {
     esac
     dest="$bag_root/$rel"
     local moved_any=0
-    mkdir -p "$dest" 2> /dev/null || return 0
+    mkdir -p "$(dirname "$dest")" 2> /dev/null || return 0
+    if ! mkdir "$dest" 2> /dev/null; then
+      dest="$(mktemp -d "$dest.XXXXXX")" || return 0
+    fi
 
-    while IFS= read -r item; do
-      [ -n "$item" ] || continue
-      case "$(basename "$item")" in
-        .DS_Store) continue ;;
-      esac
+    while IFS= read -r -d '' item; do
       if mv "$item" "$dest/" 2> /dev/null; then
         moved_any=1
       fi
-    done < <(find "$cur" -mindepth 1 -maxdepth 1 ! -name '.DS_Store' -print 2> /dev/null || true)
+    done < <(find "$cur" -mindepth 1 -maxdepth 1 ! -name '.DS_Store' -print0 2> /dev/null || true)
 
     if [ "$moved_any" -ne 1 ]; then
       rmdir "$dest" 2> /dev/null || true

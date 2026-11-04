@@ -10,7 +10,7 @@ Identify the reachable material failure and necessary preserved behavior in the 
 Use source/contracts and existing checks first.
 If they cannot settle that risk, choose the smallest bounded local probe with an independent oracle;
 no automatic harness or case per transition.
-Separately ensure minimum sufficient test protection under `~/AGENTS.md` §3; source evidence or a disposable probe does not replace missing durable coverage for new/changed material behavior.
+Separately apply `~/AGENTS.md` §3's test-value rule; a new durable test is justified only when its distinct behavioral protection earns its maintenance cost.
 Report the specific unresolved behavior and missing evidence, not a generic coverage gap.
 
 ## Async-Derived State Gate (Run On Values Resolved Over Time)

@@ -21,9 +21,9 @@ Scope: src/report/, tests/report/*.py
 Not doing: PDF export, column picker
 ```
 
-`,task` numbers the `Done when` items (`D1`, `D2`, …) and stores session-keyed cards in `cards.json` per worktree under `~/.local/share/agent-tasks/<worktree>-<hash>/` (override with `AGENT_TASK_DIR`).
+`Done when` items must be provable by a claim `,task` can verify: a file claim, or in Claude a quoted Bash, Read, Grep or Glob result ([Evidence and decisions](#evidence-and-decisions)). A review verdict is another model's report, so the agent's final report states it and no `Done when` item is a verdict. `,task` numbers the `Done when` items (`D1`, `D2`, …) and stores session-keyed cards in `cards.json` per worktree under `~/.local/share/agent-tasks/<worktree>-<hash>/` (override with `AGENT_TASK_DIR`).
 Each session retains its own card and turn state, even when several sessions share a worktree. Storage updates hold a worktree lock across reading and writing.
-Card commands, `claim`, `stance`, `finding`, `check`, `block`, `reopen`, `status`, `scope`, and `correct` select `--session <id>`, then `AGENT_TASK_SESSION`, then the only recently active session. With several active sessions they require an explicit selection; hooks name the id in their notes. `card clear` removes only the selected card and turn state.
+Card commands, `claim`, `stance`, `finding`, `check`, `block`, `reopen`, `status`, `scope`, and `correct` select `--session <id>`, then `AGENT_TASK_SESSION`, then the only recently active session. With several active sessions they require an explicit selection; hooks name the id in their notes. Fish item-ID completion uses the selected session too. `card clear` removes only the selected card and turn state.
 Subagents are left alone: OMP subagents and advisors, OpenCode child sessions, and Claude subagent tool calls never touch the card.
 Rewriting the card under the same goal keeps the status of items whose text did not change; a new goal reopens every item, records the old goal, and the card shows only the latest earlier goal.
 Hooks inject the latest five scope changes and count the rest; `card show` and scope checks use them all.
@@ -31,6 +31,7 @@ A new goal archives the old goal's scope changes as a record (`card show --json`
 `card set` warns when the agent-written part (Goal, Reading, Done when, Scope, Not doing) passes 2048 bytes; the card is saved anyway, and evidence notes and history lines do not count.
 Scope entries preserve spaces and resolve symlinks. Use one path per line when a path contains a comma or semicolon.
 The agent marks items with `,task check D1 --claim C1` or `,task block D2 --reason "..."`, and records a path the goal or a defect in the change's impact needs beyond the scope with `,task scope add <path> --reason "..."`.
+The card records the user's instructions; its `Reading:` and `Not doing:` fields cannot revoke existing fix authorization. Follow-up questions and reviews steer the same authorized work unless the user changes it.
 
 ## Evidence and decisions
 
@@ -106,7 +107,7 @@ A turn whose tools write nothing (a question, a status check) is not held to the
 While another session shares the worktree, the prompt note names this session's id for `,task card set --session <id>`.
 In Claude Code, only prompts a person sent count: a task notice or a peer's message neither adds the card nor resets the stop check.
 The card keeps the last 5 corrections; the steering log keeps them all.
-Scratch paths (`/tmp`, `$TMPDIR`, `~/.claude/plans`, the agent-tasks store) outside the worktree need no card and are always in scope.
+Scratch paths (`/tmp`, `$TMPDIR`, `~/.claude/plans`, `~/.local/share/agent-handoffs`) outside the worktree need no card and are always in scope.
 When `,task` is missing or fails, every hook lets the session go on unguarded.
 
 ## Per harness
@@ -125,6 +126,41 @@ Claude background Bash snapshots record writes at handoff and survive until a te
 OpenCode has no blocking stop hook, so its plugin sends one follow-up prompt when a run ends with an item open; that prompt skips the prompt hook, so the 3-send-back guard still holds.
 Codex runs a config hook only after it is trusted once in `/hooks`; `inject_mcp_into_codex_toml.py` keeps the trust hashes across applies.
 The model reviewers judge the answer against the card first: Claude's `stop-review` gets it from `,task hook evidence`, and OMP's `Gate` reads it from the prompt context the extension adds.
+
+## The board
+
+Each turn that ends records what its session waits on, read from its card and final answer; no agent step is added.
+
+| Status       | When the turn ended                          |
+| ------------ | -------------------------------------------- |
+| `question`   | the answer has a `Decision needed:` item     |
+| `blocked`    | the answer has an `Open:` item               |
+| `unfinished` | the card still has an open `Done when` item  |
+| `ready`      | every `Done when` item is checked or blocked |
+| `replied`    | the session has no card                      |
+
+OpenCode's stop event carries no final answer, so its sessions get `unfinished`, `ready` or `replied` from the card alone, never `question` or `blocked`.
+A session that typed a prompt after its last recorded turn, within the last six hours, shows as working; a session start without a prompt does not. A Stop that a hook sends back records nothing, since the turn goes on: intent-guard's own send-back records no status, and Claude's stop-review, which runs after intent-guard, runs `,task hook sentback` to drop the status it recorded, so the session shows as working again.
+`,task board` reads every worktree's store and lists `question`, `blocked`, `unfinished` and `ready` sessions under "Needs you", newest first within each status, then one line each for working and replied sessions.
+A session drops off two days after its last recorded turn, and six hours after a prompt that never ended a turn. `prefix + A` opens the board in a tmux popup.
+
+## The guard ledger
+
+Every guard fire goes to `~/.local/share/agent-tasks/guards.jsonl`, so a guard that mostly fires for nothing can be found and removed.
+
+| Guard                                 | Logged by                                                        | Outcome                                                           |
+| ------------------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `stop-sendback`                       | `,task` at each Stop of a turn that wrote                        | cleared or repeated at the session's next Stop                    |
+| `scope-note`                          | `,task` after an edit outside `Scope:`                           | repeated if that path is still outside at the next Stop           |
+| `format:<check>`, `citation`          | stop-review through `,task hook evidence`                        | cleared or repeated on the next answer, the rewrite included      |
+| `review-finding`                      | `,task` when a reviewer concern gets a new `F<n>` (needs a card) | cleared when resolved `--fixed`, rejected when `--rejected`       |
+| `stop-review:review`                  | stop-review, once per review it sends back                       | none: fires only; counts send-backs in sessions with no card too  |
+| `card-refusal`, `zoom-out`            | `,task`                                                          | none: fires only                                                  |
+| `sop-guard:*`, `behavior-map-guard:*` | the Claude mods, through `,task guard log`                       | none: fires only; `,task guards <guard>` lists what they fired on |
+
+`,task guards` prints fires, cleared, repeated, rejected and pending per guard for the last 30 days (`--days`), or since its oldest entry when the ledger holds less: past 16 MB, a write keeps the newest 8 MB; `,task guards <guard>` lists that guard's recent fires with their detail.
+A ledger write that fails never changes what a guard decides.
+Review-finding events follow a successful card save; repeated concerns in one batch create one fire. Outcomes match the card and the finding's immutable fields, so independent findings added after a handoff do not clear each other. Earlier ledger rows without this identity stay pending.
 
 ## Preferences and the steering log
 

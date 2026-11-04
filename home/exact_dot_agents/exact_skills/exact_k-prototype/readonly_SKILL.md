@@ -26,10 +26,11 @@ a page/component → UI) and state the assumption in the task record.
 ## Rules that apply to both
 
 1. **Throwaway from day one, and clearly marked.**
-   Locate it close to where it will be used so context is obvious, but name it so a casual reader sees it is a prototype.
+   Put disposable exploration under `/tmp`; use a disposable project copy there when the prototype needs its layout or runtime.
+   Name it so a casual reader sees it is a prototype. Keep temporary routes and runner entries inside that copy.
    For throwaway UI routes, obey the project's existing routing convention; do not invent a new top-level structure.
 2. **One command to run.**
-   Discover the project's existing task runner (`package.json` scripts, `Makefile`, `justfile`, `pyproject.toml`) and add the entry there.
+   Use the project's existing task runner (`package.json` scripts, `Makefile`, `justfile`, `pyproject.toml`) inside the disposable copy.
    The user must start it without thinking.
 3. **No persistence by default.** State lives in memory — persistence is the thing the prototype is _checking_, not something it depends on.
    If the question is about a database, hit a scratch DB or a local file with a clear "PROTOTYPE — wipe me" name.

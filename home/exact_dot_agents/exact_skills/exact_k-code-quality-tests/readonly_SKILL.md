@@ -9,20 +9,18 @@ Use this for test and verification code. Writing tests does not expand implement
 
 ## Minimum sufficient test protection
 
-New or changed material implementation behavior MUST have durable behavioral test coverage.
-Reuse or extend existing tests; add the smallest missing behavioral cases alongside the implementation.
-A known bug is not required: new intended behavior needs protection too.
-Zero new tests is justified only when existing behavioral coverage is sufficient or there is no material runtime change.
-Source inspection, types/static checks and disposable probes help verification but do not replace missing durable behavioral coverage.
-Uncovered material behavior is a completion gap.
-This floor concerns retained implementation, not prose-only edits or disposable exploration;
-apply it before prototype behavior is absorbed into maintained code.
+Apply `~/AGENTS.md` §3's test-value rule: prefer fewer tests, including none when protection does not justify maintenance.
+New or changed behavior alone does not require a new test; missing coverage alone is not a completion gap.
+Reuse or simplify existing tests before adding cases.
+When fixtures, mocks or assertions keep needing repairs while required product behavior is unchanged,
+simplify or remove the tests and their unused scaffolding instead of extending the repair chain.
+Judge absorbed prototype behavior by the same rule.
 Name the protected outcome or reachable failure, consequence and independent oracle;
 branches, fields and coverage percentages are not case quotas.
 Do not add tests merely to pin prose/comment wording, trivial wiring, incidental implementation structure or self-authored mock behavior.
 Never add a test to justify a helper created only for tests.
 In the changed scope, consolidate or remove redundant, superseded or implementation-pinning tests and unused fixtures.
-Preserve unique material protection; never remove a failing test to conceal a defect.
+Keep protection that earns its maintenance cost; never remove a failing test to conceal a confirmed product defect.
 
 ## References
 

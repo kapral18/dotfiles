@@ -1,76 +1,87 @@
 local M = {}
+local terminals = {}
 
-function M.close_all_terminals()
-  for _, buf in ipairs(vim.api.nvim_list_bufs()) do
-    if vim.bo[buf].buftype == "terminal" then
-      vim.fn.jobstop(vim.bo[buf].channel)
-      vim.cmd("silent! bdelete! " .. buf)
-    end
+local function close_terminal(terminal)
+  if not terminal then
+    return
+  end
+  if terminals[terminal.owner] == terminal then
+    terminals[terminal.owner] = nil
+  end
+  if vim.api.nvim_buf_is_valid(terminal.buf) and vim.bo[terminal.buf].channel == terminal.job then
+    vim.fn.jobstop(terminal.job)
+    vim.api.nvim_buf_delete(terminal.buf, { force = true })
   end
 end
 
----@param cmd string The command to run
----@param opts? table Options (cwd, focus_original, close_on_exit)
+function M.close(owner)
+  close_terminal(terminals[owner])
+end
+
 function M.run_in_split(cmd, opts)
   opts = opts or {}
-
-  M.close_all_terminals()
-
+  local owner = assert(opts.owner, "terminal owner is required")
+  local previous = terminals[owner]
   local original_win = vim.api.nvim_get_current_win()
 
   vim.cmd("vsplit")
   vim.cmd("enew")
   local term_win = vim.api.nvim_get_current_win()
   local term_buf = vim.api.nvim_get_current_buf()
-
   local term_opts = {}
   if opts.cwd and opts.cwd ~= "" then
     term_opts.cwd = opts.cwd
   end
-
   if next(term_opts) == nil then
     term_opts = vim.empty_dict()
-  end
-
-  vim.keymap.set("n", "q", function()
-    if vim.api.nvim_buf_is_valid(term_buf) then
-      vim.fn.jobstop(vim.bo[term_buf].channel)
-      vim.cmd("silent! bdelete! " .. term_buf)
-    end
-  end, { noremap = true, silent = true, buffer = term_buf })
-
-  -- Auto-close: wipe this terminal buffer when its job exits. Scoped to the
-  -- buffer so it never matches other terminal buffers (Jest/python splits).
-  if opts.close_on_exit then
-    local augroup = vim.api.nvim_create_augroup("term_auto_close", { clear = false })
-    vim.api.nvim_create_autocmd("TermClose", {
-      group = augroup,
-      buffer = term_buf,
-      callback = function()
-        if vim.api.nvim_buf_is_valid(term_buf) then
-          vim.cmd("silent! bdelete! " .. term_buf)
-        end
-      end,
-    })
   end
 
   local ok, job_id = pcall(vim.fn.termopen, cmd, term_opts)
   if not ok or job_id <= 0 then
     vim.api.nvim_set_current_win(original_win)
     pcall(vim.api.nvim_win_close, term_win, true)
+    if vim.api.nvim_buf_is_valid(term_buf) then
+      vim.api.nvim_buf_delete(term_buf, { force = true })
+    end
     local err = not ok and job_id or "termopen failed to start job"
     vim.notify("Failed to run command: " .. tostring(err), vim.log.levels.ERROR)
     return false
   end
 
+  local terminal = { owner = owner, buf = term_buf, job = job_id }
+  close_terminal(previous)
+  terminals[owner] = terminal
+  vim.keymap.set("n", "q", function()
+    close_terminal(terminal)
+  end, { noremap = true, silent = true, buffer = term_buf })
+
+  vim.api.nvim_create_autocmd("BufWipeout", {
+    buffer = term_buf,
+    once = true,
+    callback = function()
+      if terminals[owner] == terminal then
+        terminals[owner] = nil
+      end
+    end,
+  })
+  if opts.close_on_exit then
+    vim.api.nvim_create_autocmd("TermClose", {
+      buffer = term_buf,
+      once = true,
+      callback = function()
+        vim.schedule(function()
+          close_terminal(terminal)
+        end)
+      end,
+    })
+  end
+
   vim.api.nvim_set_current_win(term_win)
   vim.cmd("normal! G")
   vim.cmd("stopinsert")
-
   if opts.focus_original then
     vim.api.nvim_set_current_win(original_win)
   end
-
   return true
 end
 

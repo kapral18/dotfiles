@@ -33,6 +33,9 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import contextlib
+import fcntl
+import functools
 import hashlib
 import json
 import os
@@ -42,6 +45,7 @@ import sqlite3
 import subprocess
 import sys
 import tempfile
+import threading
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -269,6 +273,15 @@ class Hit:
     mmr_selected: bool
 
 
+def serialized(method):
+    @functools.wraps(method)
+    def wrapped(self, *args, **kwargs):
+        with self._store_lock():
+            return method(self, *args, **kwargs)
+
+    return wrapped
+
+
 class KnowledgeBase:
     """SQLite + FTS5 + dense-embedding capsule store.
 
@@ -286,9 +299,33 @@ class KnowledgeBase:
         self.home = home or default_home()
         self.capsules_dir = self.home / "capsules"
         self.db_path = self.home / "kb.sqlite3"
+        self._thread_lock = threading.RLock()
+        self._lock_depth = 0
+        self._pending_path = self.home / "pending-capsule"
         self._embedder = embedder
         self._embedder_resolved = embedder is not None
 
+    @contextlib.contextmanager
+    def _store_lock(self):
+        with self._thread_lock:
+            if self._lock_depth:
+                self._lock_depth += 1
+                try:
+                    yield
+                finally:
+                    self._lock_depth -= 1
+                return
+            self.home.mkdir(parents=True, exist_ok=True)
+            with (self.home / "store.lock").open("a") as handle:
+                fcntl.flock(handle, fcntl.LOCK_EX)
+                self._lock_depth = 1
+                try:
+                    yield
+                finally:
+                    self._lock_depth = 0
+                    fcntl.flock(handle, fcntl.LOCK_UN)
+
+    @serialized
     def init(self) -> None:
         """Ensure the schema exists and repair stale indexed state.
 
@@ -303,21 +340,26 @@ class KnowledgeBase:
         with self.connect() as db:
             self._migrate_v3_supersede_rows(db)
             state = self._schema_state(db)
-            if state == "capsules_stale":
+            pending = self._pending_path.read_text() if self._pending_path.exists() else None
+            if state in ("missing", "capsules_stale") or pending is not None:
                 capsules = self._load_sidecar_capsules()
                 recovered = self._load_recoverable_capsule_state(db)
+                pending_state = recovered.get(pending) if pending is not None else None
+                if pending_state is not None:
+                    for field in ("embedding", "embedding_model", "embedding_dim", "updated_at"):
+                        pending_state.pop(field, None)
                 rebuilt_rows = self._merge_rebuilt_rows(capsules, recovered)
                 db.execute("BEGIN IMMEDIATE")
                 self._drop_schema(db)
                 self._create_schema(db)
                 for row in rebuilt_rows:
                     self._insert_rebuilt_capsule(db, row)
-                return
-            if state == "derived_stale":
+            elif state == "derived_stale":
                 db.execute("BEGIN IMMEDIATE")
                 self._repair_derived_tables(db)
-                return
-            self._create_schema(db)
+            else:
+                self._create_schema(db)
+        self._pending_path.unlink(missing_ok=True)
 
     def _migrate_v3_supersede_rows(self, db: sqlite3.Connection) -> None:
         """Drop superseded capsules when upgrading a v3 store to v4.
@@ -360,6 +402,7 @@ class KnowledgeBase:
             file=sys.stderr,
         )
 
+    @serialized
     def init_doc_ingest_table(self) -> None:
         with self.connect() as db:
             db.execute(
@@ -881,6 +924,7 @@ class KnowledgeBase:
         self._embedder_resolved = True
         return self._embedder
 
+    @serialized
     def remember(
         self,
         title: str,
@@ -962,9 +1006,10 @@ class KnowledgeBase:
             "domain_tags": domain_csv,
             "refs": refs_csv,
         }
-        multiline = sorted(
-            name for name, value in header.items() if value and ("\n" in str(value) or "\r" in str(value))
-        )
+        blank_required = [name for name in ("title", "source") if not str(header[name] or "").strip()]
+        if blank_required:
+            raise ValueError(f"{', '.join(blank_required)} must not be blank")
+        multiline = sorted(name for name, value in header.items() if value and str(value).splitlines() != [str(value)])
         if multiline:
             raise ValueError(f"{', '.join(multiline)} must be a single line")
 
@@ -1018,6 +1063,7 @@ class KnowledgeBase:
             f"verified_by: {verified_by or ''}\n"
             f"refs: {refs_csv}\n"
             f"created_at: {created_at}\n"
+            f"updated_at: {now}\n"
             "---\n\n"
             f"# {title}\n\n"
             f"{body_clean}\n"
@@ -1053,9 +1099,8 @@ class KnowledgeBase:
             "domain_tags": domain_csv,
         }
 
-        # Row + FTS move together in one transaction; the canonical sidecar
-        # is written after the commit via a temp file + rename so a crash
-        # mid-write can never truncate an existing capsule's sidecar.
+        self._pending_path.write_text(note_id, encoding="utf-8")
+        self._write_sidecar(path, front)
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             if existing is not None:
@@ -1118,7 +1163,7 @@ class KnowledgeBase:
                 fts_row,
             )
 
-        self._write_sidecar(path, front)
+        self._pending_path.unlink()
 
         return Capsule(
             id=note_id,
@@ -1210,6 +1255,7 @@ class KnowledgeBase:
                 return str(candidate["id"]), f"embedding cosine >= {DUPLICATE_COSINE_THRESHOLD}"
         return None
 
+    @serialized
     def _record_retrieval(self, capsule_ids: "list[str]") -> None:
         """Mark returned capsules as live: stamp retrieval and clear decay.
 
@@ -1234,6 +1280,7 @@ class KnowledgeBase:
                 (now, *capsule_ids),
             )
 
+    @serialized
     def reembed(self, *, limit: int | None = None) -> int:
         """Re-embed capsules whose embedding is missing or whose model
         differs from the current embedder. Returns the number updated.
@@ -1285,6 +1332,7 @@ class KnowledgeBase:
                 )
         return len(rows)
 
+    @serialized
     def ingest_path(
         self,
         target: Path,
@@ -1445,6 +1493,7 @@ class KnowledgeBase:
                 candidates.append(cleaned)
         return candidates[:6]
 
+    @serialized
     def get(self, note_id: str) -> Capsule | None:
         self.init()
         with self.connect() as db:
@@ -1465,20 +1514,21 @@ class KnowledgeBase:
             Path(tmp).unlink(missing_ok=True)
             raise
 
+    @serialized
     def remove(self, note_id: str) -> bool:
         self.init()
         capsule = self.get(note_id)
         if not capsule:
             return False
+        self._pending_path.write_text(note_id, encoding="utf-8")
+        Path(capsule.path).unlink(missing_ok=True)
         with self.connect() as db:
             db.execute("DELETE FROM capsules WHERE id = ?", (note_id,))
             db.execute("DELETE FROM capsule_fts WHERE id = ?", (note_id,))
-        try:
-            Path(capsule.path).unlink()
-        except FileNotFoundError:
-            pass
+        self._pending_path.unlink()
         return True
 
+    @serialized
     def list(self, limit: int = 50) -> list[Capsule]:
         self.init()
         cols = ",".join(c for c in CAPSULE_COLUMNS if c != "embedding")
@@ -1489,6 +1539,7 @@ class KnowledgeBase:
             ).fetchall()
         return [row_to_capsule(r) for r in rows]
 
+    @serialized
     def search(
         self,
         query: str,
@@ -1558,11 +1609,15 @@ class KnowledgeBase:
 
         bm25_hits: list[tuple[str, float, str]] = []
         if mode in ("hybrid", "bm25"):
-            bm25_hits = self._bm25_search(query, candidate_pool, scopes, kinds, domains)
+            bm25_hits = self._bm25_search(
+                query, candidate_pool, scopes, kinds, domains, workspace if workspace_gate else None
+            )
 
         vector_hits: list[tuple[str, float]] = []
         if mode in ("hybrid", "vector"):
-            vector_hits = self._vector_search(query, candidate_pool, scopes, kinds, domains)
+            vector_hits = self._vector_search(
+                query, candidate_pool, scopes, kinds, domains, workspace if workspace_gate else None
+            )
 
         candidate_ids: list[str] = []
         seen: set[str] = set()
@@ -1659,9 +1714,10 @@ class KnowledgeBase:
         scopes: list[str],
         kinds: list[str],
         domains: list[str],
+        workspace: str | None = None,
     ) -> list[tuple[str, float, str]]:
         fts_query = to_fts_query(query)
-        sql_filters, params = self._build_filter_clause(scopes, kinds, domains)
+        sql_filters, params = self._build_filter_clause(scopes, kinds, domains, workspace=workspace)
         sql = f"""
             SELECT
                 f.id AS id,
@@ -1681,7 +1737,9 @@ class KnowledgeBase:
                 # FTS query rejected (e.g. all stopwords). Fall back to
                 # a LIKE scan so we still return *something* lexical.
                 like = f"%{query.lower()}%"
-                like_filters, like_params = self._build_filter_clause(scopes, kinds, domains, alias="c")
+                like_filters, like_params = self._build_filter_clause(
+                    scopes, kinds, domains, alias="c", workspace=workspace
+                )
                 rows = db.execute(
                     f"""
                     SELECT id, body AS snippet, 0.0 AS score
@@ -1703,6 +1761,7 @@ class KnowledgeBase:
         scopes: list[str],
         kinds: list[str],
         domains: list[str],
+        workspace: str | None = None,
     ) -> list[tuple[str, float]]:
         """Return [(id, cosine), ...] sorted best→worst.
 
@@ -1730,7 +1789,7 @@ class KnowledgeBase:
                 "query_vector": [float(x) for x in qvec],
                 "k": max(n * 2, 20),
                 "limit": n,
-                "filters": {"scopes": scopes, "kinds": kinds, "domains": domains},
+                "filters": {"scopes": scopes, "kinds": kinds, "domains": domains, "workspace": workspace},
             }
         )
         return [(h["id"], float(h["cosine"])) for h in response.get("hits", [])]
@@ -1741,6 +1800,7 @@ class KnowledgeBase:
         kinds: list[str],
         domains: list[str],
         alias: str = "c",
+        workspace: str | None = None,
     ) -> tuple[str, list]:
         parts: list[str] = []
         params: list = []
@@ -1758,6 +1818,9 @@ class KnowledgeBase:
                 sub.append(f"{alias}.domain_tags LIKE ?")
                 params.append(f"%{d}%")
             parts.append("(" + " OR ".join(sub) + ")")
+        if workspace is not None:
+            parts.append(f"({alias}.workspace_path = ? OR {alias}.scope IN ('domain', 'universal'))")
+            params.append(workspace)
         if not parts:
             return "", params
         return " AND " + " AND ".join(parts), params
@@ -1965,6 +2028,7 @@ class KnowledgeBase:
             candidates.remove(best)
         return selected
 
+    @serialized
     def curate(
         self,
         *,
@@ -1981,7 +2045,8 @@ class KnowledgeBase:
         Operations (each independently flag-able):
 
         - dedupe: pair-wise cosine on stored embeddings; for each pair
-          above `dedupe_cosine_threshold` with the same `kind`, DELETE
+          above `dedupe_cosine_threshold` with the same kind, scope,
+          workspace, project, and domain tags, DELETE
           the older / lower-confidence capsule (row, FTS entry, and
           sidecar). A duplicate carries no knowledge the winner lacks,
           so keeping it as a retired row only costs retrieval slots.
@@ -2001,7 +2066,7 @@ class KnowledgeBase:
         with self.connect() as db:
             rows = db.execute(
                 """
-                SELECT id, title, body, kind, scope, confidence,
+                SELECT id, title, body, kind, scope, workspace_path, project_id, domain_tags, confidence,
                        decay_score, created_at
                 FROM capsules
                 WHERE embedding IS NOT NULL
@@ -2013,6 +2078,10 @@ class KnowledgeBase:
                 "title": r["title"],
                 "body": r["body"],
                 "kind": r["kind"],
+                "scope": r["scope"],
+                "workspace_path": r["workspace_path"],
+                "project_id": r["project_id"],
+                "domain_tags": r["domain_tags"],
                 "confidence": r["confidence"],
                 "decay_score": r["decay_score"],
                 "created_at": r["created_at"],
@@ -2050,7 +2119,9 @@ class KnowledgeBase:
                 if a["id"] in removed or b["id"] in removed:
                     continue
                 sim = float(pair["cosine"])
-                if dedupe and a["kind"] == b["kind"] and sim >= dedupe_cosine_threshold:
+                same_context = all(a[field] == b[field] for field in ("scope", "workspace_path", "project_id"))
+                same_context = same_context and set(csv_split(a["domain_tags"])) == set(csv_split(b["domain_tags"]))
+                if dedupe and same_context and a["kind"] == b["kind"] and sim >= dedupe_cosine_threshold:
                     keeper, loser = self._dedupe_winner(a, b)
                     entry: dict[str, object] = {
                         "removed_id": loser["id"],
@@ -2123,6 +2194,7 @@ class KnowledgeBase:
             return (a, b) if len(a["body"]) > len(b["body"]) else (b, a)
         return (a, b) if a["id"] < b["id"] else (b, a)
 
+    @serialized
     def doctor(self) -> list[str]:
         self.init()
         checks: list[str] = []

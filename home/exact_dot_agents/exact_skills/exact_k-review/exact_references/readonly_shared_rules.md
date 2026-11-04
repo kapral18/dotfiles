@@ -52,4 +52,4 @@ On a later turn, read the queue first and continue from it.
 Queue assertions are leads. Reuse verified evidence and check results only while their relevant source and inputs match the saved snapshot,
 including local uncommitted and untracked files; an unchanged HEAD alone is insufficient.
 Re-read changed anchors and rerun only affected checks. An unchanged snapshot needs no repeated review or check.
-When the user switches harness or session, save the queue summary with `,handoff save <topic>` (see `k-handoff`).
+When the user switches harness or session, save the queue summary with `,task handoff save <topic>` (see `k-handoff`).

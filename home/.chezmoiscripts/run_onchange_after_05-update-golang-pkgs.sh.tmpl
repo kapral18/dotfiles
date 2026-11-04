@@ -6,12 +6,9 @@ if command -v mise >/dev/null 2>&1; then
   export PATH="$HOME/.local/share/mise/shims${PATH:+:${PATH}}"
 fi
 
-# Track runtime manager config changes
 # {{ include "dot_config/mise/config.toml.tmpl" | sha256sum }}
 
-# This script installs go packages from the default-golang-pkgs file
 # {{ include "readonly_dot_default-golang-pkgs.tmpl" | sha256sum }}
-# Reconcile helper (re-trigger this hook when it changes):
 # {{ include "../scripts/reconcile_golang_pkgs.py" | sha256sum }}
 
 golang_pkgs_template={{ joinPath .chezmoi.sourceDir "readonly_dot_default-golang-pkgs.tmpl" | quote }}
@@ -37,6 +34,9 @@ gobin_dir="$(go env GOBIN 2>/dev/null || true)"
 if [[ -z "$gobin_dir" ]]; then
   gobin_dir="$(go env GOPATH 2>/dev/null || echo "$HOME/go")/bin"
 fi
+
+reconcile_helper={{ joinPath .chezmoi.sourceDir "../scripts/reconcile_golang_pkgs.py" | quote }}
+state_file="$HOME/.cache/chezmoi/golang-pkgs-state"
 
 # Derive the binary name `go install` produces for a module path: last path
 # segment, skipping a trailing major-version segment (/v2, /v10) and @version.
@@ -77,31 +77,18 @@ install_go_pkg() {
       fi
     fi
   fi
-  printf '%s\n' "$pkg" >>"$installed_list"
+  python3 "$reconcile_helper" --record "$state_file" "$pkg"
   return 0
 }
 
-installed_list="$(mktemp)"
-trap 'rm -f "$golang_pkgs_file" "$installed_list"' EXIT
-
-for line in "${lines[@]}"; do
-  [[ -z "$line" || "$line" =~ ^\s*# ]] && continue
+for line in ${lines[@]+"${lines[@]}"}; do
+  [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
   install_go_pkg "$line"
 done
 
-# Reconcile: remove binaries this tooling installed previously that are no
-# longer in the desired list. A state ledger ensures we only ever remove
-# binaries we installed, never hand-installed binaries in GOBIN. Non-trivial
-# set/path logic lives in the colocated Python helper (per AGENTS.md).
 echo ""
 echo "Cleaning up unused Go packages..."
-reconcile_helper={{ joinPath .chezmoi.sourceDir "../scripts/reconcile_golang_pkgs.py" | quote }}
-state_file="$HOME/.cache/chezmoi/golang-pkgs-state"
-if [[ -f "$reconcile_helper" ]]; then
-  python3 "$reconcile_helper" "$golang_pkgs_file" "$gobin_dir" "$state_file" "$installed_list" || true
-else
-  echo "Warning: reconcile helper not found at $reconcile_helper; skipping cleanup"
-fi
+python3 "$reconcile_helper" "$golang_pkgs_file" "$gobin_dir" "$state_file" /dev/null
 
 if command -v mise >/dev/null 2>&1; then
   mise reshim

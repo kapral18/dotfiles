@@ -4,8 +4,13 @@
 from __future__ import annotations
 
 import importlib.util
+import os
+import subprocess
+import tempfile
 import unittest
 from importlib.machinery import SourceFileLoader
+from pathlib import Path
+from unittest import mock
 
 from _test_support import REPO
 
@@ -111,6 +116,58 @@ class TestReviewRequestActors(unittest.TestCase):
             self.module._section_reason(filters, "review-requested-direct"),
             "needs my review",
         )
+
+
+class TestLocalIssueIdentity(unittest.TestCase):
+    def test_foreign_issue_metadata_blocks_number_markers_and_suffix_fallback_but_keeps_pr_branch(self):
+        module = _load_module()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home = root / "home"
+            home.mkdir()
+            repo = root / "repo"
+            repo.mkdir()
+            env = {
+                **os.environ,
+                "HOME": str(home),
+                "XDG_CACHE_HOME": str(home / ".cache"),
+                "GIT_CONFIG_GLOBAL": "/dev/null",
+                "GIT_AUTHOR_NAME": "Fixture",
+                "GIT_AUTHOR_EMAIL": "fixture@example.invalid",
+                "GIT_COMMITTER_NAME": "Fixture",
+                "GIT_COMMITTER_EMAIL": "fixture@example.invalid",
+            }
+
+            def git(*args):
+                return subprocess.run(
+                    ["git", *args], cwd=repo, env=env, check=True, capture_output=True, text=True
+                ).stdout
+
+            git("init", "-q", "-b", "main")
+            (repo / "README").write_text("fixture\n")
+            git("add", "README")
+            git("commit", "-qm", "fixture")
+            git("remote", "add", "origin", "https://github.com/wanted/repo.git")
+            git("config", "extensions.worktreeConfig", "true")
+            for branch, owner, number in (
+                ("fix-42", "other/repo", "42"),
+                ("fix-43", "WANTED/Repo", "43"),
+                ("legacy-44", "", ""),
+                ("legacy-metadata", "", "45"),
+            ):
+                worktree = root / branch
+                git("worktree", "add", "-q", "-b", branch, str(worktree))
+                if owner:
+                    git("-C", str(worktree), "config", "--worktree", "comma.w.issue.repo", owner)
+                if number:
+                    git("-C", str(worktree), "config", "--worktree", "comma.w.issue.number", number)
+
+            with mock.patch.dict(os.environ, env, clear=True):
+                numbers, branches, suffix_sources = module._scan_local_worktrees("wanted/repo", str(repo))
+
+            self.assertEqual(numbers, {43, 44, 45})
+            self.assertIn("fix-42", branches)
+            self.assertEqual(suffix_sources, {43: "fix-43", 44: "legacy-44"})
 
 
 if __name__ == "__main__":

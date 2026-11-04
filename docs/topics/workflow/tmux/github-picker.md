@@ -39,7 +39,7 @@ The screenshot shows an earlier picker layout with demo rows. Use the scopes and
 | `alt-g`                     | Switch to session picker                            |
 | `?`                         | Show help                                           |
 
-`alt-r` is quote-reply here, not refresh. The GitHub picker's `ctrl-r` is already the full refresh path and pre-empts in-flight fetches.
+`alt-r` is quote-reply here, not refresh. The GitHub picker's `ctrl-r` starts a full refresh and pre-empts an in-flight fetch only after verifying its process identity. A live legacy PID-only lock refuses refresh; inspect that process and lock before clearing stale state.
 
 ## Sections by intent
 

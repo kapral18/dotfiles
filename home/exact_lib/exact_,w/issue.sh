@@ -86,6 +86,11 @@ die() {
   exit 1
 }
 
+require_issue_association() {
+  _comma_w_issue_can_associate "$1" "$repo_name" "$issue_number" \
+    || die "worktree is associated with another issue: $1"
+}
+
 trim_whitespace() {
   local s="$1"
   s="${s#"${s%%[![:space:]]*}"}"
@@ -205,6 +210,10 @@ repo_name="$(_comma_w_issue_get_repo_name)"
 if [ -z "$repo_name" ]; then
   die "failed to determine repo name (are you in a git repo and authenticated with gh?)"
 fi
+issue_repo="$(_comma_w_issue_url_repo "$issue_input")"
+if [ -n "$issue_repo" ] && [ "$(printf '%s' "$issue_repo" | tr '[:upper:]' '[:lower:]')" != "$(printf '%s' "$repo_name" | tr '[:upper:]' '[:lower:]')" ]; then
+  die "issue URL belongs to $issue_repo; current repository is $repo_name"
+fi
 parent_dir="$(_get_worktree_parent_dir)"
 parent_name="$(_comma_w_tmux_parent_name_from_dir "$parent_dir")"
 
@@ -212,12 +221,13 @@ _comma_w_prune_stale_worktrees "$quiet_mode"
 
 existing_path="$(_comma_w_issue_find_by_metadata "$repo_name" "$issue_number" 2> /dev/null || true)"
 if [ -z "$existing_path" ]; then
-  existing_path="$(_comma_w_issue_find_by_heuristics "$issue_number" 2> /dev/null || true)"
+  existing_path="$(_comma_w_issue_find_by_heuristics "$issue_number" "$repo_name" 2> /dev/null || true)"
 fi
 
 if [ -n "$existing_path" ]; then
+  require_issue_association "$existing_path"
   info "Found existing issue worktree for #$issue_number at: $existing_path"
-  _comma_w_issue_store_metadata "$existing_path" "$repo_name" "$issue_number" || true
+  _comma_w_issue_store_metadata "$existing_path" "$repo_name" "$issue_number" || die "failed to store issue metadata"
   existing_branch="$(git -C "$existing_path" branch --show-current 2> /dev/null || true)"
   [ -n "$existing_branch" ] || die "failed to determine branch for existing issue worktree: $existing_path"
   _add_worktree_tmux_session "$quiet_mode" "$parent_name" "$existing_branch" "$existing_path"
@@ -248,8 +258,9 @@ fi
 
 existing_path="$(_comma_w_find_worktree_path_for_branch "$manual_branch" 2> /dev/null || true)"
 if [ -n "$existing_path" ]; then
+  require_issue_association "$existing_path"
   info "Found existing worktree for branch '$manual_branch' at: $existing_path"
-  _comma_w_issue_store_metadata "$existing_path" "$repo_name" "$issue_number" || true
+  _comma_w_issue_store_metadata "$existing_path" "$repo_name" "$issue_number" || die "failed to store issue metadata"
   _add_worktree_tmux_session "$quiet_mode" "$parent_name" "$manual_branch" "$existing_path"
   if [ "$focus_mode" -eq 1 ]; then
     bash "$(dirname "$0")/open.sh" -q "$existing_path"
@@ -259,6 +270,10 @@ fi
 
 branch="$(with_issue_suffix "$manual_branch" "$issue_number")"
 info "Issue #$issue_number -> branch: $branch"
+existing_path="$(_comma_w_find_worktree_path_for_branch "$branch" 2> /dev/null || true)"
+if [ -n "$existing_path" ]; then
+  require_issue_association "$existing_path"
+fi
 
 default_branch="$(_comma_w_detect_default_branch)"
 
@@ -304,7 +319,8 @@ if [ -z "$worktree_path" ]; then
   die "failed to determine created worktree path for branch: $branch"
 fi
 
-_comma_w_issue_store_metadata "$worktree_path" "$repo_name" "$issue_number" || true
+require_issue_association "$worktree_path"
+_comma_w_issue_store_metadata "$worktree_path" "$repo_name" "$issue_number" || die "failed to store issue metadata"
 
 if [ "$focus_mode" -eq 1 ]; then
   bash "$(dirname "$0")/open.sh" -q "$worktree_path"

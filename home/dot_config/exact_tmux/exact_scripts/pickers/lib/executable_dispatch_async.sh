@@ -61,7 +61,6 @@ append_env_prefix() {
 }
 
 append_env_prefix FZF_SOCK
-append_env_prefix FZF_PORT
 append_env_prefix FZF_API_KEY
 
 if command -v tmux > /dev/null 2>&1 && [ -n "${TMUX:-}" ]; then

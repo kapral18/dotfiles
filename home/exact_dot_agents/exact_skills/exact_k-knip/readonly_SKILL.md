@@ -28,8 +28,9 @@ npx knip --reporter json          # machine-readable output
 
 ## Workflow
 
-For find/check/report requests, inspect configuration hints and report findings or required config corrections;
-do not edit configuration or code. Run the cleanup steps below only when the user asked for cleanup/removal.
+Resolve cleanup authority from the task under `~/AGENTS.md` §1, including earlier requests.
+Without that authority, find/check/report requests inspect configuration hints and report findings or required config corrections;
+do not edit configuration or code.
 
 1. Run `npx knip`.
 2. For authorized cleanup, resolve configuration hints from source and include configuration changes in the production batch;
@@ -43,8 +44,8 @@ do not edit configuration or code. Run the cleanup steps below only when the use
 
 ## Confidence rules
 
-Auto-delete (only when the user asked for cleanup/removal): orphaned files, unused deps, internal unused exports, unused type exports.
-For a find, check, or report invocation, report the hits and delete nothing.
+Auto-delete (only within the task's cleanup/removal authorization): orphaned files, unused deps, internal unused exports, unused type exports.
+Without that authority, a find, check, or report invocation reports the hits and deletes nothing.
 
 Ask first: anything in `src/index` / `lib/` / public API paths, deps that may be CLI-only or peer deps, dynamically imported files.
 

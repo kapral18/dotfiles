@@ -16,6 +16,135 @@ globals().update({name: value for name, value in vars(_support).items() if not n
 class TestWIssueCommand(unittest.TestCase):
     """WHEN creating an issue worktree through the deployed read-only command library."""
 
+    def test_foreign_issue_associations_are_never_retagged_or_focused_by_any_reuse_route(self):
+        cases = (
+            ("heuristic", "foreign-42", "legacy", "other/tool", "42"),
+            ("manual", "selected", "selected", "other/tool", "42"),
+            ("suffixed", "fix-42", "fix", "other/tool", "42"),
+            ("different-number", "selected", "selected", "current/tool", "99"),
+        )
+        for route, foreign_branch, requested_branch, stored_repo, stored_number in cases:
+            with self.subTest(route=route), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                home = root / "home"
+                bin_dir = home / "bin"
+                bin_dir.mkdir(parents=True)
+                w_dir = home / "lib/,w"
+                shutil.copytree(REPO / "home/exact_lib/exact_,w", w_dir)
+                shutil.copytree(REPO / "home/exact_lib/exact_shared", home / "lib/shared")
+                gh = bin_dir / "gh"
+                gh.write_text("#!/bin/sh\nprintf 'current/tool\\n'\n")
+                gh.chmod(0o755)
+                tmux_log = root / "tmux.log"
+                tmux = bin_dir / "tmux"
+                tmux.write_text("""#!/bin/sh
+printf '%s\\n' "$*" >> "$TMUX_LOG"
+case " $* " in *' has-session '*) exit 1 ;; esac
+""")
+                tmux.chmod(0o755)
+                repo = root / "repo"
+                repo.mkdir()
+                env = {
+                    **os.environ,
+                    "HOME": str(home),
+                    "PATH": f"{bin_dir}:{os.environ['PATH']}",
+                    "GIT_CONFIG_GLOBAL": "/dev/null",
+                    "GIT_AUTHOR_NAME": "Fixture",
+                    "GIT_AUTHOR_EMAIL": "fixture@example.invalid",
+                    "GIT_COMMITTER_NAME": "Fixture",
+                    "GIT_COMMITTER_EMAIL": "fixture@example.invalid",
+                    "COMMA_W_PRUNE": "0",
+                    "OUTER_TMUX_SOCKET": str(root / "outer.sock"),
+                    "TMUX_LOG": str(tmux_log),
+                }
+
+                def git(*args):
+                    return subprocess.run(
+                        ["git", *args], cwd=repo, env=env, capture_output=True, text=True, check=True
+                    ).stdout
+
+                git("init", "-q", "-b", "main")
+                (repo / "README").write_text("fixture\n")
+                git("add", "README")
+                git("commit", "-qm", "fixture")
+                foreign = root / "foreign"
+                git("worktree", "add", "-q", "-b", foreign_branch, str(foreign))
+                legacy = root / "legacy"
+                if route == "heuristic":
+                    git("worktree", "add", "-q", "-b", "legacy", str(legacy))
+                git("config", "extensions.worktreeConfig", "true")
+                git("-C", str(foreign), "config", "--worktree", "comma.w.issue.repo", stored_repo)
+                git("-C", str(foreign), "config", "--worktree", "comma.w.issue.number", stored_number)
+
+                result = subprocess.run(
+                    [modern_bash(), str(w_dir / "issue.sh"), "-q", "--focus", "-b", requested_branch, "42"],
+                    cwd=repo,
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    timeout=15,
+                )
+
+                self.assertEqual(
+                    git("-C", str(foreign), "config", "--worktree", "--get", "comma.w.issue.repo").strip(), stored_repo
+                )
+                self.assertEqual(
+                    git("-C", str(foreign), "config", "--worktree", "--get", "comma.w.issue.number").strip(),
+                    stored_number,
+                )
+                log = tmux_log.read_text() if tmux_log.exists() else ""
+                self.assertNotIn(str(foreign), log)
+                if route == "heuristic":
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(
+                        git("-C", str(legacy), "config", "--worktree", "--get", "comma.w.issue.repo").strip(),
+                        "current/tool",
+                    )
+                    self.assertIn(str(legacy), log)
+                else:
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn("worktree is associated with another issue", result.stderr)
+                    self.assertEqual(log, "")
+
+    def test_foreign_issue_url_is_refused_before_worktree_or_git_config_changes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home = root / "home"
+            home.mkdir()
+            bin_dir = home / "bin"
+            bin_dir.mkdir()
+            w_dir = home / "lib/,w"
+            shutil.copytree(REPO / "home/exact_lib/exact_,w", w_dir)
+            shutil.copytree(REPO / "home/exact_lib/exact_shared", home / "lib/shared")
+            gh = bin_dir / "gh"
+            gh.write_text("#!/bin/sh\nprintf 'current/tool\\n'\n")
+            gh.chmod(0o755)
+            repo = root / "repo"
+            repo.mkdir()
+            env = {
+                **os.environ,
+                "HOME": str(home),
+                "PATH": f"{bin_dir}:{os.environ['PATH']}",
+                "GIT_CONFIG_GLOBAL": "/dev/null",
+                "COMMA_W_PRUNE": "0",
+            }
+            subprocess.run(["git", "init", "-b", "main"], cwd=repo, env=env, check=True, capture_output=True)
+            config_before = (repo / ".git/config").read_bytes()
+
+            result = subprocess.run(
+                [modern_bash(), str(w_dir / "issue.sh"), "-q", "-b", "fix", "https://github.com/other/tool/issues/42"],
+                cwd=repo,
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("issue URL belongs to other/tool; current repository is current/tool", result.stderr)
+            self.assertEqual((repo / ".git/config").read_bytes(), config_before)
+            self.assertFalse((repo / ".git/worktrees").exists())
+
     def test_should_create_and_focus_on_outer_tmux_with_read_only_helpers(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

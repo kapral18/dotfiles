@@ -71,6 +71,16 @@ class TestCheckPlan(unittest.TestCase):
         assert "test_runner.py" not in plan.tests
         assert "tests/test_tmux_pickers.py" not in plan.tests
 
+    def test_WHEN_root_removal_changes_SHOULD_run_boundary_regressions(self):
+        for script in ("executable_remove_all_worktrees.sh", "executable_action_remove_worktrees.sh"):
+            with self.subTest(script=script):
+                plan = plan_check(
+                    REPO,
+                    full=False,
+                    changed=(f"home/dot_config/exact_tmux/exact_scripts/pickers/session/{script}",),
+                )
+                assert "tests/test_worktree_delete_boundaries.py" in plan.tests
+
     def test_WHEN_test_runner_changes_SHOULD_not_select_itself_as_a_shard(self):
         plan = plan_check(REPO, full=False, changed=("scripts/test_runner.py",))
         assert "test_check.py" in plan.tests

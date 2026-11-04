@@ -752,6 +752,10 @@ class TestTmuxPickerShellHelpers(unittest.TestCase):
             tmux.write_text(
                 """#!/usr/bin/env bash
 case "$1" in
+  show-option)
+    printf 'on\n'
+    exit 0
+    ;;
   has-session)
     case "${3#=}" in
       repo|repo@bag) exit 0 ;;
@@ -805,18 +809,31 @@ exit 1
             tmux.write_text("#!/bin/sh\nexit 1\n")
             tmux.chmod(0o755)
 
-            subprocess.run(["git", "init", str(root)], check=True, capture_output=True, text=True)
+            subprocess.run(
+                ["git", "init", str(root)],
+                check=True,
+                capture_output=True,
+                text=True,
+                env={**os.environ, "HOME": str(home), "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_SYSTEM": os.devnull},
+            )
             subprocess.run(
                 ["git", "-C", str(root), "remote", "add", "origin", "git@github.com:elastic/kibana.git"],
+                env={**os.environ, "HOME": str(home), "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_SYSTEM": os.devnull},
                 check=True,
                 capture_output=True,
                 text=True,
             )
-            subprocess.run(["git", "init", str(sibling)], check=True, capture_output=True, text=True)
+            subprocess.run(
+                ["git", "init", str(sibling)],
+                check=True,
+                capture_output=True,
+                text=True,
+                env={**os.environ, "HOME": str(home), "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_SYSTEM": os.devnull},
+            )
 
             script = TMUX_PICKERS / "session/executable_remove_all_worktrees.sh"
             result = subprocess.run(
-                [modern_bash(), str(script), str(root)],
+                [modern_bash(), str(script), str(root), "1"],
                 capture_output=True,
                 text=True,
                 env={
@@ -834,46 +851,75 @@ exit 1
             assert not (home / "work/.bag/pickers/session/kibana").exists()
 
     def test_remove_all_worktrees_bags_leftovers_when_wrapper_is_removed(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            home = Path(tmp) / "home"
-            root = home / "work/kibana/main"
-            notes = home / "work/kibana/notes"
-            root.mkdir(parents=True)
-            notes.mkdir()
-            (notes / "keep.txt").write_text("keep\n")
-            mock_bin = home / "bin"
-            mock_bin.mkdir()
-            tmux = mock_bin / "tmux"
-            tmux.write_text("#!/bin/sh\nexit 1\n")
-            tmux.chmod(0o755)
+        for has_new_notes in (False, True):
+            with self.subTest(has_new_notes=has_new_notes), tempfile.TemporaryDirectory() as tmp:
+                home = Path(tmp) / "home"
+                root = home / "work/kibana/main"
+                notes = home / "work/kibana/notes"
+                root.mkdir(parents=True)
+                if has_new_notes:
+                    notes.mkdir()
+                    (notes / "keep.txt").write_text("keep\n")
+                mock_bin = home / "bin"
+                mock_bin.mkdir()
+                tmux = mock_bin / "tmux"
+                tmux.write_text("#!/bin/sh\nexit 1\n")
+                tmux.chmod(0o755)
+                date = mock_bin / "date"
+                date.write_text(
+                    "#!/bin/sh\nif [ \"$1\" = '+%Y%m%d-%H%M%S' ]; then printf '20261103-120000\\n'; else exec /bin/date \"$@\"; fi\n"
+                )
+                date.chmod(0o755)
+                previous = home / "work/.bag/pickers/session/kibana/20261103-120000/earlier.txt"
+                previous.parent.mkdir(parents=True)
+                previous.write_text("earlier preserved content\n")
 
-            subprocess.run(["git", "init", str(root)], check=True, capture_output=True, text=True)
-            subprocess.run(
-                ["git", "-C", str(root), "remote", "add", "origin", "git@github.com:elastic/kibana.git"],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
+                subprocess.run(
+                    ["git", "init", str(root)],
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                    env={
+                        **os.environ,
+                        "HOME": str(home),
+                        "GIT_CONFIG_GLOBAL": os.devnull,
+                        "GIT_CONFIG_SYSTEM": os.devnull,
+                    },
+                )
+                subprocess.run(
+                    ["git", "-C", str(root), "remote", "add", "origin", "git@github.com:elastic/kibana.git"],
+                    env={
+                        **os.environ,
+                        "HOME": str(home),
+                        "GIT_CONFIG_GLOBAL": os.devnull,
+                        "GIT_CONFIG_SYSTEM": os.devnull,
+                    },
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                )
 
-            script = TMUX_PICKERS / "session/executable_remove_all_worktrees.sh"
-            result = subprocess.run(
-                [modern_bash(), str(script), str(root)],
-                capture_output=True,
-                text=True,
-                env={
-                    **os.environ,
-                    "HOME": str(home),
-                    "XDG_CACHE_HOME": str(home / ".cache"),
-                    "PATH": f"{mock_bin}:{os.environ['PATH']}",
-                },
-            )
+                script = TMUX_PICKERS / "session/executable_remove_all_worktrees.sh"
+                result = subprocess.run(
+                    [modern_bash(), str(script), str(root), "1"],
+                    capture_output=True,
+                    text=True,
+                    env={
+                        **os.environ,
+                        "HOME": str(home),
+                        "XDG_CACHE_HOME": str(home / ".cache"),
+                        "PATH": f"{mock_bin}:{os.environ['PATH']}",
+                    },
+                )
 
-            assert result.returncode == 0, result.stderr
-            assert not (home / "work/kibana").exists()
-            bag_root = home / "work/.bag/pickers/session/kibana"
-            bagged_notes = list(bag_root.glob("*/notes/keep.txt"))
-            assert len(bagged_notes) == 1
-            assert bagged_notes[0].read_text() == "keep\n"
+                assert result.returncode == 0, result.stderr
+                assert not (home / "work/kibana").exists()
+                assert previous.read_text() == "earlier preserved content\n"
+                bag_root = home / "work/.bag/pickers/session/kibana"
+                bagged_notes = list(bag_root.glob("*/notes/keep.txt"))
+                assert len(bagged_notes) == int(has_new_notes)
+                if has_new_notes:
+                    assert bagged_notes[0].read_text() == "keep\n"
 
     def test_action_remove_root_selection_tombstones_worktrees_not_wrapper(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -886,9 +932,16 @@ exit 1
             root_rp = root.resolve()
             wrapper_rp = wrapper.resolve()
 
-            subprocess.run(["git", "init", str(root)], check=True, capture_output=True, text=True)
+            subprocess.run(
+                ["git", "init", str(root)],
+                check=True,
+                capture_output=True,
+                text=True,
+                env={**os.environ, "HOME": str(home), "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_SYSTEM": os.devnull},
+            )
             subprocess.run(
                 ["git", "-C", str(root), "remote", "add", "origin", "git@github.com:elastic/kibana.git"],
+                env={**os.environ, "HOME": str(home), "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_SYSTEM": os.devnull},
                 check=True,
                 capture_output=True,
                 text=True,
@@ -899,7 +952,7 @@ exit 1
 
             script = TMUX_PICKERS / "session/executable_action_remove_worktrees.sh"
             result = subprocess.run(
-                [modern_bash(), str(script), str(selection)],
+                [modern_bash(), str(script), "--force", str(selection)],
                 capture_output=True,
                 text=True,
                 env={
@@ -2186,6 +2239,11 @@ class TestGhRowLoaderSpinnerOrdering(unittest.TestCase):
         ):
             (lib_dir / target).write_text((TMUX_PICKERS / "github/lib" / name).read_text())
 
+        shared_lib = picker_dir.parent / "lib"
+        shared_lib.mkdir()
+        (shared_lib / "resource_lock.py").write_text((TMUX_PICKERS / "lib/resource_lock.py").read_text())
+        (shared_lib / "picker_owner.py").write_text((TMUX_PICKERS / "lib/picker_owner.py").read_text())
+
         cache_dir = tmp_path / "cache/tmux"
         cache_dir.mkdir(parents=True)
         # One row whose marker cell is a plain space (no worktree): display is
@@ -2258,7 +2316,7 @@ class TestGhRowLoaderSpinnerOrdering(unittest.TestCase):
                 "PATH": f"{fixture['stub_bin']}:{os.environ['PATH']}",
                 "POSTS_LOG": str(fixture["posts_log"]),
                 "RENDER_SLEEP": "0.12",
-                "FZF_PORT": "1",
+                "FZF_SOCK": "fzf.sock",
             }
             subprocess.run([modern_bash(), "-c", harness], check=True, env=env)
 

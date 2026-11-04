@@ -41,13 +41,6 @@ post_action() {
       --data "$action" > /dev/null 2>&1
     return $?
   fi
-  if [ -n "${FZF_PORT:-}" ]; then
-    curl --silent --show-error --fail \
-      -X POST "http://127.0.0.1:${FZF_PORT}" \
-      "${hdr[@]}" \
-      --data "$action" > /dev/null 2>&1
-    return $?
-  fi
   return 1
 }
 
@@ -61,11 +54,6 @@ fzf_alive() {
       "${hdr[@]}" http://localhost > /dev/null 2>&1
     return $?
   fi
-  if [ -n "${FZF_PORT:-}" ]; then
-    curl --silent --show-error --fail \
-      "${hdr[@]}" "http://127.0.0.1:${FZF_PORT}" > /dev/null 2>&1
-    return $?
-  fi
   return 1
 }
 
@@ -77,11 +65,6 @@ fzf_state_json() {
   if [ -n "${FZF_SOCK:-}" ]; then
     curl --silent --show-error --fail --unix-socket "$FZF_SOCK" \
       "${hdr[@]}" "http://localhost?limit=5000" 2> /dev/null
-    return $?
-  fi
-  if [ -n "${FZF_PORT:-}" ]; then
-    curl --silent --show-error --fail \
-      "${hdr[@]}" "http://127.0.0.1:${FZF_PORT}?limit=5000" 2> /dev/null
     return $?
   fi
   return 1

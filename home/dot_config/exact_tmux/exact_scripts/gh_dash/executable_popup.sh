@@ -13,12 +13,8 @@ show_loader() {
 }
 
 show_popup() {
-  local orig_shell
-  orig_shell="$(tmux show-option -gqv default-shell 2> /dev/null || echo /bin/sh)"
-  tmux set-option -g default-shell /bin/sh \; \
-    display-popup -E -h 90% -w 90% -d "${start_dir}" -T "gh-dash" \
-    "tmux -L '${sock}' attach -t '${session}'" \; \
-    set-option -g default-shell "$orig_shell" 2> /dev/null || true
+  tmux display-popup -E -h 90% -w 90% -d "${start_dir}" -T "gh-dash" \
+    tmux -L "$sock" attach -t "$session" 2> /dev/null || true
 }
 
 # Fast path: if the session is alive, skip dependency checks.
@@ -47,13 +43,8 @@ if ! gh dash --version > /dev/null 2>&1; then
   exit 127
 fi
 
-env_vars="export GH_DASH_POPUP=1; export OUTER_TMUX_SOCKET=\"${outer_socket}\"; export OUTER_TMUX_CLIENT=\"${outer_client}\""
-
-# Auto-respawn: if gh-dash crashes the session stays alive and restarts it.
-# The loop exits cleanly when the tmux server is killed (C-g restart).
-dash_cmd="while true; do gh dash --config \"${config}\"; sleep 1; done"
-
 tmux -L "${sock}" -f "${tmux_conf}" new-session -d -s "${session}" -c "${start_dir}" \
-  "bash -lc '${env_vars}; ${dash_cmd}'"
+  /bin/bash -lc 'export GH_DASH_POPUP=1 OUTER_TMUX_SOCKET="$2" OUTER_TMUX_CLIENT="$3"
+while true; do gh dash --config "$1"; sleep 1; done' bash "$config" "$outer_socket" "$outer_client"
 
 show_popup

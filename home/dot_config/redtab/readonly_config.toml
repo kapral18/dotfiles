@@ -1,3 +1,21 @@
-# Subscriptions live in the unmanaged $XDG_STATE_HOME/redtab/subscriptions
-# (default ~/.local/state/redtab/subscriptions; one subreddit per line, `#`
-# comments), so the personal list stays out of this public repo.
+# redtab settings — edit here or press F2 in the app.
+# Valid file changes apply live. UI changes save here when writable.
+# F2 offers confirmed source saves for plain chezmoi-managed configs.
+
+
+# Number of posts in each All subs island (1–10).
+all_subs_posts_per_group = 4
+
+[media]
+# Show inline images, card previews, thumbnails and community icons.
+image_preview = true
+
+[commands]
+# Argument array for opening URLs; URL appended. No shell expansion. Example: ["open"].
+browser = ["open"]
+
+# Argument array for the external video player; stream URL appended. Example: ["mpv", "--force-window=immediate"].
+video = ["mpv", "--force-window=immediate"]
+
+# Argument array for opening local images; file paths appended. No shell expansion.
+image = ["open"]

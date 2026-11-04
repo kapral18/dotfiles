@@ -24,7 +24,8 @@ spawn a subprocess and parse JSON.
 
 This runner manages its own `vec_index` table — a vec0 virtual table
 mirroring `capsules.id` and `capsules.embedding` — synchronizing
-deltas from the canonical `capsules` table on every call. The
+deltas from the canonical `capsules` table for unfiltered KNN and pairs queries.
+Filtered KNN computes cosine distances over eligible capsules before limiting results. The
 orchestrator process never sees `vec_index`; that table is purely an
 implementation detail of this runner.
 
@@ -228,6 +229,10 @@ def _build_filter_clause(filters: dict[str, Any]) -> tuple[str, list]:
         sub = " OR ".join("c.domain_tags LIKE ?" for _ in domains)
         parts.append(f"({sub})")
         params.extend(f"%{d}%" for d in domains)
+    workspace = filters.get("workspace")
+    if workspace is not None:
+        parts.append("(c.workspace_path = ? OR c.scope IN ('domain', 'universal'))")
+        params.append(workspace)
     return " AND ".join(parts), params
 
 
@@ -241,31 +246,38 @@ def _knn(db: sqlite3.Connection, req: dict[str, Any]) -> dict[str, Any]:
     limit = int(req.get("limit", 5))
     filters = req.get("filters") or {}
 
-    dim = _ensure_vec_index(db)
+    dim = _capsules_dim(db)
     if dim is None:
         return {"hits": []}
     if len(qvec) != dim:
         _print_error_and_exit(f"query_vector dim {len(qvec)} != index dim {dim}; re-embed required")
 
     where, params = _build_filter_clause(filters)
-    sql = f"""
-        WITH knn AS (
+    query_blob = _serialize_f32([float(x) for x in qvec])
+    if any(filters.get(field) for field in ("scopes", "kinds", "domains", "workspace")):
+        rows = db.execute(
+            f"""
+            SELECT c.id, vec_distance_cosine(c.embedding, ?) AS distance
+            FROM capsules c
+            WHERE c.embedding IS NOT NULL AND c.embedding_dim = ? AND {where}
+            ORDER BY distance
+            LIMIT ?
+            """,
+            (query_blob, dim, *params, limit),
+        ).fetchall()
+    else:
+        _ensure_vec_index(db)
+        rows = db.execute(
+            """
             SELECT id, distance
             FROM vec_index
             WHERE embedding MATCH ? AND k = ?
             ORDER BY distance
-        )
-        SELECT knn.id, knn.distance
-        FROM knn
-        JOIN capsules c ON c.id = knn.id
-        WHERE {where}
-        ORDER BY knn.distance
-        LIMIT ?
-    """
-    rows = db.execute(
-        sql,
-        (_serialize_f32([float(x) for x in qvec]), k, *params, limit),
-    ).fetchall()
+            """,
+            (query_blob, max(k, limit)),
+        ).fetchall()
+        if limit >= 0:
+            rows = rows[:limit]
     hits = [{"id": r[0], "cosine": max(0.0, 1.0 - float(r[1]))} for r in rows]
     return {"hits": hits}
 

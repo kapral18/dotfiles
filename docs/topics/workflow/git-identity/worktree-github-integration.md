@@ -19,9 +19,9 @@ Use `,gh-worktree` when you want the same repo/bootstrap behavior outside tmux p
 
 Behavior:
 
-- Resolves the local checkout root from a repo hint (`--repo-path`) or conventional wrapper path.
+- Resolves the local checkout root from a repo hint (`--repo-path`) or conventional wrapper path, then verifies that `origin` or `upstream` identifies the requested GitHub repository. A same-name checkout for another owner fails before bootstrap or worktree creation.
 - Bootstraps missing repos with `,gh-tfork` unless `--no-bootstrap` is set.
-- Delegates PR/issue branch naming and worktree creation to `,w prs` / `,w issue`.
+- Delegates PR/issue branch naming and worktree creation to `,w prs` / `,w issue`, with `GH_REPO` set to the requested repository.
 - Supports `--print-root` to resolve and print repo root without creating a worktree.
 
 For non-interactive issue work, prefer:
@@ -31,6 +31,16 @@ For non-interactive issue work, prefer:
 ```
 
 Without `--branch`, issue creation may prompt for branch input.
+
+## Issue references and PR patches
+
+`,gh-issuew` preserves the repository in explicit issue URLs, absolute issue links in PR bodies, and worktree issue metadata. `--url` and browser actions keep that identity; `--number` prints only the number.
+
+`,w issue` skips worktrees associated with another repository or issue when matching a branch suffix. Explicit branch reuse refuses a conflicting association before changing metadata or focusing its tmux session. Legacy worktrees without issue metadata remain reusable.
+
+`,add-patch-to-prs` resolves each PR's head repository, branch, and commit. It applies and commits the patch in a temporary checkout, then pushes explicitly to that head branch. Existing local branches with the same name stay unchanged. Tracked changes in the starting checkout cause an early refusal. A failed push retains the patch commit on a local `patch-pr-…` recovery branch and reports its name.
+
+`,gh-subissues-create` requires an issue as its parent and rejects pull-request numbers before entering or creating children. It accepts milestone titles containing quotes and saves milestone and label text as JSON values for the next session. Milestone lookup and recovery lists include all API pages. Before creating an issue, it checks every page in the existing two-week issue window for the same title, excluding pull requests. If that lookup fails, the command stops before creating an issue.
 
 ## PR shortcuts in the GitHub picker
 

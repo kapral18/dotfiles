@@ -1,6 +1,6 @@
 ---
 name: k-review
-description: "Use to review local changes, a PR, review threads (PR fixes), or a plan, and for independent verify rounds (two fresh reviewers and a fix loop, repeated until a whole-scope round is clean)."
+description: "Use to review local changes, a PR, review threads (PR fixes), or a plan, and for independent verify rounds (two fresh reviewers and a fix loop, repeated until a whole-scope round is clean; a returning cause or fix churn parks it for the user)."
 ---
 
 # Review
@@ -107,19 +107,21 @@ Use when `~/AGENTS.md` §3 step 5 requires a review of a finished change, or whe
    later full rounds and verify-again runs reconcile every finding fixed, rejected, or proposed so far.
    Tell the reviewers of a narrowed later round (`review_fixes.md` step 7) that it is narrowed and which files it covers.
 3. Merge criterion/fix results and findings.
-   Require evidence for each applicable criterion and claimed fix; an absent row or material unverified result cannot clear that behavior.
+   Require evidence for each applicable criterion and claimed fix.
+   Grouped results must name every covered ID and verify every original trigger;
+   an omitted or materially unverified result cannot clear that behavior.
    Check each finding against source yourself. Reject unsupported ones with a one-line reason.
    Criteria constrain scope expansion, not defect discovery: accept new supported defects in scope or impact in every round, including regressions introduced by fixes.
    New behavior outside it stays a proposal.
 4. Apply supported findings within write scope using `~/.agents/skills/k-review/references/review_fixes.md`.
    Its Fix procedure (the Verify-mode steps) owns scratch copies, checks, fix-diff reviews, further full rounds, and stopping rules.
 5. Copy every file in the reviewed scope, as it stands after the fixes, into the baseline, even when nothing was fixed:
-   a fresh scratch directory for the task's first Verify review, the existing baseline after that.
+   a fresh directory under `/tmp` for the task's first Verify review, the existing baseline after that.
    For a file with a fix marked "(unreviewed)", copy that round's pre-fix copy instead, so the next review still covers the fix.
    List each reviewed path the task deleted in the baseline's `.k-review-deleted.txt`.
-   That copy is the baseline for a later §3 step 5 review in the same task. Keep it until the task ends; `k-cleanup` does not delete it.
-   A handoff note records its path.
-6. Report the review scope, the count of fixed findings, rejected findings with one-line reasons, `Open:` items with their blockers, `Proposed:` items (`~/AGENTS.md` §3 step 8), and the rounds trend (`review_fixes.md` step 8).
+   Retain that baseline only while a remaining review or agreed handoff needs it; remove it under `k-cleanup` as soon as that need ends.
+   An agreed handoff records the needed baseline's path.
+6. Report the review scope, the count of fixed findings, rejected findings with one-line reasons, `Open:` items with their blockers, `Proposed:` items (`~/AGENTS.md` §3 step 8), a `Decision needed:` for each parked cause or mechanism (`review_fixes.md` step 6), and the rounds trend (`review_fixes.md` step 8).
 
 Run full rounds without asking until `review_fixes.md` says to stop.
 

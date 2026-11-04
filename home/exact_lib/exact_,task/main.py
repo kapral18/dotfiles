@@ -28,6 +28,8 @@ import subprocess
 import sys
 import tempfile
 import time
+import uuid
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterable
 
@@ -120,6 +122,60 @@ def append_jsonl(path: Path, value) -> None:
 
 def now() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%S%z")
+
+
+# Past GUARD_LOG_LIMIT bytes, a write keeps the newest half of it.
+GUARD_LOG_LIMIT = 16 * 1024 * 1024
+
+
+def log_guard(worktree: str, session: str, harness: str, guard: str, fired: bool, detail=None, **extra) -> None:
+    """One guard evaluation; a ledger write never stops the hook that made it."""
+    path = root_dir() / "guards.jsonl"
+    try:
+        append_jsonl(
+            path,
+            {
+                "time": time.time(),
+                "worktree": worktree,
+                "session": session,
+                "harness": harness,
+                "guard": guard,
+                "fired": fired,
+                **({"detail": detail} if detail is not None else {}),
+                **extra,
+            },
+        )
+        if path.stat().st_size > GUARD_LOG_LIMIT:
+            # A rewrite comes once per GUARD_LOG_LIMIT / 2 bytes of appends; an append racing it can be lost, never a hook.
+            kept: list[bytes] = []
+            size = 0
+            for line in reversed(path.read_bytes().splitlines(keepends=True)):
+                size += len(line)
+                if size > GUARD_LOG_LIMIT // 2:
+                    break
+                kept.append(line)
+            fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".guards.")
+            try:
+                with os.fdopen(fd, "wb") as handle:
+                    handle.writelines(reversed(kept))
+                os.replace(tmp, path)
+            finally:
+                Path(tmp).unlink(missing_ok=True)
+    except OSError:
+        pass
+
+
+def card_key(card: dict) -> str:
+    return card.setdefault("id", uuid.uuid4().hex)
+
+
+def finding_key(finding: dict) -> str:
+    identity = [finding[key] for key in ("id", "created", "anchor", "concern")]
+    return hashlib.sha256(json.dumps(identity, ensure_ascii=False, separators=(",", ":")).encode()).hexdigest()
+
+
+def where(task: "Task") -> str:
+    return str(task.root or task.cwd)
 
 
 class Task:
@@ -478,7 +534,14 @@ def hook_prompt(task: Task, data: dict, harness: str) -> dict:
     sessions = {sid: seen for sid, seen in (task.state.get("sessions") or {}).items() if seen >= time.time() - RECENT}
     first = session not in sessions
     sessions[session] = time.time()
-    task.state.update(active_session=session, sessions=sessions)
+    task.state.update(active_session=session, sessions=sessions, worktree=str(task.root or task.cwd))
+    task.state.setdefault("harnesses", {})[session] = harness
+    # Only typed text starts work the board shows; a session start (Codex `SessionStart`) sends none.
+    if text:
+        task.state.setdefault("prompts", {})[session] = time.time()
+    kept = set(sessions) | set(task.state.get("reports") or {})
+    for key in ("harnesses", "prompts"):
+        task.state[key] = {sid: value for sid, value in (task.state.get(key) or {}).items() if sid in kept}
     turn = task.turn(session)
     compacted = turn.pop("compacted", False)
     # Shell snapshots belong to individual calls; a prompt starts a new turn's attribution.
@@ -567,6 +630,7 @@ def hook_tool(task: Task, data: dict, harness: str) -> dict:
         if session not in asked:
             task.state["card_asked"] = [*asked, session][-20:]
             task.save_state()
+            log_guard(where(task), session, harness, "card-refusal", True, task.relative(paths[0]))
             rule = CARD_RULE.replace(",task card set", f",task card set --session {session}")
             return {"deny": f"intent-guard: no intent card for this task yet. {rule} Then retry this edit."}
     if tool in SHELL_TOOLS or is_write:
@@ -619,6 +683,10 @@ def hook_tool(task: Task, data: dict, harness: str) -> dict:
             turn["wrote"] = True
             turn["touched"] = sorted(set(turn.get("touched", [])) | {task.relative(p) for p in touched})
         outside = [p for p in paths if card and not in_scope(task, p)]
+        # hook_stop samples final-response shells and discards their notes, so only a delivered note counts as a fire.
+        if not (complete and data.get("until_stop")):
+            for path in outside:
+                log_guard(where(task), session, harness, "scope-note", True, task.relative(path))
         if outside:
             notes.append(
                 "intent-guard: " + ", ".join(outside[:20]) + " is outside the card's `Scope:`. "
@@ -629,6 +697,7 @@ def hook_tool(task: Task, data: dict, harness: str) -> dict:
         steps = 0
         turn.pop("compacted", None)
         unmet = ", ".join(item["id"] for item in open_items(card)) or "none"
+        log_guard(where(task), session, harness, "zoom-out", True)
         notes.append(
             "intent-guard: zoom out. Re-read the card below. In one line, say whether the current work still serves the Goal "
             f"and what is left (open: {unmet}). If you drifted, say so and change course. "
@@ -671,11 +740,54 @@ def hook_stop(task: Task, data: dict, harness: str) -> dict:
             },
             harness,
         )
-    turn["last_answer"] = (data.get("answer") or "")[:600]
-    task.save_state()
+    answer = data.get("answer") or ""
+    turn["last_answer"] = answer[:600]
     card = task.card_for(session)
-    if not card:
-        return {}
+    result = stop_check(task, session, harness, turn, card) if card else {}
+    if not result.get("block"):
+        record_status(task, session, harness, card, answer)
+    task.save_state()
+    return result
+
+
+def answer_lists(answer: str) -> dict[str, list[str]]:
+    """The report's `Decision needed:` and `Open:` items, without `none` placeholders."""
+    lists: dict[str, list[str]] = {"Decision needed": [], "Open": []}
+    for section, item in evidence.report_items(answer):
+        text = item.strip()
+        if section in lists and text and text.lower().rstrip(".") not in ("none", "n/a", "nothing"):
+            lists[section].append(text)
+    return lists
+
+
+def record_status(task: Task, session: str, harness: str, card: dict | None, answer: str) -> None:
+    """What the session waits on when its turn ends, for `,task board`."""
+    lists = answer_lists(answer)
+    unmet = open_items(card) if card else []
+    if lists["Decision needed"]:
+        kind, detail = "question", lists["Decision needed"][0]
+    elif lists["Open"]:
+        kind, detail = "blocked", lists["Open"][0]
+    elif unmet:
+        kind, detail = "unfinished", "open: " + ", ".join(item["id"] for item in unmet)
+    elif card:
+        kind, detail = "ready", ""
+    else:
+        kind, detail = "replied", ""
+    cutoff = time.time() - BOARD_DAYS * 86400
+    reports = {sid: report for sid, report in (task.state.get("reports") or {}).items() if report["time"] >= cutoff}
+    task.state["reports"] = reports
+    reports[session] = {
+        "time": time.time(),
+        "harness": harness,
+        "kind": kind,
+        "detail": detail[:300],
+        "goal": (card or {}).get("goal", ""),
+    }
+    task.state["worktree"] = str(task.root or task.cwd)
+
+
+def stop_check(task: Task, session: str, harness: str, turn: dict, card: dict) -> dict:
     now_dirty = task.dirty()
     touched = set(turn.get("touched") or [])
     originals = {p: saved["state"] for p, saved in turn.get("originals", {}).items()}
@@ -691,16 +803,18 @@ def hook_stop(task: Task, data: dict, harness: str) -> dict:
         if not in_scope(task, str(base / p))
         and (file_state(base / p) != originals[p] if originals.get(p) is not None else p in now_dirty)
     ]
+    detail = {"open": [item["id"] for item in unmet], "outside": outside}
     if not unmet and not outside:
         turn.update(continues=0, last_unmet=None)
-        task.save_state()
+        log_guard(where(task), session, harness, "stop-sendback", False, detail)
         return {}
     signature = sorted(item["id"] for item in unmet) + sorted(outside)
     if int(turn.get("continues", 0)) >= MAX_CONTINUES or turn.get("last_unmet") == signature:
+        log_guard(where(task), session, harness, "stop-sendback", True, detail, sent=False)
         return {}
     turn["continues"] = int(turn.get("continues", 0)) + 1
     turn["last_unmet"] = signature
-    task.save_state()
+    log_guard(where(task), session, harness, "stop-sendback", True, detail, sent=True)
     lines = ["intent-guard: the task is not done against its intent card."]
     if unmet:
         lines.append("Open `Done when` items:")
@@ -737,14 +851,40 @@ def evidence_records(task: Task) -> list[dict]:
 
 
 def hook_evidence(task: Task, data: dict, harness: str) -> dict:
+    session = task.session_id
+    answer = data.get("answer", "")
+    candidates = data.get("findings", [])
+    # The first call of a Stop carries the answer and the format checks' results; the second carries the reviewer's concerns.
+    # The rewrite after a send-back is checked but never sent back: its entries judge the earlier fire and count as none.
+    unsent = {"sent": False} if data.get("rewrite") else {}
+    if answer and not candidates:
+        for kind, fired in (data.get("format") or {}).items():
+            log_guard(where(task), session, harness, f"format:{kind}", bool(fired), **unsent)
     card = require_card(task)
     records = evidence_records(task)
-    concerns = evidence.remember_findings(card, data.get("findings", []), records)
+    known = {finding["id"] for finding in card.get("findings", [])}
+    concerns = evidence.remember_findings(card, candidates, records)
+    identity = card_key(card)
     task.save_card()
+    for finding in concerns:
+        if finding["id"] not in known:
+            log_guard(
+                where(task),
+                session,
+                harness,
+                "review-finding",
+                True,
+                finding["id"],
+                card=identity,
+                finding=finding_key(finding),
+            )
+    problems = evidence.check_answer(card, answer, records)
+    if answer and not candidates:
+        log_guard(where(task), session, harness, "citation", bool(problems), len(problems), **unsent)
     return {
         "card": evidence.context(card, records),
         "findings": concerns,
-        "problems": evidence.check_answer(card, data.get("answer", ""), records),
+        "problems": problems,
     }
 
 
@@ -791,6 +931,13 @@ def hook_checkpoint(task: Task, data: dict, harness: str) -> dict:
     }
 
 
+def hook_sentback(task: Task, data: dict, harness: str) -> dict:
+    """A Stop hook above intent-guard sent the answer back after its status was recorded: the turn goes on."""
+    (task.state.get("reports") or {}).pop(task.session(data.get("session")), None)
+    task.save_state()
+    return {}
+
+
 def hook_user(task: Task, data: dict, harness: str) -> dict:
     """The user's own words from Pi's and OMP's `input` event, the one that tells typed text from an extension's."""
     text = data.get("text") or ""
@@ -808,6 +955,7 @@ HOOKS = {
     "evidence": hook_evidence,
     "checkpoint": hook_checkpoint,
     "user": hook_user,
+    "sentback": hook_sentback,
 }
 
 
@@ -921,6 +1069,7 @@ def cmd_card_set(args: argparse.Namespace) -> int:
     archived = old.get("scope_changes", []) if goal_changed else []
     card = {
         "session": session,
+        "id": card_key(old) if old else uuid.uuid4().hex,
         "created": old["created"] if old else now(),
         "updated": now(),
         "goal": parsed["goal"],
@@ -1052,7 +1201,20 @@ def cmd_ledger(args: argparse.Namespace) -> int:
             "fixed" if args.fixed else "rejected",
             records,
         )
+        identity = card_key(card)
     task.save_card()
+    if args.command == "finding":
+        log_guard(
+            where(task),
+            task.session_id,
+            "manual",
+            "review-finding",
+            False,
+            entry["id"],
+            resolution=entry["status"],
+            card=identity,
+            finding=finding_key(entry),
+        )
     print(json.dumps(entry, ensure_ascii=False))
     return 0
 
@@ -1143,6 +1305,341 @@ def cmd_steering_report(args: argparse.Namespace) -> int:
         if entry.get("goal"):
             print(f"  goal: {entry['goal'][:200]}")
         print(f"  user: {entry['text'][:400]}")
+    return 0
+
+
+def read_guards(days: int) -> tuple[list[dict], float]:
+    """Entries from the last `days` days, and the time the report really covers from: a trim can keep less."""
+    try:
+        # A torn append can leave bytes that are not UTF-8; that line is skipped, not the report.
+        lines = (root_dir() / "guards.jsonl").read_text(encoding="utf-8", errors="replace").split("\n")
+    except OSError:
+        lines = []
+    cutoff = time.time() - days * 86400
+    entries = []
+    oldest = time.time()
+    for line in lines:
+        try:
+            entry = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(entry, dict) and isinstance(entry.get("time"), (int, float)):
+            oldest = min(oldest, entry["time"])
+            if entry["time"] >= cutoff:
+                entries.append(entry)
+    return sorted(entries, key=lambda entry: entry["time"]), max(cutoff, oldest)
+
+
+# Guards whose every check is logged, fired or not: a fire is cleared when the session's next check of the same guard passes.
+def rechecked(guard: str) -> bool:
+    return guard in ("stop-sendback", "citation") or guard.startswith("format:")
+
+
+def counted(entry: dict) -> bool:
+    """A fire; a stop check that repeats an unsent send-back only judges the earlier fire."""
+    return entry["fired"] and entry.get("sent", True)
+
+
+def guard_outcomes(entries: list[dict]) -> dict[int, str | None]:
+    """Each fire's outcome by id(): cleared, repeated, rejected or pending; None for a guard no later check judges."""
+    by_session: dict[str, list[dict]] = {}
+    findings: dict[tuple, list[tuple[float, str]]] = {}
+    for entry in entries:
+        by_session.setdefault(entry["session"], []).append(entry)
+        if entry["guard"] == "review-finding" and entry.get("resolution") and entry.get("finding"):
+            findings.setdefault((entry.get("card"), entry.get("detail"), entry["finding"]), []).append(
+                (entry["time"], entry["resolution"])
+            )
+    outcomes: dict[int, str | None] = {}
+    for own in by_session.values():
+        # Walking back in time, each map holds the session's next entry after the one in hand.
+        next_check: dict[str, dict] = {}
+        next_stop: dict | None = None
+        for entry in reversed(own):
+            guard = entry["guard"]
+            if counted(entry):
+                if guard == "review-finding":
+                    # A finding belongs to its card, which a handoff carries to another session.
+                    later = [
+                        r
+                        for t, r in findings.get((entry.get("card"), entry.get("detail"), entry.get("finding")), [])
+                        if t > entry["time"]
+                    ]
+                    outcomes[id(entry)] = {"fixed": "cleared", "rejected": "rejected"}.get(
+                        later[0] if later else "", "pending"
+                    )
+                elif guard == "scope-note":
+                    outside = (next_stop.get("detail") or {}).get("outside", []) if next_stop else None
+                    outcomes[id(entry)] = (
+                        "pending" if outside is None else "repeated" if entry.get("detail") in outside else "cleared"
+                    )
+                elif rechecked(guard):
+                    check = next_check.get(guard)
+                    outcomes[id(entry)] = "pending" if check is None else "repeated" if check["fired"] else "cleared"
+                else:
+                    outcomes[id(entry)] = None
+            if guard == "stop-sendback":
+                next_stop = entry
+            if rechecked(guard):
+                next_check[guard] = entry
+    return outcomes
+
+
+def cmd_guards(args: argparse.Namespace) -> int:
+    entries, since = read_guards(args.days)
+    window = time.strftime("since %Y-%m-%d %H:%M", time.localtime(since))
+    fires = [entry for entry in entries if counted(entry)]
+    outcomes = guard_outcomes(entries)
+    if args.guard:
+        shown = [entry for entry in fires if entry["guard"] == args.guard][-args.recent :]
+        for entry in shown:
+            stamp = time.strftime("%Y-%m-%d %H:%M", time.localtime(entry["time"]))
+            detail = json.dumps(entry["detail"], ensure_ascii=False) if "detail" in entry else ""
+            print(f"{stamp}  {outcomes[id(entry)] or '-':9}  {entry['harness']:8}  {entry['worktree']}  {detail}")
+        if not shown:
+            print(f"no {args.guard} fires {window}")
+        return 0
+    print(f"Guard fires {window}. cleared: the next check passed or the finding was fixed.")
+    print(f"{'guard':28} {'fires':>5} {'cleared':>8} {'repeated':>9} {'rejected':>9} {'pending':>8}")
+    for guard in sorted({entry["guard"] for entry in fires}):
+        own = [outcomes[id(entry)] for entry in fires if entry["guard"] == guard]
+        counts = (
+            ["-"] * 4
+            if own[0] is None
+            else [str(own.count(name)) for name in ("cleared", "repeated", "rejected", "pending")]
+        )
+        print(f"{guard:28} {len(own):>5} {counts[0]:>8} {counts[1]:>9} {counts[2]:>9} {counts[3]:>8}")
+    if not fires:
+        print("no guard fired")
+    return 0
+
+
+def cmd_guard_log(args: argparse.Namespace) -> int:
+    """No worktree lock or task state: a mod's guard waits on this call."""
+    log_guard(str(Path.cwd()), args.session or "unknown", args.harness, args.name, True, args.detail)
+    return 0
+
+
+BOARD_DAYS = 2
+BOARD_ORDER = ("question", "blocked", "unfinished", "ready")
+
+
+def age(seconds: float) -> str:
+    seconds = max(0, int(seconds))
+    if seconds < 3600:
+        return f"{seconds // 60}m"
+    if seconds < 86400:
+        return f"{seconds // 3600}h"
+    return f"{seconds // 86400}d"
+
+
+def board_rows() -> list[dict]:
+    cutoff = time.time() - BOARD_DAYS * 86400
+    rows = []
+    for state_path in sorted(root_dir().glob("*/state.json")):
+        state = read_json(state_path, {})
+        cards = read_json(state_path.parent / "cards.json", {})
+        worktree = state.get("worktree") or state_path.parent.name
+        prompts = state.get("prompts") or {}
+        reports = state.get("reports") or {}
+        for session in sorted(set(prompts) | set(reports)):
+            prompted = prompts.get(session, 0)
+            report = reports.get(session)
+            # A turn that never ended (a killed session) stops counting as working after RECENT seconds.
+            answered = prompted > (report["time"] if report else 0)
+            working = answered and prompted >= time.time() - RECENT
+            # A prompt that answered the last report and never ended a turn: the report is stale and the session gone quiet.
+            if (answered and not working) or (not working and report["time"] < cutoff):
+                continue
+            card = cards.get(session) or {}
+            if working:
+                kind, detail, at = "working", "", prompted
+            else:
+                kind, detail, at = report["kind"], report["detail"], report["time"]
+            rows.append(
+                {
+                    "kind": kind,
+                    "detail": detail,
+                    "time": at,
+                    "worktree": worktree.replace(str(Path.home()), "~", 1),
+                    "session": session,
+                    "harness": (report or {}).get("harness") or (state.get("harnesses") or {}).get(session, "?"),
+                    "goal": card.get("goal") or (report or {}).get("goal", ""),
+                }
+            )
+    return rows
+
+
+def cmd_board(args: argparse.Namespace) -> int:
+    rows = board_rows()
+    current = time.time()
+    waiting = sorted(
+        (row for row in rows if row["kind"] in BOARD_ORDER),
+        key=lambda row: (BOARD_ORDER.index(row["kind"]), -row["time"]),
+    )
+    if waiting:
+        print("Needs you")
+        for row in waiting:
+            text = row["detail"] if row["kind"] != "ready" else row["goal"]
+            print(
+                f"  {row['kind']:10} {row['worktree']}  {row['harness']} {row['session'][:8]}  "
+                f"{age(current - row['time'])}  {text[:160]}"
+            )
+    else:
+        print("Nothing needs you.")
+    for kind, label in (("working", "Working"), ("replied", "Replied")):
+        group = [row for row in rows if row["kind"] == kind]
+        if group:
+            listed = ", ".join(
+                f"{row['worktree']} ({row['harness']}, {age(current - row['time'])})"
+                for row in sorted(group, key=lambda row: -row["time"])
+            )
+            print(f"{label} · {len(group)}: {listed}")
+    return 0
+
+
+HANDOFF_TOPIC = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
+HANDOFF_SOFT_LIMIT = 4096
+
+
+def handoff_root() -> Path:
+    override = os.environ.get("AGENT_HANDOFF_DIR")
+    return Path(override) if override else Path.home() / ".local/share/agent-handoffs"
+
+
+@contextmanager
+def handoff_lock():
+    directory = handoff_root()
+    directory.mkdir(parents=True, exist_ok=True)
+    descriptor = os.open(directory, os.O_RDONLY)
+    try:
+        fcntl.flock(descriptor, fcntl.LOCK_EX)
+        yield
+    finally:
+        os.close(descriptor)
+
+
+def handoff_name(value: str, what: str) -> str:
+    if not HANDOFF_TOPIC.fullmatch(value):
+        raise ValueError(f"invalid {what} {value!r}; use lowercase letters, digits, '.', '_', '-'")
+    if what == "topic" and value.endswith(".prev"):
+        raise ValueError("the .prev topic suffix is reserved for previous versions; use show --prev")
+    return value
+
+
+def handoff_dir(args: argparse.Namespace) -> Path:
+    """One namespace per repo: the main checkout's basename, shared by its worktrees; outside Git, `global`."""
+    repo = args.repo
+    if not repo:
+        common = git(Path.cwd(), "rev-parse", "--path-format=absolute", "--git-common-dir")
+        path = Path(common.strip()) if common else None
+        repo = ((path.parent if path.name == ".git" else path).name if path else "") or "global"
+    slug = re.sub(r"[^a-z0-9._-]+", "-", repo.lower()).strip("-.") or "global"
+    return handoff_root() / handoff_name(slug[:64], "repo")
+
+
+def handoff_paths(args: argparse.Namespace, prev: bool = False) -> tuple[Path, Path]:
+    directory = handoff_dir(args)
+    stem = handoff_name(args.topic, "topic") + (".prev" if prev else "")
+    return directory / f"{stem}.md", directory / f"{stem}.card.json"
+
+
+def cmd_handoff_save(args: argparse.Namespace) -> int:
+    body = sys.stdin.read()
+    if not body.strip():
+        raise ValueError("empty note on stdin; nothing saved")
+    # The session is resolved before any file moves, so a refusal leaves the saved versions as they were.
+    card = Task(Path.cwd(), args.session).card
+    with handoff_lock():
+        note, saved = handoff_paths(args)
+        prev_note, prev_saved = handoff_paths(args, prev=True)
+        note.parent.mkdir(parents=True, exist_ok=True)
+        if note.exists():
+            os.replace(note, prev_note)
+            if saved.exists():
+                os.replace(saved, prev_saved)
+            else:
+                prev_saved.unlink(missing_ok=True)
+        fd, tmp = tempfile.mkstemp(dir=note.parent, prefix=f".{args.topic}.")
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(body if body.endswith("\n") else body + "\n")
+        os.replace(tmp, note)
+        if card:
+            write_json(saved, card)
+        else:
+            saved.unlink(missing_ok=True)
+        size = note.stat().st_size
+    if size > HANDOFF_SOFT_LIMIT:
+        print(f",task: note is {size} bytes; keep it under {HANDOFF_SOFT_LIMIT}", file=sys.stderr)
+    print(note)
+    if not card:
+        print(",task: this session has no card; the note was saved without one", file=sys.stderr)
+    return 0
+
+
+def read_handoff(note: Path, saved: Path) -> tuple[str, dict | None]:
+    if not note.is_file():
+        raise ValueError(f"no note at {note}")
+    body = note.read_text(encoding="utf-8")
+    card = read_json(saved, None)
+    if card:
+        body += "\nSaved task card:\n" + render(card) + "\n"
+    return body, card
+
+
+def cmd_handoff_show(args: argparse.Namespace) -> int:
+    with handoff_lock():
+        body, _ = read_handoff(*handoff_paths(args, prev=args.prev))
+    sys.stdout.write(body)
+    return 0
+
+
+def cmd_handoff_list(args: argparse.Namespace) -> int:
+    with handoff_lock():
+        root = handoff_root()
+        dirs = sorted(p for p in root.glob("*") if p.is_dir()) if args.all else [handoff_dir(args)]
+        notes = [note for directory in dirs for note in directory.glob("*.md") if not note.name.endswith(".prev.md")]
+        rows = []
+        for note in sorted(notes, key=lambda p: p.stat().st_mtime, reverse=True):
+            stamp = time.strftime("%Y-%m-%d %H:%M", time.localtime(note.stat().st_mtime))
+            label = f"{note.parent.name}/{note.stem}" if args.all else note.stem
+            rows.append(f"{stamp}  {label}")
+    for row in rows:
+        print(row)
+    return 0
+
+
+def cmd_handoff_resume(args: argparse.Namespace) -> int:
+    task = Task(Path.cwd(), args.session)
+    if task.card:
+        raise ValueError(
+            f"session {task.session_id} already has a card; finish or `,task card clear` it before resuming another task"
+        )
+    with handoff_lock():
+        body, saved_card = read_handoff(*handoff_paths(args))
+    sys.stdout.write(body)
+    if not saved_card:
+        print(f"\n,task: the note has no saved card; write one with `,task card set --session {task.session_id}`.")
+        return 0
+    card = saved_card
+    card.update(session=task.session_id, updated=now())
+    # Evidence is rechecked in this session: a claim that no longer verifies, such as a quote from the old transcript, reopens its item.
+    records = evidence_records(task)
+    reopened = []
+    for item in card["done"]:
+        if item["status"] != "checked":
+            continue
+        try:
+            evidence.verified_claim(card, item.get("claim", "missing claim"), records)
+        except ValueError:
+            item.pop("claim", None)
+            item.update(status="open", note="")
+            reopened.append(item["id"])
+    task.card = card
+    task.save_card()
+    print(f"\n,task: the card is now session {task.session_id}'s.")
+    if reopened:
+        print(",task: reopened " + ", ".join(reopened) + "; their evidence does not verify in this session.")
     return 0
 
 
@@ -1255,6 +1752,45 @@ def build_parser() -> argparse.ArgumentParser:
     pref_add.set_defaults(func=cmd_pref_add)
     pref.add_parser("list", help="print the preferences that apply here").set_defaults(func=cmd_pref_list)
 
+    guards = sub.add_parser("guards", help="report each guard's fires and whether the next check passed")
+    guards.add_argument("guard", nargs="?", help="list this guard's recent fires instead")
+    guards.add_argument("--days", type=int, default=30)
+    guards.add_argument("--recent", type=int, default=20, help="fires to list for one guard")
+    guards.set_defaults(func=cmd_guards)
+    guard = sub.add_parser("guard", help="log a guard fire from a harness mod").add_subparsers(
+        dest="guard", required=True
+    )
+    guard_log = guard.add_parser("log", help="record that a guard fired")
+    guard_log.add_argument("name", help="guard name, e.g. sop-guard:secret")
+    guard_log.add_argument("--detail", help="what the guard fired on")
+    guard_log.add_argument("--harness", default="manual")
+    guard_log.add_argument("--session")
+    guard_log.set_defaults(func=cmd_guard_log)
+
+    board = sub.add_parser("board", help="list agent sessions across worktrees by what they wait on")
+    board.set_defaults(func=cmd_board)
+
+    handoff = sub.add_parser("handoff", help="save and resume a task across sessions and harnesses").add_subparsers(
+        dest="handoff", required=True
+    )
+    for name, func, help_text in (
+        ("save", cmd_handoff_save, "save the note on stdin as <topic>, with this session's card"),
+        ("show", cmd_handoff_show, "print the note and its saved card"),
+        ("resume", cmd_handoff_resume, "print the note and make its saved card this session's card"),
+    ):
+        command = handoff.add_parser(name, help=help_text)
+        command.add_argument("topic")
+        command.add_argument("--repo", help="repo namespace (default: the current Git repo, else 'global')")
+        if name == "show":
+            command.add_argument("--prev", action="store_true", help="print the previous version")
+        else:
+            command.add_argument("--session", help="harness session id (default: the session that last prompted here)")
+        command.set_defaults(func=func)
+    listing = handoff.add_parser("list", help="list notes, newest first")
+    listing.add_argument("--repo", help="repo namespace (default: the current Git repo, else 'global')")
+    listing.add_argument("--all", action="store_true", help="list notes across every repo")
+    listing.set_defaults(func=cmd_handoff_list)
+
     report = sub.add_parser("steering", help="report the corrections logged by the hooks")
     report.add_argument("--days", type=int, default=7)
     report.add_argument("--recent", type=int, default=10, help="recent entries to print")
@@ -1272,8 +1808,23 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     # Atomic JSON replacement lets readers use a read-only store, including in sandboxes.
-    if args.func in (cmd_card_show, cmd_status, cmd_scope_check, cmd_pref_list, cmd_steering_report):
+    if args.func in (
+        cmd_card_show,
+        cmd_status,
+        cmd_scope_check,
+        cmd_pref_list,
+        cmd_steering_report,
+        cmd_guards,
+        cmd_board,
+        cmd_guard_log,
+    ):
         return args.func(args)
+    if args.func in (cmd_handoff_show, cmd_handoff_list):
+        try:
+            return args.func(args)
+        except ValueError as error:
+            print(f",task: {error}", file=sys.stderr)
+            return 1
     cwd = Path.cwd()
     if args.command == "hook":
         if args.input_file:

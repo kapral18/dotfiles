@@ -22,7 +22,13 @@ Keymaps:
 - `leader-tU` update snapshots (file)
 - `leader-tq` close the test terminal
 
-Close semantics: `q` in normal mode closes a terminal buffer only inside the Jest split created by this plugin (`util.terminal.run_in_split` sets that mapping locally on its own terminal buffer). Opening any other terminal (`:terminal`, a different plugin's terminal, etc.) never gets `q` rebound — there is no global `TermOpen` mapping, so unrelated terminal jobs are never closed as a side effect.
+Jest commands run from the nearest package directory. The debug command resolves the Jest executable, selected config, and test path from that same directory, including when the executable or config lives at the repository root. Test paths are quoted once when the shell command is built, preserving spaces and apostrophes in filenames for manual, debug, and package-script runs.
+
+Terminal ownership is separate for Jest and Python. A new successful run replaces only the previous run for that owner; a failed launch preserves it. `leader-tq` closes the Jest terminal, and `q` closes the runner split containing that mapping. User terminals and terminals from other plugins remain running.
+
+## Python in a split
+
+In Python buffers, `leader-tt` runs pytest when available, otherwise the file through `python3`. For a test method, the target includes its enclosing class and function. Filenames and test selectors are passed as literal shell arguments, so spaces and shell punctuation remain part of the filename. The unittest fallback retains its verbose, colored output.
 
 ## Git: Commit Message Summarizer (Local Plugin)
 

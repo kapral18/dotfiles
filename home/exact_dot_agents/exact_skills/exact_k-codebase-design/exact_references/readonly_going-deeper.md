@@ -29,8 +29,8 @@ Classify a candidate's dependencies first; the category determines how the deepe
 
 ### Testing strategy: replace, don't layer
 
-- Consolidate or remove redundant shallow-module tests while preserving material behavioral coverage;
-  add replacement cases only where remaining coverage is insufficient.
+- Consolidate or remove shallow-module tests by `~/AGENTS.md` §3's test-value rule;
+  replace them only when distinct behavioral protection earns its maintenance cost, not to preserve test count or coverage.
 - Ensure minimum sufficient test protection under `~/AGENTS.md` §3 through the deepened module's interface.
   The **interface is the test surface**.
 - Tests assert observable outcomes through the interface, not internal state, so they survive internal refactors.

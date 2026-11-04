@@ -31,7 +31,7 @@ selection_file=""
 background=0
 branches_file=""
 dispatch_scope="${GH_PICKER_DISPATCH_SCOPE:-}"
-dispatch_port="${GH_PICKER_DISPATCH_PORT:-}"
+dispatch_sock="${GH_PICKER_DISPATCH_SOCK:-}"
 dispatch_cache_file="${GH_PICKER_DISPATCH_CACHE_FILE:-}"
 dispatch_outer_tmux_socket="${OUTER_TMUX_SOCKET:-}"
 if [ -z "$dispatch_outer_tmux_socket" ] && [ -n "${TMUX:-}" ]; then
@@ -54,9 +54,9 @@ while [ $# -gt 0 ]; do
       dispatch_scope="$2"
       shift 2
       ;;
-    --dispatch-port)
-      [ $# -ge 2 ] || die "missing value for --dispatch-port"
-      dispatch_port="$2"
+    --dispatch-sock)
+      [ $# -ge 2 ] || die "missing value for --dispatch-sock"
+      dispatch_sock="$2"
       shift 2
       ;;
     --dispatch-cache-file)
@@ -81,11 +81,11 @@ done
 if [ -z "$dispatch_scope" ]; then
   dispatch_scope="$(cat "${cache_dir}/gh_picker_scope" 2> /dev/null || echo all)"
 fi
-if [ -z "$dispatch_port" ]; then
-  dispatch_port="${FZF_PORT:-}"
+if [ -z "$dispatch_sock" ]; then
+  dispatch_sock="${FZF_SOCK:-}"
 fi
-if [ -z "$dispatch_port" ]; then
-  dispatch_port="$(cat "${cache_dir}/gh_picker_port" 2> /dev/null || true)"
+if [ -z "$dispatch_sock" ]; then
+  dispatch_sock="$(cat "${cache_dir}/gh_picker_sock" 2> /dev/null || true)"
 fi
 if [ -z "$dispatch_cache_file" ]; then
   dispatch_cache_file="${cache_dir}/gh_picker.tsv"
@@ -116,9 +116,9 @@ issues=()
 issue_repos=()
 issue_titles=()
 
-while IFS=$'\t' read -r _display kind repo num _rest; do
-  [ -n "$kind" ] && [ -n "$repo" ] && [ -n "$num" ] || continue
-  [ "$kind" = "header" ] && continue
+selected_targets="$(python3 "$HOME/.config/tmux/scripts/pickers/github/lib/gh_selected_targets.py" "$selection_file")" || die "cannot read selected targets"
+while IFS=$'\t' read -r kind repo num; do
+  [ -n "$kind" ] || continue
   case "$kind" in
     pr)
       prs+=("$num")
@@ -135,13 +135,13 @@ while IFS=$'\t' read -r _display kind repo num _rest; do
       issue_titles+=("$title")
       ;;
   esac
-done < "$selection_file"
+done <<< "$selected_targets"
 
 issue_branches=()
 
 if [ "$background" -eq 0 ]; then
   if [ ${#issues[@]} -gt 0 ]; then
-    tmpfile="$(mktemp /tmp/gh_batch_worktree_XXXXXX.conf)"
+    tmpfile="$(mktemp /tmp/gh_batch_worktree_XXXXXX)"
     trap 'rm -f "$tmpfile"' EXIT
 
     {
@@ -160,8 +160,8 @@ if [ "$background" -eq 0 ]; then
     prompt_inst=""
     agent_launcher=""
     if command -v nvim > /dev/null 2>&1 && [[ "$EDITOR" == *nvim* ]] && [ -f "$prompt_template" ]; then
-      prompt_inst="$(mktemp /tmp/gh_batch_branch_prompt_XXXXXX.txt)"
-      agent_launcher="$(mktemp /tmp/gh_batch_branch_agent_XXXXXX.sh)"
+      prompt_inst="$(mktemp /tmp/gh_batch_branch_prompt_XXXXXX)"
+      agent_launcher="$(mktemp /tmp/gh_batch_branch_agent_XXXXXX)"
       # Substitute the concrete scratch path into the durable prompt template, then
       # launch via a tiny wrapper so the multiline prompt never has to be embedded
       # inside nvim `-c` / Lua string quoting.
@@ -176,29 +176,29 @@ if [ "$background" -eq 0 ]; then
       agent_cmd_lua="$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$agent_cmd")"
       trap 'rm -f "$tmpfile" "$prompt_inst" "$agent_launcher" 2>/dev/null || true' EXIT
       $EDITOR "$tmpfile" \
-        -c "lua require('util.terminal').run_in_split(${agent_cmd_lua}, { close_on_exit = true, focus_original = true })"
+        -c "lua require('util.terminal').run_in_split(${agent_cmd_lua}, { owner = ${agent_cmd_lua}, close_on_exit = true, focus_original = true })"
     else
       $EDITOR "$tmpfile"
     fi
 
-    branches_file="$(mktemp "${cache_dir}/gh_batch_worktree_branches_XXXXXX.conf")"
+    branches_file="$(mktemp "${cache_dir}/gh_batch_worktree_branches_XXXXXX")"
     # If we crash between `mktemp` and the background dispatch, we'd leak the
     # branches file. The trap is replaced once the background process owns it
     # (the dispatch line below).
     trap 'rm -f "$tmpfile" "$branches_file" "$prompt_inst" "$agent_launcher" 2>/dev/null || true' EXIT
     cp "$tmpfile" "$branches_file" 2> /dev/null || die "failed to persist branches file"
 
-    _dispatch_background "$(printf %q "$0") $(printf %q "$selection_file") --background --branches-file $(printf %q "$branches_file") --dispatch-scope $(printf %q "$dispatch_scope") --dispatch-port $(printf %q "$dispatch_port") --dispatch-cache-file $(printf %q "$dispatch_cache_file")"
+    _dispatch_background "$(printf %q "$0") $(printf %q "$selection_file") --background --branches-file $(printf %q "$branches_file") --dispatch-scope $(printf %q "$dispatch_scope") --dispatch-sock $(printf %q "$dispatch_sock") --dispatch-cache-file $(printf %q "$dispatch_cache_file")"
     # Background mode owns `$branches_file` and `$selection_file` from here.
     trap 'rm -f "$tmpfile" "$prompt_inst" "$agent_launcher" 2>/dev/null || true' EXIT
   else
-    _dispatch_background "$(printf %q "$0") $(printf %q "$selection_file") --background --dispatch-scope $(printf %q "$dispatch_scope") --dispatch-port $(printf %q "$dispatch_port") --dispatch-cache-file $(printf %q "$dispatch_cache_file")"
+    _dispatch_background "$(printf %q "$0") $(printf %q "$selection_file") --background --dispatch-scope $(printf %q "$dispatch_scope") --dispatch-sock $(printf %q "$dispatch_sock") --dispatch-cache-file $(printf %q "$dispatch_cache_file")"
   fi
   exit 0
 fi
 
 if [ ${#issues[@]} -gt 0 ] && [ -n "$branches_file" ] && [ -f "$branches_file" ]; then
-  while IFS='|' read -r issue_ref branch; do
+  while IFS='|' read -r issue_ref branch || [ -n "$issue_ref" ]; do
     [ -n "$issue_ref" ] || continue
     [[ "$issue_ref" =~ ^# ]] && continue
     issue_ref="$(printf '%s' "$issue_ref" | tr -d '[:space:]')"
@@ -238,14 +238,13 @@ fi
 exec > /dev/null 2>&1
 
 _notify_fzf_reload() {
-  local scope port items_cmd cache_load_cmd
+  local scope sock items_cmd cache_load_cmd
   scope="$dispatch_scope"
-  port="$dispatch_port"
-  [ -n "$port" ] || return 0
+  sock="$dispatch_sock"
+  [ -n "$sock" ] || return 0
   items_cmd="$HOME/.config/tmux/scripts/pickers/github/gh_items.sh"
   cache_load_cmd="GH_PICKER_SCOPE=$(printf %q "$scope") $(printf %q "$items_cmd") --cache-only 2>/dev/null"
-  # Use IPv4 explicitly; on macOS `localhost` may resolve to ::1 while fzf binds 127.0.0.1.
-  (curl -s --max-time 1 -XPOST "http://127.0.0.1:${port}" -d "reload($cache_load_cmd)+track" 9>&- > /dev/null 2>&1 &) 2> /dev/null
+  (curl -s --max-time 1 --unix-socket "$sock" -XPOST http://localhost -d "reload($cache_load_cmd)+track" 9>&- > /dev/null 2>&1 &) 2> /dev/null
 }
 
 _patch_cache_entry() {
@@ -584,13 +583,13 @@ for i in "${!prs[@]}"; do
   _wait_for_creates
 done
 
-for entry in "${issue_branches[@]+"${issue_branches[@]}"}"; do
+for i in "${!issues[@]}"; do
   _batch_can_launch || break
-  issue_ref="${entry%%:*}"
-  repo="${issue_ref%#*}"
-  num="${issue_ref##*#}"
-  branch="${entry#*:}"
-  for i in "${!issues[@]}"; do
+  for entry in "${issue_branches[@]+"${issue_branches[@]}"}"; do
+    issue_ref="${entry%%:*}"
+    repo="${issue_ref%#*}"
+    num="${issue_ref##*#}"
+    branch="${entry#*:}"
     if [ "${issues[$i]}" = "$num" ] && [ "${issue_repos[$i]}" = "$repo" ]; then
       _create_issue_worktree "$repo" "$num" "$branch" &
       pids+=("$!")

@@ -246,6 +246,29 @@ class TestBehaviorMap(unittest.TestCase):
         (self.main / "src/helper.py").write_text("x = 1\n")
         self.assertIn("stale", self.ok("show"))
 
+    def test_SHOULD_track_directory_content_with_quoted_and_multiline_filenames(self):
+        directory = self.main / "src"
+        directory.mkdir()
+        paths = [directory / "é.py", directory / "two\nlines.py", directory / " trailing .py"]
+        for path in paths:
+            path.write_text("before")
+        self.git("add", "src")
+        self.git("commit", "-q", "-m", "paths")
+        self.ok("save", "app/files", stdin=entry("app/files", "tracks all files.", anchor="src/", verified=True))
+
+        paths[0].write_text("after")
+        self.assertIn("stale", self.ok("show", "app/files"))
+        self.assertIn("entry app/files", self.ok("affected"))
+        self.ok("save", "app/files", stdin=self.show_entry("app/files"))
+        paths[1].write_text("after")
+        self.assertIn("stale", self.ok("show", "app/files"))
+        self.assertIn("entry app/files", self.ok("affected"))
+        self.ok("save", "app/files", stdin=self.show_entry("app/files"))
+        untracked = directory / "new\tfile.py"
+        untracked.write_text("new")
+        self.assertIn("stale", self.ok("show", "app/files"))
+        self.assertIn("entry app/files", self.ok("affected"))
+
     def test_SHOULD_list_entries_affected_by_the_branch_diff(self):
         self.ok("save", "app/run", stdin=entry("app/run", "returns 1."))
         (self.feature / "app.py").write_text("def run():\n    return 9\n")

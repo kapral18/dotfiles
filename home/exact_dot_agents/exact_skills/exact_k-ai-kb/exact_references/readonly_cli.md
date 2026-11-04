@@ -78,7 +78,7 @@ On refusal, prefer `--supersedes <that-id>`; use `--force` only when the collisi
 A clamped `--confidence`, a defaulted `--source`, or a missing `--domain` prints a degraded-metadata warning —
 fix the metadata rather than ignoring it.
 
-Do not pollute the KB: skip transient, session-only, or unverified notes (task progress belongs in `,handoff`).
+Do not pollute the KB: skip transient, session-only, or unverified notes (task progress belongs in `,task handoff`).
 
 ## External truth
 

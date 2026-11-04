@@ -32,6 +32,8 @@ chezmoi diff
 chezmoi apply
 ```
 
+The init configuration adds Homebrew `bin` and `sbin` to every hook’s PATH, including hooks started before a new shell reads its profile. Apple Silicon uses `/opt/homebrew`; Intel uses `/usr/local`. Existing PATH entries remain available.
+
 ## What To Expect
 
 - Xcode Command Line Tools install (license acceptance only when full Xcode is present): [`home/.chezmoiscripts/run_once_before_00-install-xcode.sh`](../../home/.chezmoiscripts/run_once_before_00-install-xcode.sh)

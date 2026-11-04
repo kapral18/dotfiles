@@ -178,18 +178,79 @@ class TestWorktreeDeleteBoundaries(unittest.TestCase):
             assert decision == "refuse"
             assert rm_calls == []
 
-    def test_refuses_scan_root_itself(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            tmp = Path(tmp).resolve()
-            home = tmp / "home"
-            home.mkdir()
-            scan_root = tmp / "elsewhere" / "code"
-            scan_root.mkdir(parents=True)
+    def test_refuses_configured_roots_and_ancestors(self):
+        for placement in ("external", "in-home", "ancestor", "nested-external"):
+            with self.subTest(placement=placement), tempfile.TemporaryDirectory() as tmp:
+                tmp = Path(tmp).resolve()
+                home = tmp / "home"
+                home.mkdir()
+                scan_root = (
+                    tmp / "elsewhere" / "code" if placement in ("external", "nested-external") else home / "code"
+                )
+                scan_root.mkdir(parents=True)
+                target = scan_root
+                if placement == "ancestor":
+                    scan_root = scan_root / "protected"
+                    scan_root.mkdir()
+                scan_roots = [scan_root]
+                if placement == "nested-external":
+                    scan_roots.insert(0, scan_root.parent)
 
-            decision, rm_calls = self._probe(str(scan_root), tmp=tmp, home=home, scan_roots=[scan_root])
+                decision, rm_calls = self._probe(str(target), tmp=tmp, home=home, scan_roots=scan_roots)
 
-            assert decision == "refuse"
-            assert rm_calls == []
+                assert decision == "refuse"
+                assert rm_calls == []
+
+    def test_removing_checkout_preserves_configured_scan_roots(self):
+        cases = (
+            ("in-home", False),
+            ("in-home", True),
+            ("external", False),
+            ("external", True),
+            ("selected-root", False),
+        )
+        for placement, canonical in cases:
+            with self.subTest(placement=placement, canonical=canonical), tempfile.TemporaryDirectory() as tmp:
+                tmp = Path(tmp).resolve()
+                home = tmp / "home"
+                home.mkdir()
+                scan_root = tmp / "external" if placement == "external" else home / "code"
+                root = scan_root if placement == "selected-root" else scan_root / "main"
+                root.mkdir(parents=True)
+                _run_git(["init", str(root)], home=home)
+                _run_git(["commit", "--allow-empty", "-m", "init"], cwd=root, home=home)
+                if canonical:
+                    _run_git(
+                        ["remote", "add", "origin", f"https://example.invalid/owner/{scan_root.name}.git"],
+                        cwd=root,
+                        home=home,
+                    )
+                bin_dir = tmp / "bin"
+                bin_dir.mkdir()
+                (bin_dir / "tmux").write_text("#!/bin/sh\nexit 1\n")
+                (bin_dir / "tmux").chmod(0o755)
+
+                result = subprocess.run(
+                    [modern_bash(), str(REMOVE_SCRIPT), str(root), "1"],
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                    env={
+                        **os.environ,
+                        "HOME": str(home),
+                        "XDG_CACHE_HOME": str(home / ".cache"),
+                        "PICK_SESSION_SCAN_ROOTS": str(scan_root),
+                        "PATH": f"{bin_dir}:{os.environ['PATH']}",
+                        "TMUX": "",
+                    },
+                )
+
+                assert result.returncode == 0, result.stderr
+                assert scan_root.is_dir(), "configured scan root was removed"
+                if placement == "selected-root":
+                    assert (root / ".git").is_dir(), "selected protected root lost its Git data"
+                else:
+                    assert not root.exists(), "eligible checkout should still be removed"
 
     def test_refuses_path_outside_all_approved_roots(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -260,11 +321,15 @@ class TestWorktreeDeleteBoundaries(unittest.TestCase):
             deployed_dir = home / ".config/tmux/scripts/pickers/session"
             deployed_dir.mkdir(parents=True)
             scan_log = tmp / "scan_roots.log"
+            completed = tmp / "remover-completed"
             deployed_remove_all = deployed_dir / "remove_all_worktrees.sh"
             deployed_remove_all.write_text(
                 "#!/usr/bin/env bash\n"
                 f"printf '%s\\n' \"$PICK_SESSION_SCAN_ROOTS\" >> {shlex.quote(str(scan_log))}\n"
-                f'exec /bin/bash {shlex.quote(str(REMOVE_SCRIPT))} "$@"\n'
+                f'/bin/bash {shlex.quote(str(REMOVE_SCRIPT))} "$@"\n'
+                "status=$?\n"
+                f'printf "%s" "$status" > {shlex.quote(str(completed))}\n'
+                'exit "$status"\n'
             )
             deployed_remove_all.chmod(0o755)
 
@@ -299,7 +364,7 @@ class TestWorktreeDeleteBoundaries(unittest.TestCase):
             scan_roots_raw = f"  {scan_root.parent},{scan_root},  ~/scratch  "
 
             result = subprocess.run(
-                [modern_bash(), str(ACTION_SCRIPT), str(selection)],
+                [modern_bash(), str(ACTION_SCRIPT), "--force", str(selection)],
                 capture_output=True,
                 text=True,
                 env={
@@ -320,14 +385,8 @@ class TestWorktreeDeleteBoundaries(unittest.TestCase):
             assert forwarded[-1] == scan_roots_raw
             assert not root.exists()
             assert not linked.exists()
-            # Async nohup removers can still hold ~/.cache/tmux open briefly; clear it
-            # before TemporaryDirectory cleanup so parallel runs don't flake on ENOTEMPTY.
-            cache_dir = home / ".cache"
-            assert _wait_for(
-                lambda: not any(cache_dir.rglob("*.lock")) if cache_dir.exists() else True,
-                timeout=5.0,
-            )
-            shutil.rmtree(cache_dir, ignore_errors=True)
+            assert _wait_for(completed.exists), "background remover must finish before fixture cleanup"
+            assert completed.read_text() == "0"
 
     def test_outside_git_worktree_is_refused_but_home_worktree_deleted(self):
         """End-to-end on the real script: outside worktree survives.
@@ -362,7 +421,7 @@ class TestWorktreeDeleteBoundaries(unittest.TestCase):
             tmux.chmod(0o755)
 
             result = subprocess.run(
-                [modern_bash(), str(REMOVE_SCRIPT), str(root)],
+                [modern_bash(), str(REMOVE_SCRIPT), str(root), "1"],
                 capture_output=True,
                 text=True,
                 env={

@@ -2,7 +2,7 @@
 # Toggle collapse state for a parent under the cursor, or globally.
 # Wired to `alt-z` (cursor toggle) and `alt-Z` (global toggle) in the picker.
 #
-# Args: <verb> <scope_file> <items_cmd>
+# Args: <verb> <scope_file> <items_cmd> <matches_file>
 #   verb: "toggle" or "global"
 #
 set -euo pipefail
@@ -10,6 +10,7 @@ set -euo pipefail
 verb="${1:-}"
 scope_file="${2:-}"
 items_cmd="${3:-}"
+rendered_tmp="${4:-}"
 
 if [ -z "$verb" ] || [ -z "$scope_file" ] || [ -z "$items_cmd" ]; then
   exit 0
@@ -23,19 +24,7 @@ mkdir -p "$cache_dir" 2> /dev/null || true
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 collapse_py="$script_dir/gh_picker_collapse.py"
 
-rendered_tmp=""
-cleanup() {
-  [ -z "$rendered_tmp" ] || rm -f "$rendered_tmp" 2> /dev/null || true
-}
-trap cleanup EXIT
-
-# Snapshot the post-filter+sort TSV once so cursor/global toggles both work off
-# the same view. Re-running --cache-only twice would race against an in-flight
-# bg fetch updating the cache mid-snapshot.
-rendered_tmp="$(mktemp -t gh_picker_collapse_view.XXXXXX 2> /dev/null || true)"
-if [ -n "$rendered_tmp" ]; then
-  GH_PICKER_SCOPE="$scope" "$items_cmd" --cache-only > "$rendered_tmp" 2> /dev/null || true
-fi
+[ -f "$rendered_tmp" ] || exit 0
 
 case "$verb" in
   toggle)

@@ -105,53 +105,80 @@ fi
 
 failed=()
 
-# Leaves the PR branch exactly as fetched and returns to the starting branch.
-abandon_pr() {
-  git reset --hard -q HEAD
-  git checkout -q - || true
-  failed+=("$1")
-}
-
 for pr in "${pr_numbers[@]}"; do
   echo "Processing PR #$pr"
 
-  if ! branch=$(_safe_exec_cmd gh pr view "$pr" --json headRefName -q .headRefName); then
+  if ! head_info=$(_safe_exec_cmd gh pr view "$pr" \
+    --json headRefName,headRefOid,headRepository,headRepositoryOwner,url \
+    --jq '[.headRefName, .headRefOid, .headRepository.name, .headRepositoryOwner.login, .url] | @tsv'); then
     failed+=("$pr")
     continue
   fi
-
-  if ! _safe_exec_cmd git fetch origin "$branch"; then
+  IFS=$'\t' read -r branch head_sha head_repo head_owner pr_url <<< "$head_info"
+  if ! git check-ref-format "refs/heads/$branch" > /dev/null 2>&1 \
+    || [[ ! "$head_sha" =~ ^[0-9a-f]{40,64}$ ]] \
+    || [[ ! "$head_repo" =~ ^[A-Za-z0-9_.-]+$ ]] \
+    || [[ ! "$head_owner" =~ ^[A-Za-z0-9_.-]+$ ]] \
+    || [[ ! "$pr_url" =~ ^https://([A-Za-z0-9.-]+)/ ]]; then
+    echo "Unable to resolve the head repository for PR #$pr" >&2
     failed+=("$pr")
     continue
   fi
-
-  if ! _safe_exec_cmd git checkout "$branch"; then
+  pr_host="${BASH_REMATCH[1]}"
+  protocol="$(gh config get git_protocol --host "$pr_host" 2> /dev/null || true)"
+  if [ "$protocol" = "ssh" ]; then
+    head_url="git@${pr_host}:${head_owner}/${head_repo}.git"
+  else
+    head_url="https://${pr_host}/${head_owner}/${head_repo}.git"
+  fi
+  if ! _safe_exec_cmd git fetch --no-tags "$head_url" "refs/heads/$branch"; then
     failed+=("$pr")
     continue
   fi
-
-  if ! _safe_exec_cmd git apply --index "$patch_file"; then
+  if [ "$(git rev-parse FETCH_HEAD)" != "$head_sha" ]; then
+    echo "PR #$pr changed while resolving its head; skipping" >&2
+    failed+=("$pr")
+    continue
+  fi
+  checkout_parent="$(mktemp -d "${TMPDIR:-/tmp}/add-patch-pr-${pr}.XXXXXX")"
+  checkout_path="$checkout_parent/worktree"
+  if ! _safe_exec_cmd git worktree add --detach "$checkout_path" "$head_sha"; then
+    rmdir "$checkout_parent" 2> /dev/null || true
+    failed+=("$pr")
+    continue
+  fi
+  if ! _safe_exec_cmd git -C "$checkout_path" apply --index "$patch_file"; then
     echo "Patch failed on PR #$pr, skipping" >&2
-    abandon_pr "$pr"
-    continue
-  fi
-
-  if ! _safe_exec_cmd git commit -m "$commit_msg"; then
-    abandon_pr "$pr"
-    continue
-  fi
-
-  if ! _safe_exec_cmd git push; then
-    echo "Push failed on PR #$pr; the commit stays on local branch $branch" >&2
-    git checkout -q - || true
+    git worktree remove --force "$checkout_path"
+    rmdir "$checkout_parent"
     failed+=("$pr")
     continue
   fi
-
-  _safe_exec_cmd git checkout -
+  if ! _safe_exec_cmd git -C "$checkout_path" commit -m "$commit_msg"; then
+    git worktree remove --force "$checkout_path"
+    rmdir "$checkout_parent"
+    failed+=("$pr")
+    continue
+  fi
+  if ! _safe_exec_cmd git -C "$checkout_path" push "$head_url" "HEAD:refs/heads/$branch"; then
+    recovery_branch="patch-pr-${pr}-${checkout_parent##*/}"
+    if git branch "$recovery_branch" "$(git -C "$checkout_path" rev-parse HEAD)"; then
+      echo "Push failed on PR #$pr; the commit stays on local branch $recovery_branch" >&2
+      git worktree remove "$checkout_path"
+      rmdir "$checkout_parent"
+    else
+      echo "Push failed on PR #$pr; recovery checkout: $checkout_path" >&2
+    fi
+    failed+=("$pr")
+    continue
+  fi
+  git worktree remove "$checkout_path"
+  rmdir "$checkout_parent"
   echo "Finished processing PR #$pr"
 
-  read -p "Press enter to continue..."
+  if [ -t 0 ]; then
+    read -r -p "Press enter to continue..."
+  fi
 done
 
 if [ ${#failed[@]} -gt 0 ]; then

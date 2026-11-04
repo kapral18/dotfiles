@@ -14,7 +14,7 @@ See [AI assistants](../topics/ai-assistants/index.md) and [Instructions](../topi
 | Skills                 | [`home/exact_dot_agents/exact_skills/`](../../home/exact_dot_agents/exact_skills/)             |
 | Shared reviewer prompt | [`home/.chezmoitemplates/reviewer-prompt.md`](../../home/.chezmoitemplates/reviewer-prompt.md) |
 
-`~/CLAUDE.md` and `~/.claude/CLAUDE.md` both link to `~/AGENTS.md`; Claude Code loads it once. The repo's own `CLAUDE.md` links to the repo `AGENTS.md`. Pi, OMP, Codex, and OpenCode read `~/AGENTS.md` through `symlink_AGENTS.md` entries in their config dirs. There are no hooks.
+`~/CLAUDE.md` and `~/.claude/CLAUDE.md` both link to `~/AGENTS.md`; Claude Code loads it once. The repo's own `CLAUDE.md` links to the repo `AGENTS.md`. Pi, OMP, Codex, and OpenCode read `~/AGENTS.md` through `symlink_AGENTS.md` entries in their config dirs.
 
 ## Harness configs
 
@@ -46,13 +46,13 @@ Canonical MCP registry plus generator/injectors. See [MCP servers](../topics/ai-
 
 On-demand CLIs only. See [Memory and handoffs](../topics/ai-assistants/memory-and-handoffs.md).
 
-| Component                       | Source path                                                                                                                |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| Knowledge base (`,ai-kb`)       | [`home/exact_bin/executable_,ai-kb`](../../home/exact_bin/executable_,ai-kb), [`scripts/ai_kb.py`](../../scripts/ai_kb.py) |
-| Session handoffs (`,handoff`)   | [`home/exact_bin/executable_,handoff`](../../home/exact_bin/executable_,handoff)                                           |
-| Behavior maps (`,behavior-map`) | [`home/exact_lib/exact_,behavior-map/main.py`](../../home/exact_lib/exact_,behavior-map/main.py)                           |
-| Embedding service               | [`scripts/embed.py`](../../scripts/embed.py), [`scripts/embed_runner.py`](../../scripts/embed_runner.py)                   |
-| Vector retrieval                | [`scripts/vec_runner.py`](../../scripts/vec_runner.py)                                                                     |
+| Component                          | Source path                                                                                                                |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Knowledge base (`,ai-kb`)          | [`home/exact_bin/executable_,ai-kb`](../../home/exact_bin/executable_,ai-kb), [`scripts/ai_kb.py`](../../scripts/ai_kb.py) |
+| Session handoffs (`,task handoff`) | [`home/exact_lib/exact_,task/main.py`](../../home/exact_lib/exact_,task/main.py)                                           |
+| Behavior maps (`,behavior-map`)    | [`home/exact_lib/exact_,behavior-map/main.py`](../../home/exact_lib/exact_,behavior-map/main.py)                           |
+| Embedding service                  | [`scripts/embed.py`](../../scripts/embed.py), [`scripts/embed_runner.py`](../../scripts/embed_runner.py)                   |
+| Vector retrieval                   | [`scripts/vec_runner.py`](../../scripts/vec_runner.py)                                                                     |
 
 ## Local inference
 

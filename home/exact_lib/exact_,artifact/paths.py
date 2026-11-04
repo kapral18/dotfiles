@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import contextlib
+import fcntl
 import hashlib
 import json
 import os
 import re
 import subprocess
+import threading
 import time
 from pathlib import Path
 from typing import Any
@@ -12,11 +15,32 @@ from typing import Any
 APP = "agent-artifacts"
 HOST = "127.0.0.1"
 NAME_RE = re.compile(r"[^A-Za-z0-9._-]+")
+_LIFECYCLE_MUTEX = threading.RLock()
+_lifecycle_locked = False
 
 
 def cache_root() -> Path:
     base = os.environ.get("XDG_CACHE_HOME")
     return Path(base).expanduser() / APP if base else Path.home() / ".cache" / APP
+
+
+@contextlib.contextmanager
+def lifecycle_lock():
+    global _lifecycle_locked
+    with _LIFECYCLE_MUTEX:
+        if _lifecycle_locked:
+            yield
+            return
+        root = cache_root()
+        root.parent.mkdir(parents=True, exist_ok=True)
+        with root.with_name(f".{root.name}.lifecycle.lock").open("a") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            _lifecycle_locked = True
+            try:
+                yield
+            finally:
+                _lifecycle_locked = False
+                fcntl.flock(lock, fcntl.LOCK_UN)
 
 
 def run_text(argv: list[str], cwd: Path | None = None) -> str | None:

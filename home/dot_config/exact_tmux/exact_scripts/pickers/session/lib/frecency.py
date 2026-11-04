@@ -15,8 +15,12 @@ buckets closely enough for ordering purposes.
 """
 
 import os
+import sys
 import time
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "lib"))
+from resource_lock import resource_lock  # noqa: E402
 
 _HOUR = 3600.0
 _DAY = 86400.0
@@ -102,15 +106,16 @@ def add(raw_path, weight=1.0):
     if not rp:
         return
     path = store_path()
-    rows = _read_rows(path)
-    now = time.time()
-    rank, _last = rows.get(rp, (0.0, now))
-    rows[rp] = (rank + weight, now)
-    pruned = {}
-    for p, val in rows.items():
-        if p == rp or os.path.isdir(p):
-            pruned[p] = val
-    _write_rows(path, pruned)
+    with resource_lock(path):
+        rows = _read_rows(path)
+        now = time.time()
+        rank, _last = rows.get(rp, (0.0, now))
+        rows[rp] = (rank + weight, now)
+        pruned = {}
+        for p, val in rows.items():
+            if p == rp or os.path.isdir(p):
+                pruned[p] = val
+        _write_rows(path, pruned)
 
 
 def scores():

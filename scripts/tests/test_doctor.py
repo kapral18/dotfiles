@@ -99,6 +99,13 @@ def _ledger_artifact(
 
 
 class TestDoctor(unittest.TestCase):
+    def test_missing_pass_executable_is_not_satisfied_by_the_success_reporter(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            result = _run_doctor(Path(tmp), "--quiet")
+
+            self.assertIn("pass not installed", result.stdout)
+            self.assertNotIn("password store missing", result.stdout)
+
     def test_missing_config_is_reported_when_its_consumer_is_installed(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)

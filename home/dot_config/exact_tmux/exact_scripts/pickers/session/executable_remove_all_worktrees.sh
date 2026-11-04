@@ -10,6 +10,7 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 
 root_wt_dir="${1:-}"
+force_remove="${2:-0}"
 if [ -z "$root_wt_dir" ]; then
   exit 0
 fi
@@ -58,8 +59,8 @@ repo_name_from_remote() {
 
 # Deletion allowlist: only remove a resolved target that is a STRICT descendant
 # of an approved root (HOME plus each PICK_SESSION_SCAN_ROOTS entry). Refuse the
-# roots themselves, "", "/", paths outside every root, and symlinks that resolve
-# outside.
+# roots and ancestors containing them before allowing any descendant, plus "",
+# "/", paths outside every root, and symlinks that resolve outside.
 approved_roots=()
 add_approved_root() {
   local r="$1"
@@ -100,6 +101,11 @@ target_is_approved_deletion() {
   [ "${#approved_roots[@]}" -gt 0 ] || return 1
   local r
   for r in "${approved_roots[@]}"; do
+    case "$r" in
+      "$target" | "$target"/*) return 1 ;;
+    esac
+  done
+  for r in "${approved_roots[@]}"; do
     [ -n "$r" ] || continue
     case "$target" in
       "$r"/*) return 0 ;;
@@ -117,21 +123,46 @@ safe_rm_rf() {
   rm -rf "$target"
 }
 
+safe_rmdir() {
+  local target
+  target="$(realpath_or_self "$1")"
+  target_is_approved_deletion "$target" || return 1
+  rmdir "$target"
+}
+
 cd "$root_wt_dir" 2> /dev/null || exit 0
 root="$(pwd -P)"
 
 if ! git -C "$root" rev-parse --is-inside-work-tree > /dev/null 2>&1; then
   exit 0
 fi
+target_is_approved_deletion "$root" || exit 0
 
 current_session="${PICK_SESSION_CURRENT_SESSION:-}"
 if [ -z "$current_session" ] && [ -n "${TMUX:-}" ] && command -v tmux > /dev/null 2>&1; then
   current_session="$(tmux display-message -p '#S' 2> /dev/null || true)"
 fi
 
-mapfile -t worktrees < <(git -C "$root" worktree list --porcelain 2> /dev/null | awk '/^worktree /{print $2}' | sed '/^$/d' || true)
+mapfile -t worktrees < <(git -C "$root" worktree list --porcelain 2> /dev/null | sed -n 's/^worktree //p' | sed '/^$/d' || true)
 if [ ${#worktrees[@]} -eq 0 ]; then
   exit 0
+fi
+
+[ "$(realpath_or_self "${worktrees[0]}")" = "$root" ] || exit 3
+if [ "$force_remove" != "1" ]; then
+  python3 "$HOME/lib/shared/worktree_nested_git.py" "$root" --all-worktrees || exit 3
+  checkout_heads=()
+  for wt in "${worktrees[@]}"; do
+    checkout_head="$(git -C "$wt" rev-parse --verify HEAD 2> /dev/null)" || exit 3
+    checkout_heads+=("$checkout_head")
+    target_is_approved_deletion "$(realpath_or_self "$wt")" || continue
+    top="$(git -C "$wt" rev-parse --show-toplevel 2> /dev/null)" || exit 3
+    [ "$(realpath_or_self "$wt")" = "$(realpath_or_self "$top")" ] || exit 3
+    dirty="$(git -C "$wt" status --porcelain -unormal 2> /dev/null)" || exit 3
+    [ -z "$dirty" ] || exit 3
+  done
+  unsafe_commits="$(git -C "$root" rev-list --all "${checkout_heads[@]}" --not --remotes 2> /dev/null)" || exit 3
+  [ -z "$unsafe_commits" ] || exit 3
 fi
 
 repo_name="$(repo_name_from_remote "$root" 2> /dev/null || true)"
@@ -139,17 +170,8 @@ wrapper="$(dirname "$root")"
 wrapper="$(realpath_or_self "$wrapper")"
 
 should_nuke_wrapper=0
-if [ -n "$repo_name" ] && [ "$(basename "$wrapper")" = "$repo_name" ]; then
-  case "$wrapper" in
-    "" | "/") should_nuke_wrapper=0 ;;
-    *)
-      if [ -n "${HOME:-}" ] && [ "$wrapper" = "$(realpath_or_self "$HOME")" ]; then
-        should_nuke_wrapper=0
-      else
-        should_nuke_wrapper=1
-      fi
-      ;;
-  esac
+if [ -n "$repo_name" ] && [ "$(basename "$wrapper")" = "$repo_name" ] && target_is_approved_deletion "$wrapper"; then
+  should_nuke_wrapper=1
 fi
 
 nuke_dir="$root"
@@ -161,23 +183,6 @@ notify_tmux "pick_session: removing repo at $nuke_dir"
 
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux"
 pending_file="${cache_dir}/pick_session_pending.tsv"
-pending_lock_dir="${pending_file}.lock"
-
-# Serialize read-modify-write on `pending_file`. Two `remove_all_worktrees.sh`
-# instances can run in parallel (one per selected root), and they all touch
-# the same shared file. The picker's `action_remove_worktrees.sh` uses the
-# same lock directory.
-acquire_pending_lock() {
-  local waited=0
-  while ! mkdir "$pending_lock_dir" 2> /dev/null; do
-    sleep 0.02
-    waited="$((waited + 20))"
-    [ "$waited" -ge 1000 ] && return 1
-  done
-  return 0
-}
-release_pending_lock() { rmdir "$pending_lock_dir" 2> /dev/null || true; }
-trap 'release_pending_lock' EXIT
 
 dir_is_effectively_empty_ignoring_ds_store() {
   local dir="$1"
@@ -200,22 +205,7 @@ remove_selected_worktrees() {
 }
 
 cleanup_pending_entries() {
-  [ -f "$pending_file" ] || return 0
-  acquire_pending_lock || return 0
-  local tmp
-  tmp="$(mktemp -t pick_session_pending.XXXXXX)"
-  cp "$pending_file" "$tmp"
-  local p rp
-  for p in "$@"; do
-    [ -n "$p" ] || continue
-    rp="$(realpath_or_self "$p")"
-    if [ ! -e "$rp" ]; then
-      grep -v -F $'WT\t'"$rp" "$tmp" > "${tmp}.2" || true
-      mv -f "${tmp}.2" "$tmp"
-    fi
-  done
-  mv -f "$tmp" "$pending_file"
-  release_pending_lock
+  python3 "$script_dir/../lib/resource_lock.py" pending-prune "$pending_file" "$@"
 }
 
 kill_sessions_under_prefixes() {
@@ -301,11 +291,10 @@ for wt in "${worktrees[@]}"; do
 done
 
 if [ "$should_nuke_wrapper" -eq 1 ]; then
-  # Preserve any non-worktree files/dirs that live anywhere under the wrapper,
-  # then nuke the wrapper in one shot. `.DS_Store` is ignored.
   ts="$(date +%Y%m%d-%H%M%S)"
   bag_root="$(dirname "$wrapper")/.bag/pickers/session/$(basename "$wrapper")/$ts"
   bag_status="$(mktemp -t pick_session_bag_status.XXXXXX)"
+  trap 'rm -f "$bag_status" 2> /dev/null || true' EXIT
 
   mapfile -t wt_rels < <(
     printf '%s\n' "${worktrees[@]}" \
@@ -331,24 +320,22 @@ if [ "$should_nuke_wrapper" -eq 1 ]; then
   if grep -q '^blocked_by_unselected_git_root=1$' "$bag_status" 2> /dev/null; then
     blocked_by_unselected_git_root=1
   fi
-  rm -f "$bag_status" 2> /dev/null || true
 
   if [ "$blocked_by_unselected_git_root" -eq 1 ]; then
     notify_tmux "pick_session: kept non-worktree content in $wrapper because it contains another git repo"
   elif [ "$moved_count" -gt 0 ]; then
     notify_tmux "pick_session: preserved $moved_count non-worktree item(s) to $bag_root"
   else
-    # If the preservation step created an empty bag dir (e.g. due to a failed
-    # move), remove it so we don't leave noisy empty timestamps behind.
+    # Another removal can share this timestamp; zero moves do not imply ownership.
     if [ -d "$bag_root" ]; then
-      safe_rm_rf "$bag_root" || true
+      safe_rmdir "$bag_root" 2> /dev/null || true
       cur="$(dirname "$bag_root")"
       stop="$(dirname "$wrapper")/.bag"
       while [ -n "$cur" ] && [ "$cur" != "/" ] && [ "$cur" != "$stop" ]; do
         if ! dir_is_effectively_empty_ignoring_ds_store "$cur"; then
           break
         fi
-        rmdir "$cur" 2> /dev/null || break
+        safe_rmdir "$cur" 2> /dev/null || break
         cur="$(dirname "$cur")"
       done
     fi
@@ -359,23 +346,22 @@ if [ "$should_nuke_wrapper" -eq 1 ]; then
   # If nothing needed preserving, don't leave empty bag dirs. `.DS_Store` does
   # not count as content.
   if [ -d "$bag_root" ] && dir_is_effectively_empty_ignoring_ds_store "$bag_root"; then
-    rmdir "$bag_root" 2> /dev/null || true
+    safe_rmdir "$bag_root" 2> /dev/null || true
     cur="$(dirname "$bag_root")"
     stop="$(dirname "$wrapper")/.bag"
     while [ -n "$cur" ] && [ "$cur" != "/" ] && [ "$cur" != "$stop" ]; do
       if ! dir_is_effectively_empty_ignoring_ds_store "$cur"; then
         break
       fi
-      rmdir "$cur" 2> /dev/null || break
+      safe_rmdir "$cur" 2> /dev/null || break
       cur="$(dirname "$cur")"
     done
   fi
 
-  if dir_is_effectively_empty_ignoring_ds_store "$wrapper"; then
-    safe_rm_rf "$wrapper" || exit 0
+  if dir_is_effectively_empty_ignoring_ds_store "$wrapper" && safe_rmdir "$wrapper"; then
     notify_tmux "pick_session: removed $wrapper"
   else
-    notify_tmux "pick_session: kept $wrapper because it still contains unselected content"
+    notify_tmux "pick_session: kept $wrapper"
   fi
   cleanup_pending_entries "${pending_cleanup_paths[@]}"
   if command -v tmux > /dev/null 2>&1; then
@@ -393,17 +379,9 @@ notify_tmux "pick_session: removed $nuke_dir"
 # deleting all worktrees, delete it too.
 if [ "$should_nuke_wrapper" -ne 1 ] && [ -d "$wrapper" ]; then
   wrapper_rp="$(realpath_or_self "$wrapper")"
-  case "$wrapper_rp" in
-    "" | "/") ;;
-    *)
-      if [ -n "${HOME:-}" ] && [ "$wrapper_rp" = "$(realpath_or_self "$HOME")" ]; then
-        :
-      elif dir_is_effectively_empty_ignoring_ds_store "$wrapper_rp"; then
-        rmdir "$wrapper_rp" 2> /dev/null || safe_rm_rf "$wrapper_rp" || true
-        notify_tmux "pick_session: removed empty wrapper $wrapper_rp"
-      fi
-      ;;
-  esac
+  if target_is_approved_deletion "$wrapper_rp" && dir_is_effectively_empty_ignoring_ds_store "$wrapper_rp" && safe_rmdir "$wrapper_rp"; then
+    notify_tmux "pick_session: removed empty wrapper $wrapper_rp"
+  fi
 fi
 
 cleanup_pending_entries "${pending_cleanup_paths[@]}"

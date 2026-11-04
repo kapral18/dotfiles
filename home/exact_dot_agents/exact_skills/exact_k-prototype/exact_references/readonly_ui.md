@@ -76,4 +76,4 @@ Do not leave variant components or the switcher lying around.
 - **Variants that differ only in colour or copy** — a tweak, not a prototype. Real variants disagree about structure.
 - **Sharing too much between variants** — a shared `<Header>` is fine; a shared `<Layout>` defeats the point.
 - **Wiring variants to real mutations** — read-only prototypes are fine; point mutations at a stub.
-- **Retaining prototype code without absorption checks** — apply maintained-code quality and material behavioral coverage before retaining the winner.
+- **Retaining prototype code without absorption checks** — apply maintained-code quality and `~/AGENTS.md` §3's test-value rule before retaining the winner.

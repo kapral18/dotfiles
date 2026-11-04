@@ -37,11 +37,11 @@ gh_row_loader_notify() {
 
 gh_row_loader_notify_file() {
   local frame_file="$1"
-  local port reload_cmd cmd_file
+  local sock reload_cmd cmd_file
   [ -s "$frame_file" ] || return 0
-  port="${FZF_PORT:-}"
-  [ -n "$port" ] || port="$(cat "${_gh_row_loader_cache_dir}/gh_picker_port" 2> /dev/null || true)"
-  [ -n "$port" ] || return 0
+  sock="${FZF_SOCK:-}"
+  [ -n "$sock" ] || sock="$(cat "${_gh_row_loader_cache_dir}/gh_picker_sock" 2> /dev/null || true)"
+  [ -n "$sock" ] || return 0
   cmd_file="$(mktemp "${_gh_row_loader_cache_dir}/gh_row_loader_cmd_XXXXXX" 2> /dev/null || true)"
   [ -n "$cmd_file" ] || return 0
   {
@@ -51,7 +51,7 @@ gh_row_loader_notify_file() {
   } > "$cmd_file"
   chmod +x "$cmd_file" 2> /dev/null || true
   reload_cmd="$(printf '%q' "$cmd_file")"
-  curl -s --max-time 1 -XPOST "http://127.0.0.1:${port}" -d "reload-sync(${reload_cmd})+track" > /dev/null 2>&1 &
+  curl -s --max-time 1 --unix-socket "$sock" -XPOST http://localhost -d "reload-sync(${reload_cmd})+track" > /dev/null 2>&1 &
   _gh_row_loader_post_pids+=("$!")
   (
     sleep 5
@@ -61,11 +61,11 @@ gh_row_loader_notify_file() {
 
 gh_row_loader_post_action() {
   local action="$1"
-  local port
-  port="${FZF_PORT:-}"
-  [ -n "$port" ] || port="$(cat "${_gh_row_loader_cache_dir}/gh_picker_port" 2> /dev/null || true)"
-  [ -n "$port" ] || return 0
-  curl -s --max-time 1 -XPOST "http://127.0.0.1:${port}" -d "$action" > /dev/null 2>&1 || true
+  local sock
+  sock="${FZF_SOCK:-}"
+  [ -n "$sock" ] || sock="$(cat "${_gh_row_loader_cache_dir}/gh_picker_sock" 2> /dev/null || true)"
+  [ -n "$sock" ] || return 0
+  curl -s --max-time 1 --unix-socket "$sock" -XPOST http://localhost -d "$action" > /dev/null 2>&1 || true
 }
 
 gh_row_loader_global_start() {

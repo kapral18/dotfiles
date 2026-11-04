@@ -47,6 +47,10 @@ The remaining files have syntax support or native language tooling, but no verif
 | Crush `crushrc`                                                                                                                                                  | Shell-like configuration DSL, not a JSON config                                                                      |
 | KDL and XML                                                                                                                                                      | Existing syntax tooling; XML's LemMinX can use a declared schema, but no additional repo-specific schema is assigned |
 
+Compose buffers (`yaml.docker-compose`) start `docker_compose_language_service` with the compose file's directory through Neovim's native root callback. Ordinary YAML files remain outside that server's filetypes.
+
+Helm resource-property lookups cache Kubernetes schemas by their full versioned URL. Switching charts or changing `kubeVersion` selects a separate schema. Any nested schema references keep the version actually fetched, including the default-version fallback, even if the active buffer changes before the request completes.
+
 ## LSP code actions
 
 `<leader>ca` and `<leader>cA` show code actions with `fzf-lua`, not Neovim's default `vim.ui.select`.

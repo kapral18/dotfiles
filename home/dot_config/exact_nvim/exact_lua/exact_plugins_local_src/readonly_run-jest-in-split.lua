@@ -23,28 +23,43 @@ local escape_shell_arg = fs_util.escape_shell_arg
 local script_runner_builders = {
   yarn = function(script_name, file_path, root_dir)
     if root_dir then
-      return string.format("yarn --cwd %s %s %s", escape_shell_arg(root_dir), script_name, file_path)
+      return string.format("yarn --cwd %s %s %s", escape_shell_arg(root_dir), script_name, escape_shell_arg(file_path))
     end
-    return string.format("yarn %s %s", script_name, file_path)
+    return string.format("yarn %s %s", script_name, escape_shell_arg(file_path))
   end,
   npm = function(script_name, file_path, root_dir)
     if root_dir then
-      return string.format("npm --prefix %s run %s -- %s", escape_shell_arg(root_dir), script_name, file_path)
+      return string.format(
+        "npm --prefix %s run %s -- %s",
+        escape_shell_arg(root_dir),
+        script_name,
+        escape_shell_arg(file_path)
+      )
     end
-    return string.format("npm run %s -- %s", script_name, file_path)
+    return string.format("npm run %s -- %s", script_name, escape_shell_arg(file_path))
   end,
   -- pnpm forwards a literal "--" to the script (kibana's scripts/jest then treats every later flag as a path), so no separator here.
   pnpm = function(script_name, file_path, root_dir)
     if root_dir then
-      return string.format("pnpm --dir %s run %s %s", escape_shell_arg(root_dir), script_name, file_path)
+      return string.format(
+        "pnpm --dir %s run %s %s",
+        escape_shell_arg(root_dir),
+        script_name,
+        escape_shell_arg(file_path)
+      )
     end
-    return string.format("pnpm run %s %s", script_name, file_path)
+    return string.format("pnpm run %s %s", script_name, escape_shell_arg(file_path))
   end,
   bun = function(script_name, file_path, root_dir)
     if root_dir then
-      return string.format("bun --cwd %s run %s -- %s", escape_shell_arg(root_dir), script_name, file_path)
+      return string.format(
+        "bun --cwd %s run %s -- %s",
+        escape_shell_arg(root_dir),
+        script_name,
+        escape_shell_arg(file_path)
+      )
     end
-    return string.format("bun run %s -- %s", script_name, file_path)
+    return string.format("bun run %s -- %s", script_name, escape_shell_arg(file_path))
   end,
 }
 
@@ -411,8 +426,7 @@ local function build_script_runner_command(
   explicit_config
 )
   local builder = script_runner_builders[script_runner]
-  local rel_file = rel_to_base(file_path:gsub("^'(.*)'$", "%1"), root_dir or project_root)
-  local rel_escaped = escape_shell_arg(rel_file)
+  local rel_file = rel_to_base(file_path, root_dir or project_root)
 
   local extra = arg or ""
   if explicit_config and not extra:match("%-%-config") then
@@ -422,9 +436,9 @@ local function build_script_runner_command(
 
   local base
   if builder then
-    base = builder(script_name, rel_escaped, root_dir)
+    base = builder(script_name, rel_file, root_dir)
   else
-    base = string.format("%s run %s -- %s", script_runner, script_name, rel_escaped)
+    base = string.format("%s run %s -- %s", script_runner, script_name, escape_shell_arg(rel_file))
   end
 
   return append_optional_arg(base, extra)
@@ -463,15 +477,7 @@ rel_to_base = function(path, base_dir)
   return abs
 end
 
-local function build_manual_jest_command(
-  package_root,
-  project_root,
-  test_path,
-  file_path_arg,
-  arg,
-  debug_mode,
-  explicit_config
-)
+local function build_manual_jest_command(package_root, project_root, test_path, arg, debug_mode, explicit_config)
   local jest_path = find_jest_binary({ package_root, project_root })
   if not jest_path then
     vim.notify("Jest binary not found in node_modules", vim.log.levels.ERROR)
@@ -483,7 +489,7 @@ local function build_manual_jest_command(
     table.insert(tokens, "--inspect-brk")
   end
 
-  table.insert(tokens, escape_shell_arg(rel_to_base(jest_path, project_root)))
+  table.insert(tokens, escape_shell_arg(rel_to_base(jest_path, package_root or project_root)))
 
   if debug_mode then
     table.insert(tokens, "--runInBand")
@@ -492,37 +498,34 @@ local function build_manual_jest_command(
   local config_path = explicit_config or find_nearest_jest_config(test_path, package_root or project_root)
   if config_path then
     table.insert(tokens, "--config")
-    table.insert(tokens, escape_shell_arg(rel_to_base(config_path, project_root)))
+    table.insert(tokens, escape_shell_arg(rel_to_base(config_path, package_root or project_root)))
   end
 
-  local raw_path = file_path_arg:match("^'(.*)'$") or file_path_arg
-  local rel_file = rel_to_base(raw_path, project_root)
-  local rel_escaped = escape_shell_arg(rel_file)
-  table.insert(tokens, rel_escaped)
+  table.insert(tokens, escape_shell_arg(rel_to_base(test_path, package_root or project_root)))
 
   local cmd = table.concat(tokens, " ")
   return append_optional_arg(cmd, arg)
 end
 
-local function build_debug_command(context, project_root, test_path, escaped_path, arg, explicit_config)
+local function build_debug_command(context, project_root, test_path, arg, explicit_config)
+  local package_root = context and context.package_root or nil
   if context and context.script_command then
     local injected = inject_inspect_into_node_script(context.script_command)
     if injected then
-      local raw_path = escaped_path:match("^'(.*)'$") or escaped_path
-      local base = string.format("%s %s", injected, escape_shell_arg(rel_to_base(raw_path, project_root)))
+      local base =
+        string.format("%s %s", injected, escape_shell_arg(rel_to_base(test_path, package_root or project_root)))
       local extra = arg or ""
       if explicit_config and not extra:match("%-%-config") then
-        extra = extra .. " --config " .. escape_shell_arg(rel_to_base(explicit_config, project_root))
+        extra = extra .. " --config " .. escape_shell_arg(rel_to_base(explicit_config, package_root or project_root))
       end
       return append_optional_arg(base, extra)
     end
   end
 
-  local package_root = context and context.package_root or nil
-  return build_manual_jest_command(package_root, project_root, test_path, escaped_path, arg, true, explicit_config)
+  return build_manual_jest_command(package_root, project_root, test_path, arg, true, explicit_config)
 end
 
-local function build_regular_command(context, project_root, test_path, escaped_path, arg, explicit_config)
+local function build_regular_command(context, project_root, test_path, arg, explicit_config)
   if context then
     local script_name = context.script_name
     local script_runner = context.runner
@@ -531,7 +534,7 @@ local function build_regular_command(context, project_root, test_path, escaped_p
       return build_script_runner_command(
         script_runner,
         script_name,
-        escaped_path,
+        test_path,
         arg,
         context.package_root,
         project_root,
@@ -541,11 +544,11 @@ local function build_regular_command(context, project_root, test_path, escaped_p
   end
 
   local package_root = context and context.package_root or nil
-  return build_manual_jest_command(package_root, project_root, test_path, escaped_path, arg, false, explicit_config)
+  return build_manual_jest_command(package_root, project_root, test_path, arg, false, explicit_config)
 end
 
 local function open_jest_terminal(cmd, cwd)
-  return require("util.terminal").run_in_split(cmd, { cwd = cwd, focus_original = true })
+  return require("util.terminal").run_in_split(cmd, { owner = "jest", cwd = cwd, focus_original = true })
 end
 
 local function escape_jest_regex(str, is_parametrized)
@@ -774,12 +777,11 @@ M.run_jest_cmd = function(arg, debug_mode)
     end
   end
 
-  local escaped_test_path = escape_shell_arg(test_file_path)
   local cmd
   if debug_mode then
-    cmd = build_debug_command(context, root_dir, test_file_path, escaped_test_path, arg, explicit_config)
+    cmd = build_debug_command(context, root_dir, test_file_path, arg, explicit_config)
   else
-    cmd = build_regular_command(context, root_dir, test_file_path, escaped_test_path, arg, explicit_config)
+    cmd = build_regular_command(context, root_dir, test_file_path, arg, explicit_config)
   end
 
   if not cmd then
@@ -790,7 +792,7 @@ M.run_jest_cmd = function(arg, debug_mode)
 end
 
 M.close_terminal_buffer = function()
-  require("util.terminal").close_all_terminals()
+  require("util.terminal").close("jest")
 end
 
 local function show_parametrized_prompt(pattern, update_arg, debug_mode)
@@ -850,7 +852,6 @@ end
 ---@param options? JestRunOptions Options for running Jest tests
 M.run_jest_in_split = function(options)
   options = options or {}
-  M.close_terminal_buffer()
 
   local update_arg = options.update_snapshots and " --updateSnapshot" or ""
   if options.entire_file then

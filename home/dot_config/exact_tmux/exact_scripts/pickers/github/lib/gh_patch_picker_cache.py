@@ -29,12 +29,15 @@ creation and transient per-row GitHub waits.
 from __future__ import annotations
 
 import argparse
-import fcntl
 import json
 import os
 import re
+import sys
 import tempfile
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "lib"))
+from resource_lock import resource_lock  # noqa: E402
 
 RESET_SPACE = "\x1b[0m "
 MARK_DONE = "\x1b[38;5;81m◆\x1b[0m"
@@ -164,33 +167,15 @@ def main() -> int:
     if not args.all and not (args.kind and args.repo and args.num):
         p.error("--kind, --repo, and --num are required unless --all is used")
 
-    restore = read_restore_file(args.save_file)
-    restore_changed = False
     marker = STATE_MARKERS.get(args.state)
 
     cache = Path(args.cache_file)
     if not cache.exists():
         return 0
 
-    # Serialize read-modify-write across parallel batch creators / row loaders so
-    # concurrent marker updates cannot lose each other's patches.
-    lock_path = Path(str(cache) + ".lock")
-    try:
-        lock_fh = open(lock_path, "a+", encoding="utf-8")
-    except OSError:
-        return 0
-    try:
-        fcntl.flock(lock_fh.fileno(), fcntl.LOCK_EX)
-        return _patch_locked(args, cache, restore, restore_changed, marker)
-    finally:
-        try:
-            fcntl.flock(lock_fh.fileno(), fcntl.LOCK_UN)
-        except OSError:
-            pass
-        try:
-            lock_fh.close()
-        except OSError:
-            pass
+    with resource_lock(cache):
+        restore = read_restore_file(args.save_file)
+        return _patch_locked(args, cache, restore, False, marker)
 
 
 def _patch_locked(

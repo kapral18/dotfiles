@@ -5,6 +5,14 @@ let context = {};
 let multiContexts = [];
 let tray = [];
 let feedbackActive = false;
+let sending = false;
+
+const CONTEXT_FIELDS = ["selection", "selector", "text", "note", "url", "title", "artifact_id", "entity_id", "entity_kind", "entity_label", "entity_summary", "entity", "entity_ancestors", "relations", "role", "label", "rect", "ancestors", "source"];
+
+function anchorContext(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  return Object.fromEntries(CONTEXT_FIELDS.filter((field) => Object.hasOwn(raw, field)).map((field) => [field, raw[field]]));
+}
 
 function apiPath(prefix) {
   return prefix + encodeURIComponent(ARTIFACT_NAME);
@@ -108,7 +116,7 @@ function addCurrentToTray() {
     setStatus("Write feedback before adding to the tray.");
     return false;
   }
-  const item = { prompt, ...context };
+  const item = { ...context, prompt };
   if (multiContexts.length) {
     item.targets = multiContexts.slice();
     item.selector = multiContexts[0].selector || "";
@@ -130,11 +138,12 @@ function addCurrentToTray() {
 }
 
 window.addEventListener("message", (event) => {
+  if (event.source !== $("artifact").contentWindow) return;
   if (event.data && event.data.type === "agent-artifact-ready") {
     resetAnchorContext();
     postCaptureState();
   } else if (feedbackActive && event.data && event.data.type === "agent-artifact-multi-context") {
-    multiContexts = Array.isArray(event.data.contexts) ? event.data.contexts : [];
+    multiContexts = Array.isArray(event.data.contexts) ? event.data.contexts.map(anchorContext) : [];
     if (multiContexts.length) {
       $("context").innerHTML = "<strong>Multi-target</strong><span></span>";
       $("context").querySelector("span").textContent = multiContexts.length + " target(s) pinned; one prompt addresses all of them.";
@@ -145,7 +154,7 @@ window.addEventListener("message", (event) => {
       resetAnchorContext();
     }
   } else if (feedbackActive && event.data && event.data.type === "agent-artifact-context") {
-    context = event.data.context || {};
+    context = anchorContext(event.data.context);
     multiContexts = [];
     const [label, detail] = summarizeContext(context);
     $("context").innerHTML = "<strong>" + label + "</strong><span></span>";
@@ -157,25 +166,34 @@ window.addEventListener("message", (event) => {
 });
 
 async function sendFeedbackBatch() {
+  if (sending) return;
   if ($("prompt").value.trim() && !addCurrentToTray()) return;
   if (!tray.length) {
     setStatus("Add at least one feedback item before sending.");
     return;
   }
   const items = tray.slice();
+  sending = true;
+  $("send").disabled = true;
   setStatus("Sending " + items.length + " feedback item(s)...");
-  const response = await fetch(apiPath("/api/feedback/"), {
-    method: "POST",
-    headers: { "content-type": "application/json", "x-artifact-token": ARTIFACT_TOKEN },
-    body: JSON.stringify({ items }),
-  });
-  if (response.ok) {
-    tray = [];
-    renderTray();
-    const result = await response.json();
-    setStatus("Queued batch " + result.batch_id + " with " + result.count + " item(s).");
-  } else {
-    setStatus("Failed to queue feedback batch.");
+  try {
+    const response = await fetch(apiPath("/api/feedback/"), {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-artifact-token": ARTIFACT_TOKEN },
+      body: JSON.stringify({ items }),
+    });
+    if (response.ok) {
+      tray = tray.filter((item) => !items.includes(item));
+      renderTray();
+      setStatus("Queued " + items.length + " feedback item(s).");
+    } else {
+      setStatus("Failed to queue feedback batch. Items remain in the tray.");
+    }
+  } catch (error) {
+    setStatus("Failed to queue feedback batch. Items remain in the tray.");
+  } finally {
+    sending = false;
+    $("send").disabled = false;
   }
 }
 

@@ -54,14 +54,14 @@ export const PROPOSED =
   'an item outside the request\'s scope that fixes no defect in the change\'s impact (§3 steps 1 and 8) under `Proposed:`'
 
 // Where ~/AGENTS.md §3 step 8 puts a live check it does not let the agent offer.
-const UNVERIFIED = 'a claim only a live check could settle under `Open:` with that check as its blocker (§3 step 8)'
+const UNVERIFIED = 'a claim only a live check could settle under `Open:` as §3 step 8 says, after reading and naming the sources that bear on it'
 
 // Each message states what the check found, what to do now, and the ~/AGENTS.md rule it follows, with the limits that rule sets on acting,
 // so the one send-back ends with the work done rather than reworded.
 const MESSAGE =
   'Files changed this turn, and the final message has no `Checked:` list. Run any check §3 steps 3-4 call for that the change still needs, ' +
   'then list one item per Done-when item or changed behavior under `Checked:` with its command and result, or a `file:line`, and each fact\'s verified `[C<n>]`; ' +
-  'put a claim only a live check could settle under `Open:` with that check as its blocker (~/AGENTS.md §3 step 8).'
+  'put a claim only a live check could settle under `Open:` as ~/AGENTS.md §3 step 8 says, after reading and naming the sources that bear on it.'
 
 // A word holds a letter or digit, so table rules and list bullets do not count.
 const words = (text: string) => text.split(/\s+/).filter(token => /[\p{L}\p{N}]/u.test(token)).length
@@ -82,7 +82,7 @@ const deferral = (heading: string) =>
   `Do each item that is ${STEP} now. ` +
   `Put an item that needs the user's judgment (§1) under \`Decision needed:\` with your pick, ${PROPOSED}, ${UNVERIFIED}, ` +
   'and an item you cannot do now under `Open:` with its blocker. Steps for the user to run belong in the answer itself, under no such heading; ' +
-  'cleanup is never one of them (§3 step 7).'
+  'cleanup you can do is never one of them (§3 step 7).'
 
 // A function declaration: the engine follows $ past an import only into one.
 export async function snapshot($: EngineInterface) {
@@ -236,20 +236,29 @@ export type Turn = {
   isChanged: () => Promise<boolean>
 }
 
-// The messages for what the final answer breaks, in report order.
+// The messages for what the final answer breaks, in report order, and each check that ran with whether it fired, for `,task guards`.
 export const findings = async (message: string, turn: Turn) => {
   const messages: string[] = []
+  const checks: Record<string, boolean> = {}
   const isReport = CHECKED.test(prose(message))
   const isUnreported = !isReport && (await turn.isChanged())
+  checks.unreported = isUnreported
   if (isUnreported) messages.push(MESSAGE)
-  const deferred = turn.isActive && !turn.isListWanted ? DEFERRED.exec(prose(message)) : null
-  if (deferred) messages.push(deferral(deferred[0].trim()))
-  const isOpenItem = REPORT_LIST.test(listHeader(message) ?? '')
-  if (turn.isActive && !turn.isAskWanted && !marksDecision(message) && !isOpenItem && endsWithQuestion(message)) messages.push(QUESTION)
+  if (turn.isActive && !turn.isListWanted) {
+    const deferred = DEFERRED.exec(prose(message))
+    checks.deferred = deferred !== null
+    if (deferred) messages.push(deferral(deferred[0].trim()))
+  }
+  if (turn.isActive && !turn.isAskWanted) {
+    const isOpenItem = REPORT_LIST.test(listHeader(message) ?? '')
+    checks.question = !marksDecision(message) && !isOpenItem && endsWithQuestion(message)
+    if (checks.question) messages.push(QUESTION)
+  }
   if (turn.isActive) {
     const budget = isReport || isUnreported ? CHANGE_BUDGET : BUDGET
     const count = words(prose(message))
-    if (count > budget) messages.push(overBudget(count, budget))
+    checks.budget = count > budget
+    if (checks.budget) messages.push(overBudget(count, budget))
   }
-  return messages
+  return { messages, checks }
 }

@@ -12,7 +12,7 @@ Do not re-report an `Open:` item whose blocker the caller cannot remove; report 
 The caller assigns one focus: completion claims, or regressions and scope. This guides attention; either reviewer MUST report any supported defect in the assigned scope or authorized impact.
 For a fix diff, the caller supplies the original failure cases to verify, without earlier verdicts.
 For later rounds, the caller gives a history file path containing every finding fixed, rejected, or proposed, its stable ID, original trigger, disposition, and evidence.
-Complete your initial source assessment before reading that history. Then reconcile it in the same invocation: reuse IDs for the same cause and report only new findings or a resolved finding contradicted by new evidence. Check dispositions against source; do not accept them as proof.
+Complete your initial source assessment before reading that history. Then reconcile it in the same invocation: apply the returned-cause definition in `~/.agents/skills/k-review/references/review_fixes.md`, reuse IDs for the same cause and report only new findings or a resolved finding contradicted by new evidence. Check dispositions against source; do not accept them as proof.
 If the scope is unclear, review the working-tree diff against its base branch.
 
 ## Method
@@ -28,7 +28,7 @@ If the scope is unclear, review the working-tree diff against its base branch.
   For each fix, trace the original trigger against the current code and identify why its consequence is prevented; a changed line or a passing unrelated suite is insufficient.
   List later workflow obligations outside this review's assigned behavior as pending, not proved or code defects.
 - Scope: tie each finding to a criterion, preserved invariant, or defect in the authorized impact. The criteria are NOT a whitelist: a newly discovered in-scope defect or fix-induced regression remains reportable in every round.
-  New desired behavior outside that boundary is a proposal, not a blocking finding. Do not silently change acceptance criteria or suppress a supported finding because it lacks a checklist row.
+  A missing follow-up `~/AGENTS.md` §1 puts in the request's scope is a coverage finding. New desired behavior outside that boundary is a proposal, not a blocking finding. Do not silently change acceptance criteria or suppress a supported finding because it lacks a checklist row.
 - Collect plausible candidates before refuting them. Record each affected location and concrete trigger or cost. Check:
   1. Changed lines and enclosing functions for wrong conditions, timing, and error paths; trace invariants from removed or replaced guards.
   2. Changed contracts against the callers and consumers read above, callees, and tests.
@@ -41,7 +41,7 @@ If the scope is unclear, review the working-tree diff against its base branch.
   7. Applicable project instructions, including `AGENTS.md` and `CLAUDE.md`; cite the exact rule and violating line.
   8. Slop: load `~/.agents/skills/k-code-quality/SKILL.md` and apply its De-slop section,
      with the secondary skills and `k-anti-slop` references it selects for the surfaces in scope.
-     Apply `~/AGENTS.md` §3 separately: comments need indispensable information; new/changed material implementation behavior needs durable behavioral test coverage, reused or minimally extended. Missing durable coverage is a finding even without a reported bug. Zero new tests requires sufficient existing behavioral coverage or no material runtime change; source/static checks or disposable probes do not waive missing protection. Missing comments, uncovered branches or independently wrong fields alone are not findings. Prefer removal/consolidation of redundancy while preserving material coverage. Comments or green tests cannot substitute for a finished implementation.
+     Apply `~/AGENTS.md` §3 separately: comments need indispensable information; judge tests by distinct behavioral protection versus maintenance cost. Prefer fewer tests, including none when justified. Repeated fixture/mock/assertion repairs without a product regression require simplifying or removing the tests and unused scaffolding. A missing-test finding must name the worthwhile protection and why it earns its cost; changed behavior or absent coverage alone is insufficient. Retained tests need independent behavioral oracles. Missing comments, uncovered branches or independently wrong fields alone are not findings. Comments or green tests cannot substitute for a finished implementation.
 - Deduplicate by cause, then refute each candidate before reporting:
   1. Truth: trace the concrete path from input to the wrong state. Drop speculation without a path.
   2. Reachability: can real inputs, flags, or permissions reach it?
@@ -60,11 +60,15 @@ If the scope is unclear, review the working-tree diff against its base branch.
 
 Return once, self-contained:
 
+Group results only when the cited current evidence supports every named criterion or original trigger; name all covered IDs and unresolved exceptions.
+Grouping does not waive independent source assessment or original-trigger verification. Cite the existing ledger and primary evidence instead of repeating prior narratives.
+Resolve source anchors from definitions or relevant callsites; a first textual mention is not a definition.
+
 ```text
 Verdict: clean | findings | unverified
 Scope: whole | narrowed | fix diff; <assigned paths>
 Criteria: <version/ID> — pass | fail | unverified — evidence (source trace, probe, or current check result)
-Fixes: <finding ID> — pass | fail | unverified — original trigger → current result — evidence; or none
+Fixes: <finding ID(s)> — pass | fail | unverified — original trigger(s) → current result — evidence; or none
 - [critical|high|medium|low] <finding ID or new> file:line — trigger → consequence — scope basis — evidence — smallest fix
 Not checked: <anything in scope you could not verify, and why>
 ```

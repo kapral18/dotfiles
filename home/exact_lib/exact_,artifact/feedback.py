@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import contextlib
+import fcntl
 import hashlib
 import json
 import os
@@ -11,7 +13,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from paths import _read_json, context, ensure_session, feedback_dir, pollers_dir, sanitize_name
+from paths import _read_json, context, ensure_session, feedback_dir, lifecycle_lock, pollers_dir, sanitize_name
 
 
 def feedback_path(name: str) -> Path:
@@ -31,10 +33,14 @@ def poller_path(name: str) -> Path:
 
 
 def process_is_running(pid: int) -> bool:
+    if type(pid) is not int or pid <= 0:
+        return False
     try:
         os.kill(pid, 0)
-    except OSError:
+    except ProcessLookupError:
         return False
+    except OSError:
+        return True
     return True
 
 
@@ -52,6 +58,19 @@ def command_line_for_pid(pid: int) -> str | None:
     if result.returncode != 0:
         return None
     return result.stdout.strip() or None
+
+
+def process_started_at(pid: int) -> str | None:
+    try:
+        result = subprocess.run(
+            ["ps", "-p", str(pid), "-o", "lstart="],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError:
+        return None
+    return result.stdout.strip() or None if result.returncode == 0 else None
 
 
 def poll_artifact_from_command(command: str) -> str | None:
@@ -93,6 +112,9 @@ def record_matches_live_poller(record: dict[str, Any]) -> bool:
     artifact = record.get("artifact")
     if not isinstance(pid, int) or not isinstance(artifact, str):
         return False
+    started = record.get("process_started_at")
+    if not isinstance(started, str) or not started or process_started_at(pid) != started:
+        return False
     if not process_is_running(pid):
         return False
     command = command_line_for_pid(pid)
@@ -100,30 +122,33 @@ def record_matches_live_poller(record: dict[str, Any]) -> bool:
 
 
 def poller_record_from(path: Path) -> dict[str, Any] | None:
-    value = _read_json(path)
-    if not value:
-        return None
-    if not record_matches_live_poller(value):
+    with lifecycle_lock():
+        value = _read_json(path)
+        if not value:
+            return None
+        if not record_matches_live_poller(value):
+            if process_is_running(value.get("pid")):
+                value["ownership"] = "unverified"
+            else:
+                path.unlink(missing_ok=True)
+                return None
+        value["path"] = str(path)
+        return value
+
+
+def active_poller_records(sdir: Path | None = None) -> list[dict[str, Any]]:
+    with lifecycle_lock():
+        records: list[dict[str, Any]] = []
         try:
-            path.unlink()
+            directory = sdir / "pollers" if sdir is not None else pollers_dir()
+            paths = sorted(directory.glob("*.json"))
         except FileNotFoundError:
-            pass
-        return None
-    value["path"] = str(path)
-    return value
-
-
-def active_poller_records() -> list[dict[str, Any]]:
-    records: list[dict[str, Any]] = []
-    try:
-        paths = sorted(pollers_dir().glob("*.json"))
-    except FileNotFoundError:
+            return records
+        for path in paths:
+            record = poller_record_from(path)
+            if record:
+                records.append(record)
         return records
-    for path in paths:
-        record = poller_record_from(path)
-        if record:
-            records.append(record)
-    return records
 
 
 def active_poller_record(name: str) -> dict[str, Any] | None:
@@ -131,62 +156,65 @@ def active_poller_record(name: str) -> dict[str, Any] | None:
 
 
 def register_poller(name: str, timeout: float | None) -> None:
-    existing = active_poller_record(name)
-    if existing and existing.get("pid") != os.getpid():
-        raise SystemExit(f"ERROR: poller already running for {sanitize_name(name)} (pid {existing['pid']})")
-    pollers_dir().mkdir(parents=True, exist_ok=True)
-    ctx = context()
-    poller_path(name).write_text(
-        json.dumps(
-            {
-                "artifact": sanitize_name(name),
-                "pid": os.getpid(),
-                "started_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                "timeout": timeout,
-                "session_dir": ctx["session_dir"],
-                "root": ctx["root"],
-                "tmux_key": ctx["tmux_key"],
-                "tmux_name": ctx["tmux_name"],
-            },
-            sort_keys=True,
+    with lifecycle_lock():
+        existing = active_poller_record(name)
+        if existing and existing.get("pid") != os.getpid():
+            raise SystemExit(f"ERROR: poller already running for {sanitize_name(name)} (pid {existing['pid']})")
+        pollers_dir().mkdir(parents=True, exist_ok=True)
+        ctx = context()
+        poller_path(name).write_text(
+            json.dumps(
+                {
+                    "artifact": sanitize_name(name),
+                    "pid": os.getpid(),
+                    "process_started_at": process_started_at(os.getpid()),
+                    "started_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                    "timeout": timeout,
+                    "session_dir": ctx["session_dir"],
+                    "root": ctx["root"],
+                    "tmux_key": ctx["tmux_key"],
+                    "tmux_name": ctx["tmux_name"],
+                },
+                sort_keys=True,
+            )
+            + "\n",
+            encoding="utf-8",
         )
-        + "\n",
-        encoding="utf-8",
-    )
 
 
 def unregister_poller(name: str) -> None:
-    path = poller_path(name)
-    record = _read_json(path)
-    if record and record.get("pid") not in {None, os.getpid()}:
-        return
-    try:
-        path.unlink()
-    except FileNotFoundError:
-        pass
+    with lifecycle_lock():
+        path = poller_path(name)
+        record = _read_json(path)
+        if record and (
+            record.get("pid") != os.getpid() or record.get("process_started_at") != process_started_at(os.getpid())
+        ):
+            return
+        try:
+            path.unlink()
+        except FileNotFoundError:
+            pass
 
 
 def stop_poller_record(record: dict[str, Any]) -> None:
-    if not record_matches_live_poller(record):
-        path = record.get("path")
-        if isinstance(path, str):
+    with lifecycle_lock():
+        raw_path = record.get("path")
+        path = Path(raw_path) if isinstance(raw_path, str) else None
+        if path is not None:
+            current = _read_json(path)
+            if current is None or any(
+                current.get(key) != record.get(key) for key in ("pid", "process_started_at", "artifact")
+            ):
+                return
+        if record_matches_live_poller(record):
             try:
-                Path(path).unlink()
-            except FileNotFoundError:
+                os.kill(record["pid"], signal.SIGTERM)
+            except ProcessLookupError:
                 pass
-        return
-    pid = record.get("pid")
-    if isinstance(pid, int):
-        try:
-            os.kill(pid, signal.SIGTERM)
-        except OSError:
-            pass
-    path = record.get("path")
-    if isinstance(path, str):
-        try:
-            Path(path).unlink()
-        except FileNotFoundError:
-            pass
+        elif process_is_running(record.get("pid")):
+            raise SystemExit(f"ERROR: cannot verify active poller PID {record['pid']}; metadata preserved")
+        if path is not None:
+            path.unlink(missing_ok=True)
 
 
 def clear_ended(name: str) -> None:
@@ -203,16 +231,35 @@ def archive_feedback_path(name: str) -> Path:
     return delivered_feedback_dir() / f"{sanitize_name(name)}.{stamp}.{digest}.jsonl"
 
 
+@contextlib.contextmanager
+def feedback_lock(path: Path):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.with_suffix(".lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(lock, fcntl.LOCK_UN)
+
+
+def append_feedback(directory: Path, name: str, batch: dict[str, Any]) -> None:
+    path = directory / f"{sanitize_name(name)}.jsonl"
+    with feedback_lock(path):
+        with path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(batch) + "\n")
+
+
 def read_and_archive_feedback(name: str) -> tuple[list[dict[str, Any]], Path | None]:
     path = feedback_path(name)
-    try:
-        if path.stat().st_size == 0:
-            path.unlink()
+    with feedback_lock(path):
+        try:
+            if path.stat().st_size == 0:
+                path.unlink()
+                return [], None
+        except FileNotFoundError:
             return [], None
-    except FileNotFoundError:
-        return [], None
-    archive = archive_feedback_path(name)
-    path.replace(archive)
+        archive = archive_feedback_path(name)
+        path.replace(archive)
     lines = archive.read_text(encoding="utf-8").splitlines()
     prompts = []
     for line in lines:

@@ -6,10 +6,14 @@ from __future__ import annotations
 import fcntl
 import io
 import json
+import multiprocessing
 import os
+import shlex
+import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
@@ -45,6 +49,7 @@ class TestTask(unittest.TestCase):
         self.env = {k: v for k, v in os.environ.items() if k != "AGENT_TASK_SESSION" and not k.startswith("GIT_CONFIG")}
         self.env.update(
             AGENT_TASK_DIR=str(self.store),
+            AGENT_HANDOFF_DIR=str(base / "handoffs"),
             CLAUDE_CONFIG_DIR=str(base / "claude"),
             GIT_CEILING_DIRECTORIES=self.tmp.name,
             GIT_CONFIG_GLOBAL=os.devnull,
@@ -805,6 +810,7 @@ class TestTask(unittest.TestCase):
         self.assertIn("Goal: Add the export button", instructions)
         note = self.hook("tool", tool="Bash")["note"]
         self.assertIn("zoom out", note)
+        self.assertEqual(self.guard_counts()["zoom-out"], ["2", "-", "-", "-", "-"])
 
     def test_SHOULD_speak_codex_hook_json(self):
         self.set_card()
@@ -1672,9 +1678,320 @@ class TestTask(unittest.TestCase):
         stopped = self.hook("stop", answer="done")
         self.assertIn("README.md", stopped.get("block", ""))
         self.assertIn("D1", stopped.get("block", ""))
+        # The Stop's own sample of that shell delivers no scope note, so the ledger counts none.
+        self.assertNotIn("scope-note", self.guard_counts())
         self.hook("prompt", text="new turn after background process ended")
         (self.repo / "README.md").write_text("user changed it")
         self.assertEqual(self.hook("stop", answer="explained"), {})
+
+    def guard_counts(self) -> dict[str, list[str]]:
+        result = self.run_task("guards")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return {line.split()[0]: line.split()[1:] for line in result.stdout.splitlines()[2:] if line.strip()}
+
+    def test_WHEN_guards_report_SHOULD_judge_each_fire_by_the_sessions_next_check(self):
+        self.hook("prompt", text="add an export button")
+        self.assertIn("deny", self.hook("tool", tool="Edit", paths=["src/app.py"], phase="before"))
+        self.set_card()
+        self.hook("tool", tool="Edit", paths=["docs/x.md"])
+        (self.repo / "docs").mkdir()
+        (self.repo / "docs" / "x.md").write_text("x\n")
+        for item in ("D1", "D2"):
+            self.mark(item)
+        self.assertIn("block", self.hook("stop", answer="done"))
+        # The unchanged rewrite goes through unsent: it judges the send-back as repeated without counting as a fire.
+        self.assertEqual(self.hook("stop", answer="done"), {})
+        self.run_task("scope", "add", "docs/x.md", "--reason", "the button needs a doc link")
+        self.assertEqual(self.hook("stop", answer="done"), {})
+        # The rewrite still breaks the budget: it repeats the first fire without counting as one.
+        for answer, fired, rewrite in (("first", True, False), ("rewrite", True, True), ("next turn", True, False)):
+            self.hook("evidence", answer=answer, format={"budget": fired}, rewrite=rewrite)
+
+        counts = self.guard_counts()
+
+        # fires, cleared, repeated, rejected, pending
+        self.assertEqual(counts["card-refusal"], ["1", "-", "-", "-", "-"])
+        self.assertEqual(counts["scope-note"], ["1", "0", "1", "0", "0"])
+        self.assertEqual(counts["stop-sendback"], ["1", "0", "1", "0", "0"])
+        self.assertEqual(counts["format:budget"], ["2", "0", "1", "0", "1"])
+
+    def test_WHEN_findings_repeat_or_cross_handoffs_SHOULD_count_only_matching_resolutions(self):
+        self.set_card()
+        self.hook(
+            "evidence",
+            findings=[
+                {"anchor": "src/export.py:2", "concern": "Empty exports crash"},
+                {"anchor": "src/export.py:2", "concern": "Empty exports crash"},
+                {"anchor": "src/export.py:9", "concern": "The header row is missing"},
+            ],
+        )
+        # Another card raises its own F1 in the same second; resolving s1's F1 must not clear it.
+        self.hook("prompt", text="review the importer", session="s3")
+        self.run_task("card", "set", "--session", "s3", stdin=CARD)
+        self.hook(
+            "evidence", session="s3", findings=[{"anchor": "src/import.py:1", "concern": "Imports drop blank rows"}]
+        )
+        claim = self.claim()
+        self.run_task("finding", "resolve", "F1", "--fixed", claim, "--session", "s1")
+        # The card moves to s2, which resolves F2: the finding belongs to the card, not the session.
+        self.run_task("handoff", "save", "review", "--session", "s1", stdin="State: F2 open\n")
+        self.run_task("card", "clear", "--session", "s1")
+        self.hook("prompt", text="continue review", session="s2")
+        self.run_task("handoff", "resume", "review", "--session", "s2")
+        self.run_task("finding", "resolve", "F2", "--rejected", self.claim(session="s2"), "--session", "s2")
+        self.hook("evidence", session="s2", findings=[{"anchor": "src/export.py:2", "concern": "Empty exports crash"}])
+
+        self.assertEqual(self.guard_counts()["review-finding"], ["3", "1", "0", "1", "1"])
+
+        self.hook("prompt", text="continue in parallel", session="s4")
+        self.run_task("handoff", "resume", "review", "--session", "s4")
+        for session, anchor, concern in (
+            ("s2", "src/export.py:12", "Exports truncate the last row"),
+            ("s4", "src/import.py:12", "Imports repeat the first row"),
+        ):
+            self.hook("evidence", session=session, findings=[{"anchor": anchor, "concern": concern}])
+        self.run_task("finding", "resolve", "F3", "--fixed", self.claim(session="s2"), "--session", "s2")
+
+        other = json.loads(self.run_task("card", "show", "--json", "--session", "s4").stdout)
+        self.assertEqual(other["findings"][-1]["status"], "open")
+        self.assertEqual(self.guard_counts()["review-finding"], ["5", "2", "0", "1", "2"])
+
+        ledger = self.store / "guards.jsonl"
+        entries = [json.loads(line) for line in ledger.read_text().splitlines()]
+        for entry in entries:
+            if entry["guard"] == "review-finding":
+                entry.pop("finding", None)
+        ledger.write_text("".join(json.dumps(entry) + "\n" for entry in entries))
+        self.assertEqual(self.guard_counts()["review-finding"], ["5", "0", "0", "0", "5"])
+
+    @unittest.skipIf(os.geteuid() == 0, "root bypasses directory write permissions")
+    def test_WHEN_finding_persistence_fails_SHOULD_not_log_fire_or_resolution(self):
+        self.set_card()
+        self.hook("evidence", findings=[{"anchor": "src/export.py:2", "concern": "Empty exports crash"}])
+        claim = self.claim()
+        stored = json.loads(self.run_task("card", "show", "--json", "--session", "s1").stdout)
+        directory = next(self.store.glob("work-*"))
+        permissions = directory.stat().st_mode & 0o777
+        directory.chmod(0o555)
+        try:
+            resolved = self.run_task("finding", "resolve", "F1", "--fixed", claim, "--session", "s1")
+            self.assertNotEqual(resolved.returncode, 0)
+            self.assertEqual(json.loads(self.run_task("card", "show", "--json", "--session", "s1").stdout), stored)
+            self.assertEqual(self.guard_counts()["review-finding"], ["1", "0", "0", "0", "1"])
+
+            data = {
+                "cwd": str(self.repo),
+                "session": "s1",
+                "findings": [{"anchor": "src/export.py:9", "concern": "The header is missing"}],
+            }
+            raised = self.run_task("hook", "evidence", "--harness", "test", "--input", json.dumps(data))
+            self.assertNotEqual(raised.returncode, 0)
+            self.assertEqual(json.loads(self.run_task("card", "show", "--json", "--session", "s1").stdout), stored)
+            self.assertEqual(self.guard_counts()["review-finding"], ["1", "0", "0", "0", "1"])
+        finally:
+            directory.chmod(permissions)
+
+        resolved = self.run_task("finding", "resolve", "F1", "--fixed", claim, "--session", "s1")
+        self.assertEqual(resolved.returncode, 0, resolved.stderr)
+        self.hook("evidence", findings=data["findings"])
+        self.assertEqual(self.guard_counts()["review-finding"], ["2", "1", "0", "0", "1"])
+
+    def test_WHEN_a_mod_logs_a_guard_fire_SHOULD_count_it_and_list_its_detail(self):
+        logged = self.run_task(
+            "guard", "log", "sop-guard:secret", "--detail", "pass show work/token\u2028", "--session", "s9"
+        )
+        self.assertEqual(logged.returncode, 0, logged.stderr)
+
+        self.assertEqual(self.guard_counts()["sop-guard:secret"], ["1", "-", "-", "-", "-"])
+        listed = self.run_task("guards", "sop-guard:secret").stdout
+        self.assertIn('"pass show work/token\u2028"', listed)
+
+    def board(self) -> str:
+        result = self.run_task("board")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return result.stdout
+
+    def test_WHEN_turns_end_SHOULD_show_what_each_session_waits_on_across_worktrees(self):
+        self.set_card()
+        self.hook("stop", answer="Checked: none\n\nOpen:\n- CI token missing")
+        self.assertRegex(self.board(), r"blocked +.*work +test s1 .*CI token missing")
+
+        self.hook("prompt", text="next")
+        self.hook("stop", answer="Paused here.")
+        self.assertRegex(self.board(), r"unfinished +.*work +test s1 .*open: D1, D2")
+
+        self.hook("prompt", text="go")
+        self.hook("tool", tool="Edit", paths=["src/app.py"])
+        self.assertIn("block", self.hook("stop", answer="done"))
+        working = self.board()
+        self.assertIn("Nothing needs you.", working)
+        self.assertRegex(working, r"Working · 1: .*work \(test")
+
+        # A Stop hook above intent-guard sends the answer back after its status was recorded: the session works on.
+        self.hook("stop", answer="Fixed.\n\nOpen: none\n\nRejected F2: the header exists at src/a.py:3.")
+        self.assertNotRegex(self.board(), r"blocked")
+        self.hook("stop", answer="Open: Nothing exercises the Windows path; no Windows host here.")
+        self.assertRegex(self.board(), r"blocked +.*Nothing exercises the Windows path")
+        self.hook("sentback")
+        self.assertRegex(self.board(), r"Working · 1: .*work \(test")
+
+        self.hook("stop", answer="Decision needed: keep CSV only, or add XLSX too? [S1]")
+        self.assertRegex(self.board(), r"question +.*keep CSV only, or add XLSX too\?")
+
+        self.hook("prompt", text="csv only")
+        for item in ("D1", "D2"):
+            self.mark(item)
+        self.hook("stop", answer="Done.")
+        other = Path(self.tmp.name) / "other"
+        other.mkdir()
+        self.hook("prompt", text="what is this repo", session="s2", cwd=str(other))
+        self.hook("stop", answer="It is empty.", session="s2", cwd=str(other))
+        board = self.board()
+
+        self.assertRegex(board, r"ready +.*work +test s1 .*Add the export button")
+        self.assertRegex(board, r"Replied · 1: .*other \(test")
+        # A session start sends no typed text, so it is not work in progress.
+        self.hook("prompt", text="", session="s3", cwd=str(other))
+        self.assertNotIn("Working", self.board())
+
+        # A prompt that answered the last report but never ended a turn, older than six hours: the report is stale.
+        state_path = next(self.store.glob("work-*/state.json"))
+        state = json.loads(state_path.read_text())
+        old = datetime.now(timezone.utc).timestamp() - 7 * 3600
+        state["reports"]["s1"]["time"] = old - 60
+        state["prompts"]["s1"] = old
+        state_path.write_text(json.dumps(state))
+        self.assertNotIn(" s1 ", self.board())
+
+    def handoff(self, *args: str, stdin: str = "", cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+        return self.run_task("handoff", *args, stdin=stdin, cwd=cwd)
+
+    def test_WHEN_a_task_moves_to_a_new_session_SHOULD_restore_its_card_and_reopen_evidence_that_no_longer_holds(self):
+        self.set_card()
+        self.mark("D1")
+        kept = self.run_task(
+            "claim",
+            "add",
+            "README holds readme",
+            "--file",
+            f"{self.repo / 'README.md'}:1",
+            "--text",
+            "readme",
+            "--session",
+            "s1",
+        )
+        self.run_task("check", "D2", "--claim", json.loads(kept.stdout)["id"], "--session", "s1")
+        saved = self.handoff("save", "export", "--session", "s1", stdin="Approvals: commit\nState: button added\n")
+        self.assertEqual(saved.returncode, 0, saved.stderr)
+        self.proof.write_text("changed after the handoff\n")
+        self.hook("prompt", text="continue export", session="s2")
+
+        resumed = self.handoff("resume", "export", "--session", "s2")
+
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertIn("Approvals: commit", resumed.stdout)
+        self.assertIn("reopened D1;", resumed.stdout)
+        card = json.loads(self.run_task("card", "show", "--json", "--session", "s2").stdout)
+        self.assertEqual((card["goal"], card["session"]), ("Add the export button", "s2"))
+        self.assertEqual([item["status"] for item in card["done"]], ["open", "checked"])
+        again = self.handoff("resume", "export", "--session", "s2")
+        self.assertIn("already has a card", again.stderr)
+
+    def test_WHEN_a_save_cannot_tell_which_session_SHOULD_refuse_before_touching_saved_versions(self):
+        self.handoff("save", "plan", stdin="v1\n")
+        self.handoff("save", "plan", stdin="v2\n")
+        self.hook("prompt", text="one", session="a")
+        self.hook("prompt", text="two", session="b")
+
+        refused = self.handoff("save", "plan", stdin="v3\n")
+
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertEqual(self.handoff("show", "plan").stdout, "v2\n")
+        self.assertEqual(self.handoff("show", "plan", "--prev").stdout, "v1\n")
+
+    def test_WHEN_a_note_is_saved_again_SHOULD_keep_the_previous_version(self):
+        outside = Path(self.tmp.name) / "outside-git"
+        outside.mkdir()
+        first = self.handoff("save", "auth-fix", stdin="goal: one", cwd=outside)
+        self.assertEqual(first.stdout.strip(), self.env["AGENT_HANDOFF_DIR"] + "/global/auth-fix.md")
+        self.handoff("save", "auth-fix", stdin="goal: two\n", cwd=outside)
+
+        self.assertEqual(self.handoff("show", "auth-fix", cwd=outside).stdout, "goal: two\n")
+        self.assertEqual(self.handoff("show", "auth-fix", "--prev", cwd=outside).stdout, "goal: one\n")
+
+    def test_WHEN_worktrees_share_a_repo_SHOULD_share_one_handoff_namespace(self):
+        tree = Path(self.tmp.name) / "wt"
+        subprocess.run(["git", "-C", str(self.repo), "worktree", "add", "-q", str(tree)], check=True, env=self.env)
+
+        saved = self.handoff("save", "plan", stdin="state\n", cwd=tree)
+
+        self.assertEqual(saved.stdout.strip(), self.env["AGENT_HANDOFF_DIR"] + "/work/plan.md")
+        self.assertEqual(self.handoff("show", "plan").stdout, "state\n")
+
+    def test_WHEN_listing_notes_SHOULD_show_newest_first_without_previous_versions(self):
+        self.handoff("save", "older", stdin="a\n")
+        self.handoff("save", "newer", stdin="b\n")
+        os.utime(Path(self.env["AGENT_HANDOFF_DIR"]) / "work/older.md", (1, 1))
+        self.handoff("save", "elsewhere", "--repo", "other", stdin="c\n")
+        self.handoff("save", "newer", stdin="b2\n")
+
+        local = self.handoff("list").stdout.splitlines()
+        self.assertEqual([line.split()[-1] for line in local], ["newer", "older"])
+        every = self.handoff("list", "--all").stdout.splitlines()
+        self.assertCountEqual([line.split()[-1] for line in every], ["work/newer", "work/older", "other/elsewhere"])
+
+    def test_WHEN_a_note_is_empty_misnamed_missing_or_large_SHOULD_refuse_or_warn(self):
+        for args, stdin, message in (
+            (("save", "empty"), "  \n", "empty note"),
+            (("save", "../escape"), "x", "invalid topic"),
+            (("save", "Upper"), "x", "invalid topic"),
+            (("save", "plan\n"), "x", "invalid topic"),
+            (("save", "plan.prev"), "x", "reserved"),
+            (("show", "absent"), "", "no note at"),
+        ):
+            with self.subTest(args=args):
+                result = self.handoff(*args, stdin=stdin)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(message, result.stderr)
+        big = self.handoff("save", "big", stdin="x" * 5000)
+        self.assertEqual(big.returncode, 0, big.stderr)
+        self.assertIn("keep it under 4096", big.stderr)
+
+    @unittest.skipUnless(shutil.which("fish"), "fish is not installed")
+    def test_WHEN_completing_task_arguments_SHOULD_follow_the_selected_namespace_and_session(self):
+        self.handoff("save", "default-topic", stdin="default\n")
+        self.handoff("save", "other-topic", "--repo", "check", stdin="other\n")
+        self.run_task("card", "set", "--session", "unknown", stdin=CARD)
+        self.run_task("card", "set", "--session", "chosen", stdin=CARD.replace("Scope:", "- selected outcome\nScope:"))
+        bin_dir = Path(self.tmp.name) / "bin"
+        bin_dir.mkdir()
+        launcher = bin_dir / ",task"
+        launcher.write_text(f'#!/bin/sh\nexec {shlex.quote(sys.executable)} {shlex.quote(str(COMMAND))} "$@"\n')
+        launcher.chmod(0o755)
+        completion = REPO / "home/dot_config/fish/completions/readonly_,task.fish"
+        for command, expected in (
+            (",task handoff show ", ["default-topic"]),
+            (",task handoff show --repo check ", ["other-topic"]),
+            (",task handoff show --repo $selected ", ["other-topic"]),
+            (",task check D2", ["D2\ttests cover the export"]),
+            (",task check --session $selected_session D3", ["D3\tselected outcome"]),
+        ):
+            with self.subTest(command=command):
+                script = (
+                    f"source {shlex.quote(str(completion))}\n"
+                    f"set -g selected check\nset -g selected_session chosen\ncomplete -C {shlex.quote(command)}"
+                )
+                actual = subprocess.run(
+                    ["fish", "--no-config", "-c", script],
+                    cwd=self.repo,
+                    env={**self.env, "PATH": str(bin_dir) + os.pathsep + self.env["PATH"]},
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                )
+
+                self.assertEqual(actual.returncode, 0, actual.stderr)
+                self.assertEqual(actual.stdout.splitlines(), expected)
 
 
 class TestTaskHookLimits(unittest.TestCase):
@@ -1695,6 +2012,172 @@ class TestTaskHookLimits(unittest.TestCase):
         with mock.patch.object(sys, "stdout", out):
             code = self.task.main(list(argv))
         return code, out.getvalue()
+
+    def test_concurrent_handoffs_keep_notes_cards_and_previous_versions_consistent(self):
+        context = multiprocessing.get_context("fork")
+        signals, release = context.Queue(), context.Event()
+        root = self.base / "handoffs"
+
+        def save(label, directory):
+            os.chdir(directory)
+            replace, flock = os.replace, fcntl.flock
+            announced = False
+
+            def observed_replace(source, target):
+                replace(source, target)
+                if label == "A" and Path(target).name == "plan.md":
+                    signals.put("published")
+                    if not release.wait(10):
+                        raise TimeoutError("second save never reached the overlapping write")
+
+            def observed_flock(descriptor, operation):
+                nonlocal announced
+                try:
+                    flock(descriptor, operation | fcntl.LOCK_NB)
+                except BlockingIOError:
+                    if not announced:
+                        signals.put(label)
+                        announced = True
+                    flock(descriptor, operation)
+
+            out = io.StringIO()
+            with (
+                mock.patch.dict(os.environ, {"AGENT_HANDOFF_DIR": str(root)}),
+                mock.patch.object(os, "replace", observed_replace),
+                mock.patch.object(fcntl, "flock", observed_flock),
+                mock.patch.object(sys, "stdin", io.StringIO(f"note {label}\n")),
+                mock.patch.object(sys, "stdout", out),
+            ):
+                action = label if label in ("show", "resume") else "save"
+                argv = ["handoff", action, "plan", "--repo", "shared"]
+                if action != "show":
+                    argv.extend(["--session", label])
+                code = self.task.main(argv)
+            (directory / "output").write_text(out.getvalue())
+            if label != "A" and not announced:
+                signals.put(label)
+            raise SystemExit(code)
+
+        processes = []
+        try:
+            for label in ("A", "B", "show", "resume"):
+                directory = self.base / label
+                directory.mkdir()
+                if label in ("A", "B"):
+                    task = self.task.Task(directory, label)
+                    task.card = {"session": label, "goal": label, "done": [], "scope": []}
+                    task.save_card()
+                process = context.Process(target=save, args=(label, directory))
+                processes.append(process)
+                process.start()
+                if label == "A":
+                    self.assertEqual(signals.get(timeout=10), "published")
+            self.assertCountEqual([signals.get(timeout=10) for _ in range(3)], ["B", "show", "resume"])
+        finally:
+            release.set()
+            for process in processes:
+                process.join(10)
+                if process.is_alive():
+                    process.kill()
+                    process.join()
+            signals.close()
+            signals.join_thread()
+
+        self.assertEqual([process.exitcode for process in processes], [0, 0, 0, 0])
+        for stem, label in (("plan", "B"), ("plan.prev", "A")):
+            self.assertEqual((root / "shared" / f"{stem}.md").read_text(), f"note {label}\n")
+            self.assertEqual(json.loads((root / "shared" / f"{stem}.card.json").read_text())["goal"], label)
+        for reader in ("show", "resume"):
+            output = (self.base / reader / "output").read_text()
+            self.assertRegex(output, r"(?s)^note ([AB])\n.*Goal: \1\n")
+        restored = self.task.Task(self.base / "resume", "resume").card
+        self.assertIn(f"note {restored['goal']}\n", (self.base / "resume" / "output").read_text())
+
+    def test_stalled_handoff_output_does_not_block_another_repository_save(self):
+        context = multiprocessing.get_context("fork")
+        signals, release = context.Queue(), context.Event()
+
+        class StalledOutput(io.StringIO):
+            def write(self, text):
+                signals.put("printing")
+                if not release.wait(10):
+                    raise TimeoutError("writer never completed while output was stalled")
+                return super().write(text)
+
+        def show():
+            with mock.patch.object(sys, "stdout", StalledOutput()):
+                raise SystemExit(self.task.main(["handoff", "show", "plan", "--repo", "first"]))
+
+        def save():
+            flock = fcntl.flock
+
+            def observed_flock(descriptor, operation):
+                try:
+                    flock(descriptor, operation | fcntl.LOCK_NB)
+                except BlockingIOError:
+                    signals.put("blocked")
+                    flock(descriptor, operation)
+
+            with (
+                mock.patch.object(fcntl, "flock", observed_flock),
+                mock.patch.object(sys, "stdin", io.StringIO("another note\n")),
+                mock.patch.object(sys, "stderr", io.StringIO()),
+            ):
+                code, _ = self.run_main("handoff", "save", "plan", "--repo", "second", "--session", "writer")
+            signals.put("saved")
+            raise SystemExit(code)
+
+        with mock.patch.dict(os.environ, {"AGENT_HANDOFF_DIR": str(self.base / "handoffs")}):
+            with (
+                mock.patch.object(sys, "stdin", io.StringIO("first note\n")),
+                mock.patch.object(sys, "stderr", io.StringIO()),
+            ):
+                self.assertEqual(self.run_main("handoff", "save", "plan", "--repo", "first", "--session", "seed")[0], 0)
+            processes = [context.Process(target=show), context.Process(target=save)]
+            try:
+                processes[0].start()
+                self.assertEqual(signals.get(timeout=10), "printing")
+                processes[1].start()
+                actual = signals.get(timeout=10)
+            finally:
+                release.set()
+                for process in processes:
+                    if process.pid is not None:
+                        process.join(10)
+                        if process.is_alive():
+                            process.kill()
+                            process.join()
+                signals.close()
+                signals.join_thread()
+
+        self.assertEqual([process.exitcode for process in processes], [0, 0])
+        self.assertEqual(actual, "saved")
+
+    def test_guard_ledger_over_its_limit_keeps_the_newest_half(self):
+        with mock.patch.object(self.task, "GUARD_LOG_LIMIT", 4000):
+            for i in range(60):
+                self.task.log_guard("/w", "s1", "test", "format:budget", True, i)
+        path = self.base / "store" / "guards.jsonl"
+        details = [json.loads(line)["detail"] for line in path.read_text().splitlines()]
+
+        self.assertLessEqual(path.stat().st_size, 4000)
+        self.assertEqual(details[-1], 59)
+        self.assertEqual(details, list(range(details[0], 60)))
+
+    def test_guard_ledger_with_torn_bytes_over_its_limit_still_logs_and_reports(self):
+        path = self.base / "store" / "guards.jsonl"
+        path.parent.mkdir(parents=True)
+        path.write_bytes(b'{"time": 1, "caf\xc3\n' * 300)
+        with mock.patch.object(self.task, "GUARD_LOG_LIMIT", 4000):
+            self.task.log_guard("/w", "s1", "test", "format:budget", True)
+
+        self.assertLessEqual(path.stat().st_size, 2000)
+        code, out = self.run_main("guards")
+        self.assertEqual(code, 0)
+        self.assertRegex(out, r"format:budget +1 ")
+        # The trim kept only the newest entry, so the report says it covers from that entry, not the last 30 days.
+        kept = json.loads(path.read_bytes().splitlines()[-1])["time"]
+        self.assertIn(time.strftime("since %Y-%m-%d %H:%M", time.localtime(kept)), out.splitlines()[0])
 
     def test_hook_answers_nothing_when_the_lock_stays_busy(self):
         directory = self.task.task_dir(self.base)

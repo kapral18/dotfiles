@@ -15,6 +15,12 @@ Lualine renders native Neovim `LspProgress` events through a local plugin:
 
 The statusline shows client name, spinner, latest title/message, optional server percentage, and a derived completed-token counter such as `(1/1) - done`. It replaces `lsp-progress.nvim` without emitting terminal/tmux OSC progress bars.
 
+## Formatting
+
+Automatic formatting honors both the global autoformat switch and the current buffer's switch. The buffer toggle follows the active buffer when used. A forced manual format bypasses both switches; `gq` calls `util.format.formatexpr()` for LSP range formatting.
+
+JSONL formatting sends the edited buffer to `jq -c .` through standard input. Each JSON value stays on one line, including newly added values that have not been saved.
+
 ## Markdown / MDX prose behavior
 
 Markdown and MDX use Prettier with `--prose-wrap=preserve` so editor formatting does not reflow prose to `printWidth`. For plain Markdown, `,format-md` runs after Prettier and leaves ordinary files unchanged. In recognized AI paths, it preserves authored sentence breaks and joins mid-sentence continuations around complete single-line inline code when the full line fits the soft 140-character boundary. Complete code spans keep their exact bytes, including backslashes and whitespace; outside a span, odd backslash runs escape a following backtick and even runs do not. Long lines split at sentence or strong clause boundaries when possible; unmatched or multiline code and other ambiguous markup retain their existing lines. Markdownlint and Prettier still apply their own formatting before this step.

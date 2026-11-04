@@ -124,8 +124,8 @@ if [ ${#entries[@]} -gt 0 ] && command -v tmux > /dev/null 2>&1 && [ -n "${TMUX:
       # rename it away and reuse the canonical name. Only when bag-recovery
       # is not applicable do we fall back to a path-basename suffix so the
       # command still reaches a fresh session; on the next regular `enter`,
-      # pick_session.sh's path-keyed rename will move whichever session is
-      # at the actual path back to the canonical name.
+      # pick_session.sh's path-keyed rename can move the session at the actual
+      # path back to the canonical name when auto-renaming is enabled.
       # Discard the lib's "OLD\tNEW" stdout — we don't maintain a session
       # cache here, so the advisory rename pair is noise. Keep the return code
       # (0 = name now usable, 1 = collision unresolved).
@@ -234,7 +234,7 @@ if [ ${#spawned[@]} -gt 0 ]; then
   fzf_reload_cmd="$HOME/.config/tmux/scripts/pickers/session/fzf_reload.sh"
   filter_cmd="$HOME/.config/tmux/scripts/pickers/session/filter.sh"
   if [ -x "$fzf_reload_cmd" ] && [ -x "$filter_cmd" ] \
-    && { [ -n "${FZF_SOCK:-}" ] || [ -n "${FZF_PORT:-}" ]; }; then
+    && [ -n "${FZF_SOCK:-}" ]; then
     "$fzf_reload_cmd" "$filter_cmd --refresh --force-order" 0 > /dev/null 2>&1 || true
     log_debug "posted picker reload via fzf_reload.sh"
   fi

@@ -8,16 +8,9 @@ sort). Prints a single fzf action expression to stdout that:
   - Ends with `pos(<cursor>)` so the visible cursor returns to the original
     position when the operator releases the keybinding.
 
-Family rules:
-
-  - Cursor on a parent row (`tree_role=parent`): family is the parent itself
-    plus every immediately-following row whose `parent_id` matches the
-    parent's `kind:repo:num` identity.
-  - Cursor on a child row (`tree_role=child`): family is the parent row
-    (walked backwards) plus every consecutive sibling whose `parent_id`
-    matches the child's.
-  - Cursor on a loose row, section header, or backport-missing placeholder:
-    no family; the script exits with no output.
+A parent or child cursor marks every matched copy of the parent identity and
+each child referencing it. Filtering may hide the parent or separate siblings
+in match order. Other cursor roles produce no actions.
 
 Empty output means "no actions" — fzf treats that as a no-op.
 
@@ -25,7 +18,7 @@ Usage:
     gh_picker_mark_subtree.py <cursor_row_1_indexed>
 
 The cursor row is 1-indexed to match `FZF_POS`. Stdin must be the same
-content that fzf is currently displaying (`gh_items.sh --cache-only` output).
+current matched rows captured by the fzf {*f} placeholder.
 """
 
 from __future__ import annotations
@@ -75,45 +68,20 @@ def main() -> int:
     cursor_parts = lines[cursor - 1].split("\t")
     role = _role(cursor_parts)
 
-    family_rows: list[int] = []
-
     if role == "parent":
         parent_identity = _identity(cursor_parts)
-        if not parent_identity:
-            return 0
-        family_rows.append(cursor)
-        for i in range(cursor, len(lines)):
-            parts = lines[i].split("\t")
-            if _role(parts) == "child" and _parent_ref(parts) == parent_identity:
-                family_rows.append(i + 1)
-            else:
-                break
-
     elif role == "child":
         parent_identity = _parent_ref(cursor_parts)
-        if not parent_identity:
-            return 0
-        parent_row = None
-        for i in range(cursor - 2, -1, -1):  # cursor-2 = row above cursor (0-indexed)
-            parts = lines[i].split("\t")
-            this_role = _role(parts)
-            if this_role == "parent" and _identity(parts) == parent_identity:
-                parent_row = i + 1
-                break
-            if this_role == "child" and _parent_ref(parts) == parent_identity:
-                continue
-            break
-        if parent_row is None:
-            return 0
-        family_rows.append(parent_row)
-        for i in range(parent_row, len(lines)):
-            parts = lines[i].split("\t")
-            if _role(parts) == "child" and _parent_ref(parts) == parent_identity:
-                family_rows.append(i + 1)
-            else:
-                break
     else:
         return 0
+    if not parent_identity:
+        return 0
+    family_rows = [
+        i + 1
+        for i, line in enumerate(lines)
+        if _identity(line.split("\t")) == parent_identity
+        or (_role(line.split("\t")) == "child" and _parent_ref(line.split("\t")) == parent_identity)
+    ]
 
     if not family_rows:
         return 0

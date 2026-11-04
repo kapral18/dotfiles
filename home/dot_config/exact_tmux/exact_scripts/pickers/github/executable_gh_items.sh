@@ -5,39 +5,6 @@
 # Usage: gh_items.sh [--scope all|focus|explore] [--refresh] [--cache-only]
 set -euo pipefail
 
-# Classify the fetch lock so a waiter never reaps an owner that has just won
-# `mkdir "$lock_dir"` but has not yet written its pid file. States are:
-#   alive <pid> — pid published and process is running
-#   dead        — pid published but process is gone
-#   publishing  — pid absent and lockdir mtime is within the 2s publish grace
-#   orphaned    — pid absent and lockdir mtime predates the publish grace
-# Real publication is microseconds so 2s is deliberately generous.
-lock_owner_status() {
-  local dir="$1"
-  local pid_file="$dir/pid"
-  local pid=""
-  if [ -f "$pid_file" ]; then
-    pid="$(cat "$pid_file" 2> /dev/null || true)"
-  fi
-  if [ -n "$pid" ]; then
-    if kill -0 "$pid" 2> /dev/null; then
-      printf 'alive %s\n' "$pid"
-      return 0
-    fi
-    printf 'dead\n'
-    return 0
-  fi
-  local mt now age
-  mt="$(stat -c %Y "$dir" 2> /dev/null || stat -f %m "$dir" 2> /dev/null || echo 0)"
-  now="$(date +%s)"
-  age="$((now - mt))"
-  if [ "$age" -lt 2 ]; then
-    printf 'publishing\n'
-  else
-    printf 'orphaned\n'
-  fi
-}
-
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux"
 mkdir -p "$cache_dir" 2> /dev/null || true
 
@@ -94,72 +61,33 @@ if [ "$cache_only" -eq 1 ]; then
   exit 0
 fi
 
-lock_dir="${cache_file}.lock"
-while ! mkdir "$lock_dir" 2> /dev/null; do
-  status="$(lock_owner_status "$lock_dir")"
+lock_helper="$script_dir/lib/gh_fetch_lock.py"
+refresh_args=()
+[ "$refresh" -eq 0 ] || refresh_args=(--refresh)
+while true; do
+  status="$(python3 "$lock_helper" acquire "$cache_file" "$$" ${refresh_args[@]+"${refresh_args[@]}"})"
   case "$status" in
-    alive*)
-      pid="${status#alive }"
-      if [ "$refresh" -eq 1 ]; then
-        # Manual refresh: pre-empt the in-flight fetch immediately. Its TERM
-        # trap takes its python+gh subprocess children with it, so the search
-        # rate-limit budget is preserved for our new fetch. We then poll until
-        # the killed bash has actually exited (and its trap finished releasing
-        # the lock) before retrying the mkdir, to avoid clobbering each other.
-        kill "$pid" 2> /dev/null || true
-        waited=0
-        while kill -0 "$pid" 2> /dev/null && [ "$waited" -lt 15 ]; do
-          sleep 0.1
-          waited="$((waited + 1))"
-        done
-        if kill -0 "$pid" 2> /dev/null; then
-          kill -KILL "$pid" 2> /dev/null || true
-          sleep 0.1
-        fi
-        rm -rf "$lock_dir" 2> /dev/null || true
-        continue
-      fi
+    owned\ *)
+      generation="${status#owned }"
+      break
+      ;;
+    publishing) sleep 0.1 ;;
+    busy)
       emit_cache || true
       exit 0
       ;;
-    publishing)
-      # Owner has mkdir'd but not yet written pid; back off (bounded by the
-      # 2s publish grace) rather than reap and race a second fetch.
-      sleep 0.1
-      continue
-      ;;
-    dead | orphaned)
-      # Published-then-died, or no pid within grace: safe to take over.
-      rm -rf "$lock_dir" 2> /dev/null || true
-      ;;
+    *) exit 1 ;;
   esac
 done
 
 PYTHON_PID=""
 cleanup() {
-  # Stop the in-flight python fetch (and its `gh` subprocess children) before
-  # releasing the lock. Without this, a `kill <bash_pid>` from a competing
-  # `--refresh` would leave python+gh orphaned, racing on the cache file and
-  # consuming the search/issues secondary rate limit so the new fetch returns
-  # all-errored sections (which fall back to prior cache → "loader for 2s,
-  # nothing changes").
-  if [ -n "$PYTHON_PID" ] && kill -0 "$PYTHON_PID" 2> /dev/null; then
-    pkill -TERM -P "$PYTHON_PID" 2> /dev/null || true
-    kill -TERM "$PYTHON_PID" 2> /dev/null || true
-  fi
-  # Ownership-checked release: only delete the lock if the pid file still
-  # names us. A successor that took over after our kill has already written
-  # its own $$ and we must not unlink its pid file or rmdir its lock_dir.
-  if [ -d "$lock_dir" ]; then
-    cur_pid="$(cat "${lock_dir}/pid" 2> /dev/null || true)"
-    if [ "$cur_pid" = "$$" ]; then
-      rm -f "${lock_dir}/pid" 2> /dev/null || true
-      rmdir "$lock_dir" 2> /dev/null || true
-    fi
-  fi
+  python3 "$lock_helper" release "$cache_file" "$$" "$generation" "$PYTHON_PID" || true
 }
-trap cleanup EXIT INT TERM HUP
-printf '%s\n' "$$" > "${lock_dir}/pid" 2> /dev/null || true
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+trap 'exit 129' HUP
 
 if [ "$refresh" -eq 0 ] && [ -f "$cache_file" ]; then
   mt="$(stat -c %Y "$cache_file" 2> /dev/null || stat -f %m "$cache_file" 2> /dev/null || echo 0)"
@@ -178,10 +106,6 @@ for cmd in gh yq python3; do
   }
 done
 
-# Run python in the background so bash's TERM trap can interrupt the wait and
-# kill python (+ its gh subprocesses) deterministically. With a synchronous
-# child, bash defers signal handlers until the child exits — the orphan window
-# this opens is exactly the bug we are closing here.
 if [ "$refresh" -eq 1 ]; then
   python3 -u "$script_dir/lib/gh_items_main.py" --config "$config" --cache-file "$cache_file" --scope "$scope" --refresh &
 else
@@ -190,6 +114,6 @@ fi
 PYTHON_PID=$!
 set +e
 wait "$PYTHON_PID"
-rc=$?
+rc=$? PYTHON_PID=""
 set -e
 exit "$rc"

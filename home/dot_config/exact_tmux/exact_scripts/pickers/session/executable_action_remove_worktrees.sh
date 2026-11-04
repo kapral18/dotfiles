@@ -54,43 +54,10 @@ fi
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux"
 cache_file="${cache_dir}/pick_session_items.tsv"
 pending_file="${cache_dir}/pick_session_pending.tsv"
-pending_lock_dir="${pending_file}.lock"
 mutation_file="${cache_dir}/pick_session_mutations.tsv"
 rm_log_file="${cache_dir}/pick_session_remove_worktrees.log"
 rm_log_max_lines=2000
 mkdir -p "$cache_dir"
-
-lock_dir="${cache_file}.lock"
-acquire_lock() {
-  local waited=0
-  while ! mkdir "$lock_dir" 2> /dev/null; do
-    sleep 0.02
-    waited="$((waited + 20))"
-    [ "$waited" -ge 200 ] && return 1
-  done
-  return 0
-}
-release_lock() { rmdir "$lock_dir" 2> /dev/null || true; }
-
-# Serialize read-modify-write on `pending_file` across the picker, the async
-# `remove_all_worktrees.sh` removers, and any other future writers. The same
-# `mkdir`-based lock pattern is used elsewhere (cache_file).
-acquire_pending_lock() {
-  local waited=0
-  while ! mkdir "$pending_lock_dir" 2> /dev/null; do
-    sleep 0.02
-    waited="$((waited + 20))"
-    [ "$waited" -ge 1000 ] && return 1
-  done
-  return 0
-}
-release_pending_lock() { rmdir "$pending_lock_dir" 2> /dev/null || true; }
-
-_action_remove_cleanup() {
-  release_lock
-  release_pending_lock
-}
-trap _action_remove_cleanup EXIT
 
 realpath_or_self() {
   realpath "$1" 2> /dev/null || printf '%s' "$1"
@@ -116,7 +83,7 @@ fi
 list_worktree_paths() {
   local root="$1"
   [ -n "$root" ] || return 1
-  git -C "$root" worktree list --porcelain 2> /dev/null | awk '/^worktree /{print $2}' | sed '/^$/d' || true
+  git -C "$root" worktree list --porcelain 2> /dev/null | sed -n 's/^worktree //p' | sed '/^$/d' || true
 }
 
 worktree_root_dir_for_path() {
@@ -432,36 +399,47 @@ fi
 
 # Check-only mode (picker's alt-x transform): resolve selections exactly like
 # a real run, then report the preflight verdict with zero side effects.
-# Exit 0 = safe to remove without force; exit 3 = blocked (dirty/unpushed).
+# Exit 0 = safe to remove without force; exit 3 = blocked by removal safety checks.
+# Plain directories have no git safety state, so their recursive delete always needs Force.
 if [ "$check_only" -eq 1 ]; then
-  if [ "$force_remove" -eq 1 ] || [ ${#pending_wt_paths[@]} -eq 0 ] || ! command -v ,w > /dev/null 2>&1; then
-    exit 0
-  fi
+  [ "$force_remove" -eq 1 ] && exit 0
+  [ ${#pending_plain_dirs[@]} -eq 0 ] || exit 3
+  [ ${#pending_wt_paths[@]} -gt 0 ] || exit 0
+  command -v ,w > /dev/null 2>&1 || exit 3
+  _preflight="$(,w remove --preflight --paths "${pending_wt_paths[@]}" 2> /dev/null)" || exit 3
   _check_blocked=0
   while IFS= read -r _p; do
     [ -n "$_p" ] || continue
     _check_blocked=1
     break
-  done < <(,w remove --preflight --paths "${pending_wt_paths[@]}" 2> /dev/null || true)
+  done <<< "$_preflight"
   if [ "$_check_blocked" -eq 1 ]; then
     exit 3
   fi
   exit 0
 fi
 
-# Preflight worktrees for unsaved work (dirty files, unpushed commits) BEFORE
+# Preflight worktree removal safety BEFORE
 # any destructive step below: session kills, pending/tombstone writes, and the
 # backgrounded `,w remove` all assume the removal will happen. Non-forced runs
 # are gated by the picker's alt-x `--check` first; reaching this gate blocked
 # means state changed since that check, so abort cleanly instead of forcing.
 declare -A unsafe_wt=()
+if [ "$force_remove" -eq 0 ] && [ ${#pending_plain_dirs[@]} -gt 0 ]; then
+  tmux display-message -d 4000 "pick_session: deleting a plain directory needs Force; press alt-x again" 2> /dev/null || true
+  exit 0
+fi
+if [ "$force_remove" -eq 0 ] && [ ${#pending_wt_paths[@]} -gt 0 ] && ! command -v ,w > /dev/null 2>&1; then
+  exit 3
+fi
 if [ "$force_remove" -eq 0 ] && [ ${#pending_wt_paths[@]} -gt 0 ] && command -v ,w > /dev/null 2>&1; then
+  _preflight="$(,w remove --preflight --paths "${pending_wt_paths[@]}" 2> /dev/null)" || exit 3
   while IFS= read -r _p; do
     [ -n "$_p" ] || continue
     unsafe_wt["$_p"]=1
-  done < <(,w remove --preflight --paths "${pending_wt_paths[@]}" 2> /dev/null || true)
+  done <<< "$_preflight"
   if [ ${#unsafe_wt[@]} -gt 0 ]; then
-    tmux display-message -d 4000 "pick_session: blocked — selected worktree(s) have unsaved work; press alt-x again to force" 2> /dev/null || true
+    tmux display-message -d 4000 "pick_session: blocked by work or submodule safety checks; press alt-x again to force" 2> /dev/null || true
     exit 0
   fi
 fi
@@ -471,40 +449,20 @@ fi
 # invoking the remover twice for the same path is harmless (idempotent rm/
 # rmdir) and is required to carry every selected session identity through.
 
-# Record pending worktree removals so a subsequent index refresh doesn't re-add
-# them. Serialized via `pending_lock_dir` so concurrent appenders/rewriters
-# (this script + the async `remove_all_worktrees.sh` cleanup_pending_entries)
-# can't interleave.
-if [ ${#pending_wt_paths[@]} -gt 0 ]; then
-  if acquire_pending_lock; then
-    {
-      for p in "${pending_wt_paths[@]}"; do
-        printf 'WT\t%s\n' "$p"
-      done
-    } >> "$pending_file"
-    release_pending_lock
-  fi
-fi
-
-# Record path tombstones so long-running/stale scans cannot resurrect removed
-# rows while the actual filesystem cleanup is still in flight.
-now_epoch="$(date +%s)"
 {
   for p in "${pending_wt_paths[@]}"; do
-    [ -n "$p" ] || continue
-    printf '%s\tPATH_PREFIX\t%s\n' "$now_epoch" "$p"
+    printf 'WT\t%s\n' "$p"
   done
   for p in "${pending_plain_dirs[@]}"; do
-    [ -n "$p" ] || continue
-    printf '%s\tPATH_PREFIX\t%s\n' "$now_epoch" "$p"
+    printf 'DIR\t%s\n' "$p"
   done
-} >> "$mutation_file"
+} | python3 "$script_dir/../lib/resource_lock.py" remove-mark "$pending_file" "$mutation_file"
 
 if command -v tmux > /dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
   pick_session_scan_roots_raw="$(tmux_opt '@pick_session_worktree_scan_roots' "$HOME/code,$HOME/.local/share")"
 
   for root in "${!roots_selected[@]}"; do
-    nohup env -u TMUX -u TMUX_PANE PICK_SESSION_CURRENT_SESSION="$current_session" PICK_SESSION_SCAN_ROOTS="$pick_session_scan_roots_raw" "$HOME/.config/tmux/scripts/pickers/session/remove_all_worktrees.sh" "$root" < /dev/null > /dev/null 2>&1 &
+    nohup env -u TMUX -u TMUX_PANE PICK_SESSION_CURRENT_SESSION="$current_session" PICK_SESSION_SCAN_ROOTS="$pick_session_scan_roots_raw" "$HOME/.config/tmux/scripts/pickers/session/remove_all_worktrees.sh" "$root" "$force_remove" < /dev/null > /dev/null 2>&1 &
   done
 
   for root in "${!worktree_paths_by_root[@]}"; do
@@ -539,6 +497,6 @@ if [ ${#pending_plain_dirs[@]} -gt 0 ] && command -v zoxide > /dev/null 2>&1; th
   done
 fi
 
-if [ -f "$cache_file" ] && acquire_lock; then
-  CACHE_FILE="$cache_file" PENDING_WT="$(printf '%s\n' "${pending_wt_paths[@]-}")" PENDING_DIRS="$(printf '%s\n' "${pending_plain_dirs[@]-}")" python3 "$script_dir/lib/cache_prune_paths.py"
+if [ -f "$cache_file" ]; then
+  CACHE_FILE="$cache_file" PENDING_WT="$(printf '%s\n' "${pending_wt_paths[@]-}")" PENDING_DIRS="$(printf '%s\n' "${pending_plain_dirs[@]-}")" python3 "$script_dir/../lib/resource_lock.py" --timeout 0.2 cache-run "$cache_file" python3 "$script_dir/lib/cache_prune_paths.py" || true
 fi

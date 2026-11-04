@@ -4,30 +4,33 @@ sidebar_position: 5
 
 # Memory and Handoffs
 
-These three CLIs keep knowledge and progress across sessions. They do not inject their records automatically. Pi separately maintains a same-session [task checkpoint](tool-configs/pi.md#task-checkpoints-and-output-retention), with retrievable raw history; it does not replace cross-harness handoffs.
+These three tools keep knowledge and progress across sessions. They do not inject their records automatically. Pi separately maintains a same-session [task checkpoint](tool-configs/pi.md#task-checkpoints-and-output-retention), with retrievable raw history; it does not replace cross-harness handoffs.
 
-## `,handoff` — task progress across sessions and harnesses
+## `,task handoff` — task progress across sessions and harnesses
 
 Use it when you stop in one harness and continue in another, or before a long break.
 
 ```sh
-,handoff save auth-fix <<'NOTE'
-Goal: …
-Decisions: …
+,task handoff save auth-fix <<'NOTE'
 Approvals: …
 State: …
 Remaining: …
 Files: …
 Verify: …
 NOTE
-,handoff list            # this repo, newest first (--all for every repo)
-,handoff show auth-fix   # --prev for the previous version
+,task handoff list                          # this repo, newest first (--all for every repo)
+,task handoff show auth-fix                 # the note and its saved card; --prev for the previous version
+,task handoff resume auth-fix    # the note, and the saved card becomes this session's card
 ```
 
-- Notes live in `~/.local/share/agent-handoffs/<repo>/<topic>.md` (override with `AGENT_HANDOFF_DIR`).
+- Notes live in `~/.local/share/agent-handoffs/<repo>/<topic>.md` (override with `AGENT_HANDOFF_DIR`); the saving session's intent card is stored beside it as `<topic>.card.json`.
 - `<repo>` is the main checkout's directory name, so all worktrees of a repo share one namespace; outside git it is `global`.
-- Saving keeps the previous version as `<topic>.prev.md`. Notes over 4 KB save with a warning.
-- The `k-handoff` skill tells agents what to write on "handoff X" and how to resume on "continue X": treat the note as a starting point and re-check the files and git state it names. Only the commit, push, and PR requests under the note's `Approvals:` carry into the new session, and its `State:` names the task's starting commit, the paths already changed when it started, and the path of any `k-review` Verify baseline, so a later review and commit still separate the task's changes from the user's.
+- Saving keeps the previous note and card as `<topic>.prev.md` and `<topic>.prev.card.json`. Notes over 4 KB save with a warning. A session without a card saves the note alone.
+- Topic names contain 1–64 characters: a lowercase letter or digit first, then lowercase letters, digits, `.`, `_` or `-`. The `.prev` suffix is reserved for backups; read them with `show <topic> --prev`. Saves and reads share a lock across worktrees, so each note stays paired with its card.
+- `--repo <name>` selects a handoff namespace; Fish topic completion uses the same namespace.
+- `save` and `resume` take `--session <id>` when several sessions share the worktree; a hook names the id then.
+- `resume` refuses when the session already has a card. It reopens each checked `Done when` item whose evidence no longer verifies in the new session, such as a quote from the old transcript or a file claim whose file changed.
+- The card already carries the goal, items, scope, decisions, claims and recent corrections, so the note holds only what the card lacks. The `k-handoff` skill tells agents what to write on "handoff X" and how to resume on "continue X": treat the note and card as a starting point and re-check the files and git state they name. Only the commit, push, and PR requests under the note's `Approvals:` carry into the new session, and its `State:` names the task's starting commit, the paths already changed when it started, and the path of any `k-review` Verify baseline, so a later review and commit still separate the task's changes from the user's.
 
 ## `,behavior-map` — critical behaviors per repo
 
@@ -71,7 +74,9 @@ A local knowledge base of short capsules with hybrid (BM25 + vector) search.
 
 - Search when starting on a subsystem you may have touched before, or on an unfamiliar error. Treat hits as leads.
 - Remember only verified, reusable gotchas and recipes with literal identifiers and a source; never task progress.
-- `remember` refuses title collisions and near-duplicates; `--supersedes <id>` amends a stale capsule in place.
-- `,ai-kb curate` dedupes and decays capsules; run it by hand when the store grows noisy.
+- `remember` requires a nonblank title and source; source defaults to `manual`. Metadata headers must be single lines, including Unicode line boundaries. It refuses title collisions and near-duplicates; `--supersedes <id>` amends a stale capsule in place.
+- `,ai-kb curate` dedupes capsules only within the same scope, workspace, project, and domain tags, then decays dormant capsules; run it by hand when the store grows noisy.
+- Markdown capsules are canonical. Reads, writes, ingestion, and curation share a store lock; interrupted canonical writes rebuild the SQLite mirror on the next read, preserving capsule creation and amendment timestamps.
+- Hard workspace filtering applies before lexical and vector candidate limits, so foreign matches cannot hide a local capsule.
 
 The `k-ai-kb` skill holds the search and write rules; `~/.agents/skills/k-ai-kb/references/cli.md` holds the flag contract.

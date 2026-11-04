@@ -5,6 +5,8 @@ import hashlib
 import importlib.util
 import io
 import json
+import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -304,6 +306,51 @@ class ProductionRoutingTests(unittest.TestCase):
                         raw if profile == "recorder" else b"".join(body for group, body in sections if group == profile)
                     )
                     self.assertEqual(output, expected)
+
+
+class RecordingRecipeTests(unittest.TestCase):
+    @unittest.skipUnless(shutil.which("node"), "Node is not installed")
+    def test_commonjs_recorder_finalizes_video_and_closes_browser_on_success_or_failure(self):
+        reference = (
+            ROOT / "home/exact_dot_agents/exact_skills/exact_k-playwriter/exact_references/readonly_video-recording.md"
+        )
+        script = reference.read_text().split("```js\n", 1)[1].split("\n```", 1)[0]
+        fake = r"""
+const log = (event) => console.log(JSON.stringify({ event }));
+exports.chromium = { launch: async () => ({
+  newContext: async () => ({
+    newPage: async () => {
+      if (process.env.RECORDING_TEST_FAIL) throw new Error('scenario failed');
+      return { video: () => ({ path: async () => { log('video.path'); return '/fake/video.webm'; } }) };
+    },
+    close: async () => log('context.close'),
+  }),
+  close: async () => log('browser.close'),
+}) };
+"""
+        for fail in [False, True]:
+            with self.subTest(fail=fail), tempfile.TemporaryDirectory(prefix="recording-recipe-") as temporary:
+                directory = Path(temporary)
+                module = directory / "node_modules/playwright-core"
+                module.mkdir(parents=True)
+                (module / "index.js").write_text(fake)
+                source = directory / "record.js"
+                source.write_text(script)
+                env = {
+                    "PATH": os.environ.get("PATH", ""),
+                    "HOME": temporary,
+                    "NODE_PATH": str(directory / "node_modules"),
+                }
+                if fail:
+                    env["RECORDING_TEST_FAIL"] = "1"
+                result = subprocess.run(
+                    [shutil.which("node"), str(source)], capture_output=True, text=True, env=env, timeout=10
+                )
+                events = [json.loads(line)["event"] for line in result.stdout.splitlines() if line.startswith("{")]
+                self.assertEqual(result.returncode, 1 if fail else 0, result.stderr)
+                self.assertEqual(
+                    events, ["browser.close"] if fail else ["context.close", "video.path", "browser.close"]
+                )
 
 
 if __name__ == "__main__":

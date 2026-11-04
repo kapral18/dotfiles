@@ -94,7 +94,7 @@ update_cmd="$HOME/.config/tmux/scripts/pickers/session/index_update.sh"
 fzf_reload_cmd="$HOME/.config/tmux/scripts/pickers/session/fzf_reload.sh"
 filter_cmd="$HOME/.config/tmux/scripts/pickers/session/filter.sh"
 if [ -x "$fzf_reload_cmd" ] && [ -x "$filter_cmd" ] \
-  && { [ -n "${FZF_SOCK:-}" ] || [ -n "${FZF_PORT:-}" ]; }; then
+  && [ -n "${FZF_SOCK:-}" ]; then
   "$fzf_reload_cmd" "$filter_cmd --refresh --force-order" 0 > /dev/null 2>&1 || true
 fi
 

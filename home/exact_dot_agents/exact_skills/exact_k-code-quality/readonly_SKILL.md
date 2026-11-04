@@ -73,8 +73,8 @@ Do not load React/web/test/design secondaries merely because they might become r
 - A "works with it" check is insufficient unless the user explicitly requested that artifact by name.
 - If the without-it probe passes, do not add the artifact; if already added, remove it.
 
-For a test file, the tooling consumer needs durable behavioral protection.
-Apply `~/AGENTS.md` §3's minimum sufficient test protection rule; the product still running without its tests does not refute their necessity.
+For a test file, apply `~/AGENTS.md` §3's test-value rule: distinct behavioral protection must earn its maintenance cost.
+The product still running without tests does not settle their value; fewer or no tests is valid when justified by that rule.
 
 ## General Code Rules
 

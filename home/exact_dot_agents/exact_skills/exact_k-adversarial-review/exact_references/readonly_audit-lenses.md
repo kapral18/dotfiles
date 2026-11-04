@@ -76,8 +76,8 @@ Use the quality references selected by the main skill for each surface.
   identify mismatches that invalidate claimed protection.
 - Check whether setup, cleanup, imports, hooks, and runners can overwrite user data, mutate real configuration, read real credentials, or start real services.
   Inspect tests without running unsafe ones.
-- Identify material behaviors missing durable protection, including invariants repeatedly fixed without a protecting test.
-  Recommend the smallest necessary behavioral coverage, not a count or a case for every branch/incident.
+- Apply `~/AGENTS.md` §3's test-value rule to missing or costly coverage; absent tests alone are not a finding.
+  Recommend only distinct behavioral protection worth its maintenance, and simplify or remove recurring test-only repair chains.
 - Identify redundant assertions, snapshots pinning private structure or prose, and scaffolding that increases maintenance without protecting distinct behavior.
   Preserve required directives and useful behavioral coverage.
 - Require comments to carry legal/tooling requirements or a critical non-obvious constraint.

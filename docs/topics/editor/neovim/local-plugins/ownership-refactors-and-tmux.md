@@ -28,15 +28,12 @@ Select one or more exported declarations in visual mode, enter a target path (re
 
 How it works:
 
-1. Treesitter collects the exported binding names in the selection (`const`/`function`/`class`/`type`).
-2. `textDocument/references` records every file that imports them.
-3. Each export is renamed to a temporary placeholder, then the lines are moved into the target file (parent dirs are created; appended after a blank line if the file already exists).
-4. Each referencing file is opened, and `typescript-tools`' add-missing-imports re-imports the placeholder from the new file.
-5. The placeholder is renamed back to the original name from the new file; the LSP rename propagates the original name through every importer.
+1. The attached `typescript-tools` client requests TypeScript's native **Move to file** refactor for the selected lines.
+2. TypeScript returns one workspace edit for the declarations, their import dependencies, importers, and any required `tsconfig.json` file list changes.
+3. The editor applies those edits to buffers. Existing target content remains; a modified target must be saved first. If applying the edit fails, the affected buffer contents and modified flags are restored.
+4. Review the affected buffers and save them. The command leaves files unsaved; the configured `BufWritePre` hook creates missing parent directories when you save.
 
-Requirements:
-
-- Depends on the `typescript-tools` LSP client (`pmizio/typescript-tools.nvim`) being attached — it drives references, rename, and add-missing-imports. See [Editor: Neovim](../index.md) for the TypeScript LSP setup.
+The selection must contain statements that TypeScript can move. An unavailable refactor, rejected target, or buffer change during the request leaves the refactor unapplied. The command needs `pmizio/typescript-tools.nvim` attached and a TypeScript version that supports the interactive **Move to file** refactor. See [TypeScript tools](../language-tooling/lsp-and-source-jumps.md#typescript-tools).
 
 ## tmux Bridge: Send Text To The Right Pane (Local Plugin)
 

@@ -78,4 +78,4 @@ Where to read:
 
 - [AI assistants](../topics/ai-assistants/index.md) — instructions, skills, subagents
 - [MCP servers](../topics/ai-assistants/mcp.md) and [Tool configs](../topics/ai-assistants/tool-configs/index.md) — how tools get context and models
-- [Memory and handoffs](../topics/ai-assistants/memory-and-handoffs.md) — `,ai-kb` and `,handoff`
+- [Memory and handoffs](../topics/ai-assistants/memory-and-handoffs.md) — `,ai-kb` and `,task handoff`

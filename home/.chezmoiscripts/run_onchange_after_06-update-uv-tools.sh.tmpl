@@ -20,8 +20,8 @@ if ! chezmoi execute-template <"$uv_tools_template" >"$rendered_tools"; then
   echo "Error: Failed to render default-uv-tools template"
   exit 1
 fi
-declare -a lines
-while IFS= read -r line; do
+lines=()
+while IFS= read -r line || [[ -n "$line" ]]; do
   lines+=("$line")
 done <"$rendered_tools"
 
@@ -34,7 +34,7 @@ install_uv_tool() {
   if [[ "$force" == "true" ]]; then
     install_args+=(--force)
   fi
-  if ! uv tool install "${install_args[@]}" "$tool" &>/dev/null; then
+  if ! uv tool install ${install_args[@]+"${install_args[@]}"} "$tool" &>/dev/null; then
     echo "Error: Failed to install uv tool $tool"
     return 1
   fi
@@ -76,10 +76,10 @@ uv_spec_requires_reapply() {
   [[ "$spec" != "$key" ]]
 }
 
-declare -a tools_to_install
-declare -a tool_keys_to_keep
+tools_to_install=()
+tool_keys_to_keep=()
 
-for line in "${lines[@]}"; do
+for line in ${lines[@]+"${lines[@]}"}; do
   [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
 
   tool_spec=$(echo "$line" | sed 's/[[:space:]]*#.*$//' | xargs)
@@ -89,16 +89,11 @@ for line in "${lines[@]}"; do
   fi
 done
 
-if [[ ${#tools_to_install[@]} -eq 0 ]]; then
-  echo "No tools found in rendered uv tools template to install"
-  exit 0
-fi
-
 if uv tool list >/dev/null 2>&1; then
   installed_tools=$(uv tool list | grep -v '^-' | awk '{print $1}' || true)
   if [[ -n "$installed_tools" ]]; then
     echo "$installed_tools" | while read -r tool; do
-      if ! contains_item "$tool" "${tool_keys_to_keep[@]}"; then
+      if ! contains_item "$tool" ${tool_keys_to_keep[@]+"${tool_keys_to_keep[@]}"}; then
         echo "Uninstalling unwanted uv tool: $tool"
         uv tool uninstall "$tool" &>/dev/null || echo "Warning: Failed to uninstall $tool"
       fi
@@ -108,7 +103,7 @@ fi
 
 installed_tools=$(uv tool list | grep -v '^-' | awk '{print $1}' || true)
 
-for tool in "${tools_to_install[@]}"; do
+for tool in ${tools_to_install[@]+"${tools_to_install[@]}"}; do
   tool_key=$(uv_tool_key "$tool")
 
   if [[ -n "$installed_tools" ]] && contains_item "$tool_key" $installed_tools; then

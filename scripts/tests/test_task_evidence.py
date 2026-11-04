@@ -25,6 +25,14 @@ class TestReportEvidence(unittest.TestCase):
             with self.subTest(answer=answer):
                 self.assertEqual(evidence.check_answer({"claims": [], "done": []}, answer, []), [])
 
+    def test_WHEN_a_paragraph_follows_a_report_item_SHOULD_not_join_it(self):
+        answer = "Decision needed: none\n\nRejected F2: the header exists at src/a.py:3."
+        self.assertEqual(evidence.check_answer({"claims": [], "done": []}, answer, []), [])
+        items = list(evidence.report_items("Open:\n- Nothing exercises the Windows path; no Windows host.\n\nDone."))
+        self.assertEqual(items, [("Open", "Nothing exercises the Windows path; no Windows host.")])
+        items = list(evidence.report_items("Open: none\n\nChecked the logs and nothing else changed."))
+        self.assertEqual(items, [("Open", "none")])
+
     def test_WHEN_an_example_ends_SHOULD_check_the_following_real_claim(self):
         cases = (
             "- ```md\n  Checked: sample [C888]\n  ```\n\nChecked: actual [C999]",

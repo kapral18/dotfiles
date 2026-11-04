@@ -50,6 +50,13 @@ The theme uses Yazi's flavor system instead of copying a full theme file. Chezmo
 
 Tombi reads the inline `$schema` entries in the rendered Yazi TOML files, so TOML LSP hover, completion, and validation work without adding editor-only files to `~/.config/yazi`.
 
+## Redtab (Reddit client)
+
+- Config: [`home/dot_config/redtab/readonly_config.toml`](../../../home/dot_config/redtab/readonly_config.toml)
+- Installed as: `~/.config/redtab/config.toml`
+
+`All subs` groups show four posts each. Inline image previews are enabled. URLs and local images open with macOS `open`; videos use `mpv --force-window=immediate`.
+
 ## Git TUIs
 
 Two terminal git clients are configured; pick whichever fits the task (the [git identity](git-identity/index.md) and [git skill](../ai-assistants/index.md) cover the underlying workflow):

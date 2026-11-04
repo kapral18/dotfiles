@@ -54,7 +54,7 @@ The row carries:
 - consumer
 - local consumer probe (defaults to `--version`; `record --probe-arg` overrides its arguments)
 
-Claude settings provenance includes the selected settings file and the owning merge-hook template. Settings-file changes report `input-drift`; changes to the hook itself report `transform-drift`, even before target bytes change.
+Every generated artifact records its owning 07-hook template as a transform, including all rows from the shared MCP generator. A hook change reports `transform-drift` before target bytes change. Claude settings also records the selected settings file as an input; changes to it report `input-drift`.
 
 Claude MCP merging rejects malformed existing JSON before writing, preserves unrelated live keys, and creates a missing file even for an empty registry.
 

@@ -33,4 +33,5 @@ chezmoi_record_artifact --id pi-models \
   --target "$target_dir/models.json" --ownership-adapter whole-file \
   --input "$src_models" \
   --transform "$source_dir/../scripts/chezmoi_lib.sh" \
+  --transform "$source_dir/.chezmoiscripts/run_onchange_after_07-merge-pi-config.sh.tmpl" \
   --consumer pi

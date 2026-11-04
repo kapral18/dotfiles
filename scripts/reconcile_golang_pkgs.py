@@ -1,40 +1,12 @@
 #!/usr/bin/env python3
-"""Reconcile globally `go install`-ed tool binaries against the desired list.
-
-Usage:
-    reconcile_golang_pkgs.py <desired_file> <gobin_dir> <state_file> [<installed_file>]
-
-- <desired_file>: rendered default-golang-pkgs list (module paths, one per
-  line; `#` comments and blank lines ignored).
-- <gobin_dir>: directory where `go install` drops binaries (GOBIN, or
-  $(go env GOPATH)/bin).
-- <state_file>: newline-delimited record of the module paths this tooling has
-  installed. Created if missing.
-- <installed_file>: module paths this run actually `go install`-ed. A desired
-  module whose binary already existed is never added to the ledger, so a
-  hand-installed binary of the same name is never removed later.
-
-Why a state file instead of "remove everything in GOBIN not in the list":
-`go install` does not track which binaries came from this dotfiles list, and
-GOBIN may legitimately contain binaries a user installed by hand. We must only
-ever remove binaries we ourselves installed. The state file is that ledger.
-
-This script does NOT install anything (the shell hook runs `go install`). It:
-  1. derives the binary name for each module path,
-  2. removes managed binaries whose module is no longer desired,
-  3. rewrites the state file to the desired modules it already managed plus
-     the ones installed this run.
-
-Binary name = last path segment, skipping a trailing major-version segment
-(`/v2`, `/v10`, ...) and any `@version` suffix. This matches `go install`.
-
-Prints one line per removal to stdout. Exit code is always 0 for reconcile
-outcomes; only bad arguments cause a non-zero exit.
-"""
 
 from __future__ import annotations
 
+import contextlib
+import fcntl
+import os
 import sys
+import tempfile
 from pathlib import Path
 
 
@@ -42,62 +14,77 @@ def binary_name(module_path: str) -> str:
     path = module_path.split("@", 1)[0].rstrip("/")
     if not path:
         return ""
-    segs = path.split("/")
-    last = segs[-1]
-    # A trailing pure major-version segment ("v2", "v10") is not the binary
-    # name; the segment before it is. Guard against a real name like "v2tool".
-    if len(segs) >= 2 and len(last) >= 2 and last[0] == "v" and last[1:].isdigit():
-        last = segs[-2]
+    segments = path.split("/")
+    last = segments[-1]
+    if len(segments) >= 2 and len(last) >= 2 and last[0] == "v" and last[1:].isdigit():
+        last = segments[-2]
     return last
 
 
 def load_modules(path: Path) -> list[str]:
     if not path.exists():
         return []
-    modules: list[str] = []
-    for raw in path.read_text(encoding="utf-8").splitlines():
-        line = raw.strip()
-        if not line or line.startswith("#"):
-            continue
-        modules.append(line.split()[0])
-    return modules
+    return [
+        line.split()[0]
+        for raw in path.read_text(encoding="utf-8").splitlines()
+        if (line := raw.strip()) and not line.startswith("#")
+    ]
+
+
+@contextlib.contextmanager
+def state_lock(path: Path):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.with_name(path.name + ".lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        yield
+
+
+def write_modules(path: Path, modules: list[str]) -> None:
+    descriptor, temporary = tempfile.mkstemp(dir=path.parent, prefix=path.name + ".")
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            stream.write("".join(f"{module}\n" for module in dict.fromkeys(modules)))
+        os.replace(temporary, path)
+    finally:
+        Path(temporary).unlink(missing_ok=True)
+
+
+def record_install(state_file: Path, module: str) -> None:
+    with state_lock(state_file):
+        write_modules(state_file, [*load_modules(state_file), module])
 
 
 def main() -> int:
+    if len(sys.argv) == 4 and sys.argv[1] == "--record":
+        record_install(Path(sys.argv[2]), sys.argv[3])
+        return 0
     if len(sys.argv) not in (4, 5):
-        sys.stderr.write("usage: reconcile_golang_pkgs.py <desired_file> <gobin_dir> <state_file> [<installed_file>]\n")
+        sys.stderr.write("usage: reconcile_golang_pkgs.py <desired> <gobin> <state> [<installed>]\n")
         return 2
 
-    desired_file = Path(sys.argv[1])
-    gobin_dir = Path(sys.argv[2])
-    state_file = Path(sys.argv[3])
-
+    desired_file, gobin_dir, state_file = map(Path, sys.argv[1:4])
     desired = load_modules(desired_file)
-    previously_managed = load_modules(state_file)
     installed_now = set(load_modules(Path(sys.argv[4]))) if len(sys.argv) == 5 else set(desired)
-
-    desired_set = set(desired)
-    to_remove = [m for m in previously_managed if m not in desired_set]
-
-    for module in to_remove:
-        name = binary_name(module)
-        if not name:
-            continue
-        binary = gobin_dir / name
-        # Only remove a binary whose name is not also produced by a still-desired
-        # module (avoid deleting a binary another desired package owns).
-        if any(binary_name(d) == name for d in desired):
-            continue
-        if binary.exists() or binary.is_symlink():
+    desired_names = {binary_name(module) for module in desired}
+    with state_lock(state_file):
+        previously_managed = load_modules(state_file)
+        failed_removals = []
+        for module in previously_managed:
+            name = binary_name(module)
+            if module in desired or not name or name in desired_names:
+                continue
+            binary = gobin_dir / name
+            existed = binary.exists() or binary.is_symlink()
             try:
-                binary.unlink()
-                print(f"removed go binary: {name} ({module})")
-            except OSError as exc:
-                sys.stderr.write(f"warning: failed to remove {binary}: {exc}\n")
-
-    state_file.parent.mkdir(parents=True, exist_ok=True)
-    managed = [m for m in desired if m in installed_now or m in previously_managed]
-    state_file.write_text("".join(f"{m}\n" for m in managed), encoding="utf-8")
+                binary.unlink(missing_ok=True)
+            except OSError as error:
+                failed_removals.append(module)
+                sys.stderr.write(f"warning: failed to remove {binary}: {error}\n")
+            else:
+                if existed:
+                    print(f"removed go binary: {name} ({module})")
+        managed = [module for module in desired if module in installed_now or module in previously_managed]
+        write_modules(state_file, [*managed, *failed_removals])
     return 0
 
 

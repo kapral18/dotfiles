@@ -33,15 +33,10 @@ save_session() {
   local milestone_title="$4"
   local label="$5"
 
-  cat > "$SESSION_FILE" << EOF
-{
-  "owner": "$owner",
-  "repo": "$repo",
-  "parent_issue": "$parent_issue",
-  "milestone_title": "$milestone_title",
-  "label": "$label"
-}
-EOF
+  jq -n --arg owner "$owner" --arg repo "$repo" --arg parent_issue "$parent_issue" \
+    --arg milestone_title "$milestone_title" --arg label "$label" \
+    '{owner: $owner, repo: $repo, parent_issue: $parent_issue, milestone_title: $milestone_title, label: $label}' \
+    > "$SESSION_FILE"
 }
 
 load_session() {
@@ -294,7 +289,11 @@ create_issue() {
   fi
 
   local existing_num
-  existing_num=$(gh api "repos/$OWNER/$REPO/issues?since=$two_weeks_ago&per_page=100" | jq --arg title "$title" '.[] | select(.title == $title) | .number' | head -1)
+  if ! existing_num=$(gh api --paginate "repos/$OWNER/$REPO/issues?since=$two_weeks_ago&per_page=100" \
+    | jq -s --arg title "$title" '[.[][] | select(.pull_request == null and .title == $title) | .number] | first // empty'); then
+    print_error "Failed to check existing issues; no issue was created."
+    return 1
+  fi
 
   if [[ -n "$existing_num" ]]; then
     print_warning "Issue with title '$title' already exists as #$existing_num. Skipping creation."
@@ -412,8 +411,9 @@ validate_issue() {
   local repo="$2"
   local issue="$3"
 
-  if ! gh api "repos/$owner/$repo/issues/$issue" &> /dev/null; then
-    print_error "Issue #$issue not found in $owner/$repo"
+  if ! gh api "repos/$owner/$repo/issues/$issue" \
+    | jq -e 'type == "object" and .pull_request == null and (.number | type == "number")' > /dev/null; then
+    print_error "Issue #$issue not found in $owner/$repo or is a pull request"
     return 1
   fi
   return 0
@@ -425,7 +425,8 @@ find_milestone_number() {
   local milestone_title="$3"
 
   local milestone_number
-  milestone_number=$(gh api "repos/$owner/$repo/milestones?per_page=100" --jq ".[] | select(.title == \"$milestone_title\") | .number")
+  milestone_number=$(gh api --paginate "repos/$owner/$repo/milestones?per_page=100" \
+    | jq --arg title "$milestone_title" '.[] | select(.title == $title) | .number')
 
   if [[ -n "$milestone_number" ]]; then
     echo "$milestone_number"
@@ -449,7 +450,7 @@ validate_milestone() {
   else
     print_error "Milestone '$milestone_title' not found in $owner/$repo by Title"
     print_info "Available milestones:"
-    gh api "repos/$owner/$repo/milestones?per_page=100" --jq '.[] | "ID:  #\(.number) - Title: \(.title)"'
+    gh api --paginate "repos/$owner/$repo/milestones?per_page=100" --jq '.[] | "ID:  #\(.number) - Title: \(.title)"'
     return 1
   fi
 }
@@ -534,7 +535,7 @@ main() {
     if ! gh api "repos/$OWNER/$REPO/labels/$LABEL" &> /dev/null; then
       print_warning "Label '$LABEL' does not exist in $OWNER/$REPO"
       echo "Available labels:"
-      gh api "repos/$OWNER/$REPO/labels" --jq '.[] | "  \(.name)"'
+      gh api --paginate "repos/$OWNER/$REPO/labels" --jq '.[] | "  \(.name)"'
       LABEL=""
     else
       print_success "Label: $LABEL"

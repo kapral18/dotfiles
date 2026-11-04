@@ -7,7 +7,7 @@ source "$script_dir/../shared/bash_utils_lib.sh"
 source "$script_dir/../shared/worktree_lib.sh"
 
 show_usage() {
-  cat << EOF
+  cat << 'EOF'
 Usage: ,w add [-q|--quiet] <branch_name> [base_branch]
 
 Add a git worktree for a branch.
@@ -24,7 +24,7 @@ Options:
   -h, --help        Show this help message
 
 Environment:
-  COMMA_W_PRUNE=0   Disable automatic $(git worktree prune)
+  COMMA_W_PRUNE=0   Disable automatic git worktree prune
 
 Examples:
   ,w add feature-branch

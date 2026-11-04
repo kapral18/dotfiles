@@ -2,6 +2,7 @@
 set -euo pipefail
 
 PATH="$HOME/bin:$PATH"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 usage() {
   cat << 'EOF'
@@ -109,12 +110,14 @@ ensure_repo_worktree() {
   local wt="" conventional_path=""
 
   if [ -n "$repo_path_hint" ] && wt="$(resolve_repo_worktree "$repo_path_hint" 2> /dev/null)"; then
+    validate_repo_identity "$wt" "$repo_nwo"
     printf '%s\n' "$wt"
     return 0
   fi
 
   conventional_path="$(conventional_repo_wrapper_path "$repo_nwo")"
   if wt="$(resolve_repo_worktree "$conventional_path" 2> /dev/null)"; then
+    validate_repo_identity "$wt" "$repo_nwo"
     printf '%s\n' "$wt"
     return 0
   fi
@@ -130,7 +133,13 @@ ensure_repo_worktree() {
     wt="$(resolve_repo_worktree "$repo_path_hint" 2> /dev/null || true)"
   fi
   [ -n "$wt" ] || die "could not find a git worktree under: $conventional_path"
+  validate_repo_identity "$wt" "$repo_nwo"
   printf '%s\n' "$wt"
+}
+
+validate_repo_identity() {
+  python3 "$script_dir/repo_identity.py" "$1" "$2" \
+    || die "local checkout does not have an origin or upstream remote for $2: $1"
 }
 
 kind="${1:-}"
@@ -157,6 +166,10 @@ esac
 case "$number" in
   *[!0-9]* | "") die "invalid number: $number" ;;
 esac
+
+[[ "$repo_nwo" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || die "invalid repository: $repo_nwo"
+require_cmd git
+require_cmd python3
 
 repo_path=""
 focus_mode=0
@@ -233,6 +246,7 @@ fi
 
 require_cmd ,w
 cd "$wt"
+export GH_REPO="$repo_nwo"
 
 case "$kind" in
   pr)

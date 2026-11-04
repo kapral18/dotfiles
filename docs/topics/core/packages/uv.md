@@ -33,6 +33,8 @@ Hook:
 
 - [`home/.chezmoiscripts/run_onchange_after_06-update-uv-tools.sh.tmpl`](../../../../home/.chezmoiscripts/run_onchange_after_06-update-uv-tools.sh.tmpl)
 
+The final declaration is processed even without a trailing newline. Removing every declaration also removes every installed uv tool. An empty or comment-only list still runs pruning.
+
 ## Verification
 
 ```bash

@@ -34,7 +34,7 @@ When the record includes the task's intent card, judge first whether the final a
 and whether the work left its Scope or drifted from the Goal (§1, §3 step 0).
 The user can be wrong: an answer that followed an ask the evidence shows misses its Goal, without saying so, is a break (§1); following the user's explicit choice is not.
 Look first at claims and their evidence (§2), questions and unfinished work (§1), tests and the report lists (§3 steps 3 and 8), and side effects (§5).
-Unfinished work includes a \`Proposed:\` item §1 makes part of the task and a \`Decision needed:\` question that needs no judgment of the user's under §1.
+Unfinished work includes a \`Proposed:\` item §1 makes part of the task, an \`Open:\` failure missing its proven cause (or \`Unknown because …\`) or the step only the user can take, and a \`Decision needed:\` question that needs no judgment of the user's under §1.
 Also report a bug, a broken contract, or a skipped part of this turn's request, read with the stored goal, decisions and findings.
 User tone is not evidence. A matching quote proves provenance, not the claim: check that the source supports it.
 Stances preserve user choices; do not infer a new choice from frustration or a question.
@@ -212,8 +212,6 @@ export const register: Register = on => {
     // A background shell task does not count: a server never ends, and the turn would never be checked.
     isPaused = (e.background_tasks ?? []).some(task => task.type === 'subagent' || task.type === 'workflow')
     if (!isPaused) lastAnswer = message
-    // A paused answer that asks the user gets the review now, since the user may answer it before the wake; the report's format checks wait for the next answer that is not paused.
-    if (isPaused ? isPauseReviewed || !asksUser(message) : isSent) return below
     const isChanged = async () => {
       if (isEdited) return true
       if (typeof baseline !== 'string') return false
@@ -221,8 +219,17 @@ export const register: Register = on => {
       return now !== undefined && now !== baseline
     }
     const isActive = ids.size > 0 || isWoken
-    const checks = isPaused ? [] : await findings(message, { isActive, isAskWanted, isListWanted, isChanged })
-    const ledger = await evidenceLedger($, isPaused ? '' : message)
+    // The rewrite after a send-back goes through unchecked, but its checks still reach the guard ledger, which records whether the send-back cleared them.
+    if (!isPaused && isSent) {
+      const rewrite = await findings(message, { isActive, isAskWanted, isListWanted, isChanged })
+      await evidenceLedger($, message, [], rewrite.checks, true)
+      return below
+    }
+    // A paused answer that asks the user gets the review now, since the user may answer it before the wake; the report's format checks wait for the next answer that is not paused.
+    if (isPaused && (isPauseReviewed || !asksUser(message))) return below
+    const format = isPaused ? { messages: [], checks: {} } : await findings(message, { isActive, isAskWanted, isListWanted, isChanged })
+    const checks = format.messages
+    const ledger = await evidenceLedger($, isPaused ? '' : message, [], format.checks)
     if (!isPaused) checks.push(...(ledger?.problems ?? []))
     // A woken or chat turn can ask the user without a tool call, so asking alone also earns the review.
     let review: string | undefined
@@ -248,6 +255,9 @@ export const register: Register = on => {
       baseline = typeof baseline === 'string' ? ((await snapshot($).catch(() => undefined)) ?? null) : undefined
       return below
     }
+    // intent-guard, beneath this mod, recorded the board status for this answer; it goes back, so the turn goes on.
+    // A paused answer recorded none: intent-guard skips paused Stops.
+    if (!isPaused) await sentBack($)
     // A paused send-back holds only the review and ends the stretch: the next answer that is not paused gets its own checks, review, and send-back.
     isSent = !isPaused
     if (isPaused) isReviewed = false
@@ -296,6 +306,7 @@ async function reviewTurn($: EngineInterface, model: string, request: string, id
     return undefined
   }
   $.ui.log(`stop-review: ${model} sent ${concerns.length} concern(s)`)
+  await logFire($, 'stop-review:review', concerns.join(' | '))
   return (
     `stop-review: ${model} reviewed this turn, with the task record as context, and raised:\n` +
     concerns.map(concern => `- ${concern}`).join('\n') +
@@ -324,12 +335,29 @@ const parseConcerns = (reply: string): Concern[] => {
   return concerns.slice(0, 5)
 }
 
+// Each review send-back goes to the guard ledger (`,task guards`), with or without a card; a missing `,task` never changes the send-back.
+async function logFire($: EngineInterface, guard: string, detail: string) {
+  try {
+    const session = await $.session.id()
+    await $.process.run([',task', 'guard', 'log', guard, '--harness', 'claude', '--session', session, '--detail', detail.slice(0, 200)], { timeoutMs: 5000 })
+  } catch { /* The ledger is best-effort. */ }
+}
+
+// Best-effort: a missing `,task` leaves a stale board row, never a changed send-back.
+async function sentBack($: EngineInterface) {
+  try {
+    const [session, cwd] = [await $.session.id(), await $.session.cwd()]
+    await $.process.run([',task', 'hook', 'sentback', '--harness', 'claude', '--input', JSON.stringify({ session, cwd })], { timeoutMs: 15000 })
+  } catch { /* The board row stays until the next Stop. */ }
+}
+
 // One Python owner handles CLI and Stop-time verification under the same store lock.
-async function evidenceLedger($: EngineInterface, answer: string, concerns: Concern[] = []): Promise<Ledger | undefined> {
+// `format` holds each format check that ran and whether it fired; ,task logs them for `,task guards`.
+async function evidenceLedger($: EngineInterface, answer: string, concerns: Concern[] = [], format: Record<string, boolean> = {}, rewrite = false): Promise<Ledger | undefined> {
   try {
     const session = await $.session.id()
     const result = await $.process.run([',task', 'hook', 'evidence', '--harness', 'claude'], {
-      stdin: JSON.stringify({ session, answer, findings: concerns }), timeoutMs: 15000,
+      stdin: JSON.stringify({ session, answer, findings: concerns, format, rewrite }), timeoutMs: 15000,
     })
     if (result.exitCode !== 0 || result.isStdoutTruncated) throw new Error(result.stderr || 'ledger unavailable')
     return JSON.parse(result.stdout) as Ledger

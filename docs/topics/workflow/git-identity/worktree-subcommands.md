@@ -55,6 +55,7 @@ Login resolution order:
 ```
 
 - Reuses an existing issue worktree when metadata or branch heuristics match.
+- Issue URLs must identify the current GitHub repository. A URL for another repository fails before pruning, creating a worktree, or updating issue metadata.
 - Prompts for a branch name when creating new work; branch is created as `<name>-<issue_number>`.
 - `-b` / `--branch` supplies the branch non-interactively.
 - `--focus` switches/attaches to the tmux session.
@@ -125,10 +126,12 @@ Accepts a branch name or absolute path, creates a tmux session if needed, and sw
 - Interactive fzf multi-select by default.
 - Removes directory, deletes local branch, removes unused fork remotes, cleans empty parent dirs, purges from zoxide, and kills the tmux session.
 - Protects the repository's actual default branch.
+- Non-forced removal refuses registered submodules and populated submodule administration stores, including deinitialized stores. This also applies to clean, pushed submodules: use the existing `--force` override only when discarding their local repositories is intended.
 - Never offers or deletes the main worktree (the first `git worktree list` entry, including separate-git-dir clones), whatever branch it is on, even with `--force` or `--paths`.
 - Treats `.DS_Store` as ignorable.
-- Bags leftover files in otherwise-empty parents under `../.bag/worktree_remove/<wrapper>/<timestamp>/...`.
+- Bags leftover files in parents below the repository wrapper under `../.bag/worktree_remove/<wrapper>/<timestamp>/...`, preserving exact filenames, including embedded newlines. An occupied archive destination gets a unique sibling directory, preserving earlier payloads even when removals share a timestamp. Cleanup stops before any parent containing another repository or worktree at any depth, or if that parent cannot be fully inspected. Parents outside the wrapper are left in place.
 - `--paths` skips the picker and allows removing detached worktrees.
+- Root preflight requires every checkout HEAD and every local ref, including stashes and Git notes, to be reachable from remote-tracking refs. It does not retain arbitrary reflog-only or unreachable objects.
 - `--tmux-notify` shows progress via tmux messages.
 
 ## `prune` — clean stale metadata

@@ -110,7 +110,7 @@ class WIssueMatchTests(_WCase):
         self.commit(self.main, "base")
 
     def find(self, number: str) -> str:
-        script = f'source "{self.w}/../shared/bash_utils_lib.sh"; source "{self.w}/issue_lib.sh"; _comma_w_issue_find_by_heuristics {number} || true'
+        script = f'source "{self.w}/../shared/bash_utils_lib.sh"; source "{self.w}/issue_lib.sh"; _comma_w_issue_find_by_heuristics {number} owner/repo || true'
         return subprocess.run(
             ["bash", "-c", script], cwd=self.main, env=self.env, text=True, capture_output=True
         ).stdout.strip()
@@ -282,6 +282,19 @@ class WSessionHintTests(_WCase):
         inside = self.root / "real/wt/sub"
         inside.mkdir(parents=True)
         self.assertNotIn("kill-session", self.remove_session("", cwd=inside))
+
+
+class WHelpTests(_WCase):
+    def test_add_and_remove_help_do_not_run_git_commands(self) -> None:
+        calls = self.root / "git-calls"
+        self.stub("git", f'printf "%s\\n" "$*" >> "{calls}"\nexit 1')
+        self.stub(",w", f'printf "%s\\n" "$*" >> "{calls}"\nexit 1')
+
+        for command in ("add.sh", "remove.sh"):
+            with self.subTest(command=command):
+                result = self.run_w(command, self.root, "--help")
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertFalse(calls.exists(), result.stdout)
 
 
 if __name__ == "__main__":

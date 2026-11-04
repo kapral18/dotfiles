@@ -35,7 +35,7 @@ if [ -z "$kind" ] && [ -z "$path" ]; then
     line="${1:-}"
   fi
   if [ -n "$line" ]; then
-    IFS=$'\t' read -r _disp kind path meta target _rest <<< "$line"
+    IFS=$'\037' read -r _disp kind path meta target _rest <<< "${line//$'\t'/$'\037'}"
   fi
 fi
 
@@ -213,7 +213,7 @@ pane_capture() {
   [ -n "$sess" ] || return 0
 
   local sess_info
-  sess_info="$(tmux display-message -t "$sess" -p '#{pane_current_command}	#{session_path}	#{session_windows}' 2> /dev/null || true)"
+  sess_info="$(tmux display-message -t "=${sess}" -p '#{pane_current_command}	#{session_path}	#{session_windows}' 2> /dev/null || true)"
   if [ -n "$sess_info" ]; then
     local active_cmd sess_path win_count
     IFS=$'\t' read -r active_cmd sess_path win_count <<< "$sess_info"
@@ -239,7 +239,7 @@ pane_capture() {
   fi
 
   local pane_text
-  pane_text="$(tmux capture-pane -t "$sess" -p 2> /dev/null | awk 'NF{p=1} p' || true)"
+  pane_text="$(tmux capture-pane -t "=${sess}" -p 2> /dev/null | awk 'NF{p=1} p' || true)"
   if [ -n "$pane_text" ]; then
     printf '\n%s\n' "${C_BOLD}${C_CYAN}pane content${C_R}"
     printf '%s\n' "$pane_text" | tail -20

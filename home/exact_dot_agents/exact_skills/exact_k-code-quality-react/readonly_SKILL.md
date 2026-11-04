@@ -37,4 +37,4 @@ Do not load secondary skills until read/diff evidence proves the surface is in s
   make display formatting and comparison rules explicit.
 - Verify user-visible behavior with a unit render test or from the component contract when the change affects interaction or layout;
   an interactive browser session is a live check (`~/AGENTS.md` §3 step 4).
-  Source verification does not waive minimum sufficient test protection under `~/AGENTS.md` §3 for new/changed material behavior.
+  Choose durable tests by `~/AGENTS.md` §3's test-value rule; source verification does not itself require a new test.

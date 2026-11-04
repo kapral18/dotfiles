@@ -119,6 +119,65 @@ GATES: tuple[Gate, ...] = (
 TEST_RULES: tuple[TestRule, ...] = (
     TestRule(
         prefixes=(
+            "home/dot_config/exact_tmux/exact_scripts/pickers/session/executable_remove_all_worktrees.sh",
+            "home/dot_config/exact_tmux/exact_scripts/pickers/session/executable_action_remove_worktrees.sh",
+        ),
+        tests=("tests/test_worktree_delete_boundaries.py",),
+    ),
+    TestRule(
+        prefixes=("home/exact_lib/exact_shared/worktree_nested_git.py",),
+        tests=("tests/test_w_remove.py", "tests/test_tmux_safety.py"),
+    ),
+    TestRule(
+        prefixes=(
+            "home/private_readonly_dot_gitconfig.tmpl",
+            "home/exact_lib/exact_shared/wtgrab.py",
+            "home/exact_lib/exact_,gh-worktree/",
+            "home/exact_bin/executable_,gh-issuew",
+            "home/exact_bin/executable_,fzf-git-changed-lines",
+        ),
+        tests=("tests/test_git_helpers.py",),
+    ),
+    TestRule(
+        prefixes=("home/exact_lib/exact_,gh-subissues-create/",),
+        tests=("tests/test_gh_subissues_create.py",),
+    ),
+    TestRule(
+        prefixes=(
+            "home/dot_config/exact_nvim/",
+            "scripts/tests/neovim_workflows.lua",
+            "home/dot_config/exact_tmux/exact_scripts/pickers/github/executable_gh_batch_worktree.sh",
+        ),
+        tests=("tests/test_neovim_workflows.py",),
+    ),
+    TestRule(
+        prefixes=(
+            "home/dot_config/exact_tmux/exact_scripts/pickers/",
+            "home/dot_config/exact_tmux/exact_scripts/command_palette/",
+            "home/dot_config/exact_tmux/exact_scripts/gh_dash/",
+            "home/dot_config/exact_tmux/exact_scripts/gh_tfork/",
+            "home/exact_bin/executable_,set-default-mic",
+        ),
+        tests=("tests/test_tmux_safety.py",),
+    ),
+    TestRule(
+        prefixes=("scripts/tests/artifact_client_harness.cjs",),
+        tests=("tests/test_artifact.py",),
+    ),
+    TestRule(
+        prefixes=(
+            "home/.chezmoi.toml.tmpl",
+            "home/readonly_dot_default-custom-packages.tmpl",
+            "home/.chezmoiscripts/run_onchange_after_05-update-golang-pkgs.sh.tmpl",
+            "home/.chezmoiscripts/run_onchange_after_06-update-uv-tools.sh.tmpl",
+            "scripts/reconcile_golang_pkgs.py",
+            "home/.chezmoiscripts/run_onchange_after_07-merge-",
+            "home/.chezmoiscripts/run_onchange_after_07-generate-mcp-configs.sh.tmpl",
+        ),
+        tests=("tests/test_package_recovery.py",),
+    ),
+    TestRule(
+        prefixes=(
             "home/dot_claude/readonly_no-agent-summary.cjs",
             "home/readonly_dot_profile.tmpl",
             "home/dot_config/fish/readonly_config.fish.tmpl",
@@ -212,6 +271,7 @@ TEST_RULES: tuple[TestRule, ...] = (
         ),
     ),
     TestRule(prefixes=("home/dot_config/fish/completions/readonly_,q.fish",), tests=("tests/test_q.py",)),
+    TestRule(prefixes=("home/dot_config/fish/completions/readonly_,task.fish",), tests=("tests/test_task.py",)),
     TestRule(
         prefixes=(
             ".claude/skills/dotfiles-guard/",

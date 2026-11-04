@@ -34,18 +34,28 @@ NODE_PATH="$PWD/node_modules" node /tmp/record.js   # reuse the repo's playwrigh
 
 ```js
 const { chromium } = require("playwright-core");
-const browser = await chromium.launch({ headless: true });
-const context = await browser.newContext({
-  viewport: { width: 1280, height: 720 },
-  recordVideo: { dir: "/tmp/raw", size: { width: 1280, height: 720 } },
+async function record() {
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const context = await browser.newContext({
+      viewport: { width: 1280, height: 720 },
+      recordVideo: { dir: "/tmp/raw", size: { width: 1280, height: 720 } },
+    });
+    const page = await context.newPage();
+    // Resolve controls from the live a11y/DOM before the scenario; leave proof-visible
+    // toasts/banners/dialogs up through the clip when they are the delta being proven.
+    // ...login + scenario...
+    const video = page.video();
+    await context.close(); // finalizes the file
+    console.log(await video.path()); // .webm
+  } finally {
+    await browser.close();
+  }
+}
+record().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
 });
-const page = await context.newPage();
-// Resolve controls from the live a11y/DOM before the scenario; leave proof-visible
-// toasts/banners/dialogs up through the clip when they are the delta being proven.
-// ...login + scenario...
-const video = page.video();
-await context.close(); // finalizes the file
-const path = await video.path(); // .webm
 ```
 
 `playwriter` CLI has no `--record` flag — use `Browser.newContext({ recordVideo })` as above (verified playwriter 0.4.0).

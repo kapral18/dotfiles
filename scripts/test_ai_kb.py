@@ -11,6 +11,7 @@ import sqlite3
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import unittest
 from pathlib import Path
@@ -551,13 +552,29 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
                 assert kb._schema_state(db) == "ok"
                 assert db.execute("SELECT COUNT(*) FROM capsule_fts").fetchone()[0] == 1
 
-    def test_remember_rejects_multiline_header_fields(self):
+    def test_remember_rejects_invalid_header_fields_without_writing_capsules(self):
         import ai_kb
 
-        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, {"AI_KB_DISABLE_EMBED": "1"}):
-            kb = ai_kb.KnowledgeBase(home=Path(tmp))
-            with self.assertRaisesRegex(ValueError, "title must be a single line"):
-                kb.remember("a\nid: other", "b")
+        class Embedder:
+            model = "test/invalid-headers"
+
+            def embed_one(self, text):
+                raise AssertionError("invalid headers must be rejected before embedding")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            kb = ai_kb.KnowledgeBase(home=Path(tmp), embedder=Embedder())
+            for title, source, error in [
+                ("a\nid: other", "manual", "title must be a single line"),
+                ("valid\vtitle", "manual", "title must be a single line"),
+                ("", "manual", "title must not be blank"),
+                (" \t", "manual", "title must not be blank"),
+                ("Valid title", "", "source must not be blank"),
+                ("Valid title", " \t", "source must not be blank"),
+            ]:
+                with self.subTest(title=title, source=source):
+                    with self.assertRaisesRegex(ValueError, error):
+                        kb.remember(title, "body", source=source)
+                    self.assertEqual(list(kb.capsules_dir.glob("*.md")), [])
 
     def test_remember_rejects_unknown_kind_or_scope(self):
         import ai_kb
@@ -897,6 +914,106 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
                 )
             finally:
                 os.environ.pop("AI_KB_DISABLE_EMBED", None)
+
+
+class TestKnowledgeBaseCanonicalWrites(unittest.TestCase):
+    def test_amend_failure_recovers_from_the_canonical_sidecar(self):
+        import ai_kb
+
+        with tempfile.TemporaryDirectory() as tmp:
+            kb = ai_kb.KnowledgeBase(home=Path(tmp))
+            with mock.patch.object(ai_kb, "utc_now", return_value="2026-01-01T00:00:00+00:00"):
+                capsule = kb.remember("Initial", "initial body", embed_now=False)
+            with kb.connect() as db:
+                db.execute(
+                    """UPDATE capsules SET decay_score = 0.4, retrieved_at = ?, retrieval_count = 7,
+                       embedding = ?, embedding_model = 'old-model', embedding_dim = 2 WHERE id = ?""",
+                    ("2026-01-10T00:00:00+00:00", bytes.fromhex("0000803f00000000"), capsule.id),
+                )
+
+            class InterruptedIndex(sqlite3.Connection):
+                def execute(self, sql, *args):
+                    if sql.lstrip().startswith("UPDATE capsules SET"):
+                        raise sqlite3.OperationalError("interrupted before index update")
+                    return super().execute(sql, *args)
+
+            original_connect = sqlite3.connect
+
+            def interrupted_connect(*args, **kwargs):
+                return original_connect(*args, **kwargs, factory=InterruptedIndex)
+
+            with (
+                mock.patch.object(sqlite3, "connect", side_effect=interrupted_connect),
+                mock.patch.object(ai_kb, "utc_now", return_value="2026-02-01T00:00:00+00:00"),
+            ):
+                with self.assertRaisesRegex(sqlite3.OperationalError, "interrupted"):
+                    kb.remember("Amended", "canonical replacement", supersedes=capsule.id, embed_now=False, force=True)
+            recovered = ai_kb.KnowledgeBase(home=Path(tmp))
+            actual = recovered.get(capsule.id)
+            self.assertEqual((actual.title, actual.body), ("Amended", "canonical replacement"))
+            self.assertEqual(
+                (actual.created_at, actual.updated_at),
+                ("2026-01-01T00:00:00+00:00", "2026-02-01T00:00:00+00:00"),
+            )
+            with recovered.connect() as db:
+                state = db.execute(
+                    """SELECT decay_score, retrieved_at, retrieval_count, embedding,
+                       embedding_model, embedding_dim FROM capsules WHERE id = ?""",
+                    (capsule.id,),
+                ).fetchone()
+            self.assertEqual(tuple(state), (0.4, "2026-01-10T00:00:00+00:00", 7, None, None, 0))
+            self.assertEqual([hit["id"] for hit in recovered.search("replacement", mode="bm25")], [capsule.id])
+            self.assertFalse((Path(tmp) / "pending-capsule").exists())
+
+    def test_parallel_amendments_keep_the_index_and_canonical_file_in_the_same_order(self):
+        import ai_kb
+
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            kb = ai_kb.KnowledgeBase(home=home)
+            capsule = kb.remember("Initial", "initial body", embed_now=False)
+            replacing = threading.Event()
+            release = threading.Event()
+            second_done = threading.Event()
+            errors = []
+            original_replace = os.replace
+
+            def paused_replace(source, target):
+                if threading.current_thread().name == "first-amend":
+                    replacing.set()
+                    if not release.wait(5):
+                        raise TimeoutError("first writer was not released")
+                return original_replace(source, target)
+
+            def amend(title):
+                try:
+                    ai_kb.KnowledgeBase(home=home).remember(
+                        title, title, supersedes=capsule.id, force=True, embed_now=False
+                    )
+                except BaseException as error:
+                    errors.append(error)
+                finally:
+                    if title == "Second":
+                        second_done.set()
+
+            with mock.patch.object(os, "replace", paused_replace):
+                first = threading.Thread(target=amend, args=("First",), name="first-amend")
+                second = threading.Thread(target=amend, args=("Second",))
+                first.start()
+                self.assertTrue(replacing.wait(5))
+                second.start()
+                try:
+                    self.assertFalse(second_done.wait(0.1), "the second amendment must wait for canonical publication")
+                finally:
+                    release.set()
+                    first.join(5)
+                    second.join(5)
+                self.assertFalse(first.is_alive() or second.is_alive())
+            self.assertEqual(errors, [])
+            self.assertEqual(kb.get(capsule.id).title, "Second")
+            with kb.connect() as db:
+                db.execute("DROP TABLE capsules")
+            self.assertEqual(kb.get(capsule.id).title, "Second")
 
 
 class TestKnowledgeBaseLexicalRanking(unittest.TestCase):
@@ -1405,6 +1522,19 @@ class TestKnowledgeBaseWorkspaceGate(unittest.TestCase):
             finally:
                 os.environ.pop("AI_KB_DISABLE_EMBED", None)
 
+    def test_gate_filters_foreign_matches_before_the_lexical_candidate_limit(self):
+        import ai_kb
+
+        with tempfile.TemporaryDirectory() as tmp:
+            kb = ai_kb.KnowledgeBase(home=Path(tmp))
+            for index in range(25):
+                kb.remember(f"needle {index}", "needle", scope="project", workspace_path="/ws/foreign", embed_now=False)
+            local = kb.remember(
+                "Local", "needle " + "other " * 100, scope="project", workspace_path="/ws/local", embed_now=False
+            )
+            hits = kb.search("needle", limit=1, mode="bm25", workspace="/ws/local", workspace_gate=True)
+            self.assertEqual([hit["id"] for hit in hits], [local.id])
+
     def test_gate_requires_workspace(self):
         import ai_kb
 
@@ -1509,6 +1639,43 @@ class TestKnowledgeBaseCurate(unittest.TestCase):
                 assert all(abs(r["decay_score"] - 0.7) < 1e-6 for r in rows), [r["decay_score"] for r in rows]
             finally:
                 os.environ.pop("AI_KB_DISABLE_EMBED", None)
+
+    def test_dedupe_preserves_independent_scope_workspace_and_project_capsules(self):
+        import struct
+
+        import ai_kb
+
+        with tempfile.TemporaryDirectory() as tmp:
+            kb = ai_kb.KnowledgeBase(home=Path(tmp))
+            notes = [
+                kb.remember(
+                    str(index),
+                    "same recipe",
+                    kind="recipe",
+                    scope=scope,
+                    workspace_path=workspace,
+                    project_id=project,
+                    embed_now=False,
+                    confidence=confidence,
+                )
+                for index, (scope, workspace, project, confidence) in enumerate(
+                    [
+                        ("project", "/ws/a", "one", 0.5),
+                        ("project", "/ws/b", "one", 0.5),
+                        ("workspace", "/ws/a", "one", 0.5),
+                        ("project", "/ws/a", "two", 0.5),
+                        ("project", "/ws/a", "one", 0.9),
+                    ]
+                )
+            ]
+            with kb.connect() as db:
+                db.execute("UPDATE capsules SET embedding = ?, embedding_dim = 2", (struct.pack("ff", 1, 0),))
+            pairs = [{"a_id": notes[0].id, "b_id": note.id, "cosine": 1.0} for note in notes[1:]]
+            with mock.patch.object(kb, "_call_vec_runner", return_value={"pairs": pairs}):
+                actual = kb.curate(decay=False, contradiction_scan=False)
+            self.assertEqual(actual["duplicates"], 1)
+            self.assertEqual({note.id for note in kb.list()}, {note.id for note in notes[1:]})
+            self.assertFalse(Path(notes[0].path).exists())
 
     def test_dedupe_deletes_the_losing_near_duplicate(self):
         require_live_runtime(self)

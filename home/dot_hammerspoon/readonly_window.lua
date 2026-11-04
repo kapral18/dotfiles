@@ -6,7 +6,7 @@ local resizeFull = function()
   local screen = win:screen()
   local max = screen:frame()
 
-  win:setFrame(hs.geometry(0, 0, max.w, max.h))
+  win:setFrame(hs.geometry(max.x, max.y, max.w, max.h))
 end
 
 local resizeLeft = function()
@@ -17,7 +17,7 @@ local resizeLeft = function()
   local screen = win:screen()
   local max = screen:frame()
 
-  win:setFrame(hs.geometry(0, 0, max.w / 2, max.h))
+  win:setFrame(hs.geometry(max.x, max.y, max.w / 2, max.h))
 end
 
 local resizeRight = function()
@@ -39,7 +39,7 @@ local resizeTop = function()
   local screen = win:screen()
   local max = screen:frame()
 
-  win:setFrame(hs.geometry(0, 0, max.w, max.h / 2))
+  win:setFrame(hs.geometry(max.x, max.y, max.w, max.h / 2))
 end
 
 local resizeBottom = function()
@@ -49,7 +49,7 @@ local resizeBottom = function()
   end
   local screen = win:screen()
   local max = screen:frame()
-  win:setFrame(hs.geometry(0, max.h / 2, max.w, max.h / 2))
+  win:setFrame(hs.geometry(max.x, max.y + max.h / 2, max.w, max.h / 2))
 end
 
 hs.hotkey.bind(Hyper, "h", resizeLeft)

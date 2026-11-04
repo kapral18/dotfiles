@@ -8,7 +8,7 @@ Read the [documentation](https://kapral18.github.io/dotfiles/) for setup, comman
 
 | Feature         | Description                                           |
 | --------------- | ----------------------------------------------------- |
-| Agent memory    | `,ai-kb` knowledge base and `,handoff` session notes  |
+| Agent memory    | `,ai-kb` knowledge base and `,task handoff` notes     |
 | Local inference | llama.cpp router and model sync (`,llama-cpp`)        |
 | Git identity    | 1Password SSH agent and SSH commit signing            |
 | Git worktrees   | Worktree management with PR integration               |

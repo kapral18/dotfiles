@@ -3,9 +3,8 @@
 #
 # Stale-while-revalidate: on open, cached items are shown instantly via
 # start:reload(cache-only). A background process fetches fresh data and
-# POSTs a reload to fzf's TCP listener once done. If the listener is
-# unavailable (port collision, fzf already exited), the user still sees
-# cached data and can ctrl-r to force refresh.
+# POSTs a reload to fzf's Unix-socket listener once done. If fzf already
+# exited, the user still sees cached data and can ctrl-r to force refresh.
 #
 # Usage: gh_picker.sh [--scope all|focus|explore]
 set -euo pipefail
@@ -96,11 +95,12 @@ primary_tmp="${cache_dir}/gh_picker_primary.$$.tsv"
 action_flag="${cache_dir}/gh_picker_action.$$"
 expand_flag="${cache_dir}/gh_preview_expand.$$"
 help_flag="${cache_dir}/gh_picker_help.$$"
-_gh_picker_pid_scoped_files+=("$primary_tmp" "$action_flag" "$expand_flag" "$help_flag")
-# port_file is shared for best-effort reload notifications when the active
+listen_sock="${cache_dir}/gh_picker_fzf.$$.sock"
+_gh_picker_pid_scoped_files+=("$primary_tmp" "$action_flag" "$expand_flag" "$help_flag" "$listen_sock")
+# sock_file is shared for best-effort reload notifications when the active
 # picker is still alive. The scope file is shared runtime state for picker
 # bindings and in-popup reload commands.
-port_file="${cache_dir}/gh_picker_port"
+sock_file="${cache_dir}/gh_picker_sock"
 scope_flag_file="${cache_dir}/gh_picker_scope"
 # Handoff pins/sentinels resolve to this invocation's private namespace
 # (inherited popup-loop token or this picker's standalone token). Shared runtime
@@ -158,12 +158,12 @@ export GH_PICKER_DISPATCH_CACHE_FILE="$items_cache"
 # fetch was killed by a concurrent ctrl-r refresh) the cache is still stale and
 # telling fzf to reload from it would override an in-progress ctrl-r reload
 # with the same stale content.
-bg_fetch_cmd="($(printf %q "$preview_warm_cmd") $(printf %q "$items_cache") >/dev/null 2>&1 & sleep 0.15; $(printf %q "$row_loader_cmd") global-start >/dev/null 2>&1 || true; if eval $(printf %q "$full_load_cmd") >/dev/null 2>&1; then printf '%s' \"\$FZF_PORT\" > $(printf %q "$port_file") 2>/dev/null || true; s=\$(cat $(printf %q "$scope_flag_file") 2>/dev/null || echo all); reload_cmd=\"GH_PICKER_SCOPE=\$(printf %q \"\$s\") $(printf %q "$items_cmd") --cache-only 2>/dev/null$pin_reload_pipe\"; curl -s --max-time 5 -XPOST \"http://127.0.0.1:\${FZF_PORT}\" -d \"reload-sync(\$reload_cmd)+track\" 2>/dev/null || true; fi; $(printf %q "$row_loader_cmd") global-stop >/dev/null 2>&1 || true; $(printf %q "$preview_warm_cmd") $(printf %q "$items_cache") >/dev/null 2>&1 || true) &"
+bg_fetch_cmd="($(printf %q "$preview_warm_cmd") $(printf %q "$items_cache") >/dev/null 2>&1 & sleep 0.15; $(printf %q "$row_loader_cmd") global-start >/dev/null 2>&1 || true; if eval $(printf %q "$full_load_cmd") >/dev/null 2>&1; then printf '%s' \"\$FZF_SOCK\" > $(printf %q "$sock_file") 2>/dev/null || true; s=\$(cat $(printf %q "$scope_flag_file") 2>/dev/null || echo all); reload_cmd=\"GH_PICKER_SCOPE=\$(printf %q \"\$s\") $(printf %q "$items_cmd") --cache-only 2>/dev/null$pin_reload_pipe\"; curl -s --max-time 5 --unix-socket \"\$FZF_SOCK\" -XPOST http://localhost -d \"reload-sync(\$reload_cmd)+track\" 2>/dev/null || true; fi; $(printf %q "$row_loader_cmd") global-stop >/dev/null 2>&1 || true; $(printf %q "$preview_warm_cmd") $(printf %q "$items_cache") >/dev/null 2>&1 || true) &"
 
 pick="$(
   eval "$initial_items_cmd" | SHELL="$fzf_shell" fzf \
     --with-shell "$fzf_shell -c" \
-    --listen-unsafe \
+    --listen="$listen_sock" \
     --ansi \
     --height=100% \
     --reverse \
@@ -186,12 +186,12 @@ pick="$(
     --bind "alt-0:transform:$(printf %q "$scope_helper") $(printf %q "$scope_flag_file") $(printf %q "$items_cmd") all" \
     --bind "alt-1:transform:$(printf %q "$scope_helper") $(printf %q "$scope_flag_file") $(printf %q "$items_cmd") focus" \
     --bind "alt-2:transform:$(printf %q "$scope_helper") $(printf %q "$scope_flag_file") $(printf %q "$items_cmd") explore" \
-    --bind "alt-n:transform:$(printf %q "$jump_helper") $(printf %q "$scope_flag_file") next" \
-    --bind "alt-p:transform:$(printf %q "$jump_helper") $(printf %q "$scope_flag_file") prev" \
+    --bind "alt-n:transform:$(printf %q "$jump_helper") next {*f}" \
+    --bind "alt-p:transform:$(printf %q "$jump_helper") prev {*f}" \
     --bind "alt-S:transform:$(printf %q "$sort_helper") $(printf %q "$scope_flag_file") $(printf %q "$items_cmd")" \
-    --bind "alt-M:transform:$(printf %q "$mark_subtree_helper") $(printf %q "$scope_flag_file") $(printf %q "$items_cmd")" \
-    --bind "alt-z:transform:$(printf %q "$collapse_helper") toggle $(printf %q "$scope_flag_file") $(printf %q "$items_cmd")" \
-    --bind "alt-Z:transform:$(printf %q "$collapse_helper") global $(printf %q "$scope_flag_file") $(printf %q "$items_cmd")" \
+    --bind "alt-M:transform:$(printf %q "$mark_subtree_helper") {*f}" \
+    --bind "alt-z:transform:$(printf %q "$collapse_helper") toggle $(printf %q "$scope_flag_file") $(printf %q "$items_cmd") {*f}" \
+    --bind "alt-Z:transform:$(printf %q "$collapse_helper") global $(printf %q "$scope_flag_file") $(printf %q "$items_cmd") {*f}" \
     --bind "alt-x:execute($(printf %q "$palette_helper") {+f} $(printf %q "$scope_flag_file") $(printf %q "$items_cmd"))+refresh-preview" \
     --bind "alt-i:execute($(printf %q "$create_cmd") issue {3} $(printf %q "$scope_flag_file") $(printf %q "$items_cmd"))+transform([ -f $(printf %q "$create_pin_file") ] && echo abort || true)" \
     --bind "alt-E:execute($(printf %q "$create_cmd") epic {3} $(printf %q "$scope_flag_file") $(printf %q "$items_cmd"))+transform([ -f $(printf %q "$create_pin_file") ] && echo abort || true)" \
@@ -265,4 +265,4 @@ case "$kind" in
 esac
 
 rm -f "$primary_tmp" "$action_flag" "$expand_flag" "$help_flag" 2> /dev/null || true
-rm -f "$port_file" 2> /dev/null || true
+rm -f "$sock_file" "$listen_sock" 2> /dev/null || true

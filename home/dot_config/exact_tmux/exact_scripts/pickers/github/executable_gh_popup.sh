@@ -25,25 +25,22 @@ trap _gh_popup_cleanup EXIT
 switch_sessions_file="$("$handoff_namespace" path gh_picker_switch_sessions)"
 session_switch_gh_file="$("$handoff_namespace" path pick_session_switch_gh)"
 
-IFS='|' read -r ps_h ps_w orig_shell < <(
+IFS='|' read -r ps_h ps_w < <(
   tmux display-message -p \
-    '#{@pick_session_popup_height}|#{@pick_session_popup_width}|#{default-shell}' \
+    '#{@pick_session_popup_height}|#{@pick_session_popup_width}' \
     2> /dev/null || true
 )
 [ -n "${ps_h:-}" ] || ps_h="40"
 [ -n "${ps_w:-}" ] || ps_w="80"
-[ -n "${orig_shell:-}" ] || orig_shell="/bin/sh"
 
 gh_h="95"
 gh_w="95"
 
 run_popup() {
   local h="$1" w="$2" cmd="$3"
-  tmux set-option -g default-shell /bin/sh \; \
-    display-popup -E \
+  tmux display-popup -E \
     -e "TMUX_PICKER_HANDOFF_TOKEN=$TMUX_PICKER_HANDOFF_TOKEN" \
-    -h "${h}%" -w "${w}%" -d "#{pane_current_path}" "$cmd" \; \
-    set-option -g default-shell "$orig_shell" 2> /dev/null || true
+    -h "${h}%" -w "${w}%" -d "#{pane_current_path}" /bin/bash "$cmd" 2> /dev/null || true
 }
 
 while true; do

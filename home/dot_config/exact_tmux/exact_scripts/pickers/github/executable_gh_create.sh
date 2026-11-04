@@ -128,9 +128,9 @@ case "$answer" in
     printf 'issue\t%s\t%s\t%s\n' "$repo" "$num" "$url" > "$create_pin_file"
     ;;
   *)
-    if [ -n "${FZF_PORT:-}" ]; then
+    if [ -n "${FZF_SOCK:-}" ]; then
       reload_cmd="GH_PICKER_SCOPE=$(printf %q "$scope") $(printf %q "$items_cmd") --refresh"
-      curl -s --max-time 5 -XPOST "http://127.0.0.1:${FZF_PORT}" -d "reload(${reload_cmd})+track" > /dev/null 2>&1 || true
+      curl -s --max-time 5 --unix-socket "$FZF_SOCK" -XPOST http://localhost -d "reload(${reload_cmd})+track" > /dev/null 2>&1 || true
     fi
     ;;
 esac

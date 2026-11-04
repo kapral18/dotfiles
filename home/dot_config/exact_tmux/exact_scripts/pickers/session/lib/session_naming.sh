@@ -261,12 +261,12 @@ _session_name_for_dir() {
 # bag_rename_if_needed DESIRED_NAME TARGET_PATH [EXISTING_PATH]
 # Sole implementation of pick_session.sh's @bag-recovery flow. When tmux already
 # has a session named DESIRED_NAME pointing at a path under
-# ~/.bag/worktree_remove/ or ~/.bag/pickers/session/, rename that session to
+# ~/.bag/worktree_remove/ or ~/.bag/pickers/session/, auto-renaming can move it to
 # `${DESIRED_NAME}@bag[<n>]` so the caller can create its own session at the
 # real TARGET_PATH. Returns 0 if the name is now free for use (either because
 # it never was held, the holder was bagged-and-renamed, or it already points
-# at TARGET_PATH); returns 1 if the name is held by a non-bagged session at a
-# different path (caller must pick a different name).
+# at TARGET_PATH); returns 1 if the name is held at a different path and cannot
+# be freed, including when @pick_session_auto_rename_sessions is not on.
 #
 # When EXISTING_PATH is provided, skips the internal `tmux list-sessions`
 # lookup — callers maintaining their own session cache (pick_session.sh's
@@ -304,6 +304,7 @@ bag_rename_if_needed() {
     "$HOME"/.bag/worktree_remove/* | "$HOME"/.bag/pickers/session/* | */.bag/worktree_remove/* | */.bag/pickers/session/*) ;;
     *) return 1 ;;
   esac
+  [ "$(tmux show-option -gqv @pick_session_auto_rename_sessions 2> /dev/null || true)" = "on" ] || return 1
   local bag_name n cand
   bag_name="${desired_name}@bag"
   bag_name="$(tmux_sanitize_session_name "$bag_name" 2> /dev/null || printf '%s' "$bag_name")"

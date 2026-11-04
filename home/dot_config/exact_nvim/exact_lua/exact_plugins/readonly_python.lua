@@ -4,8 +4,6 @@ vim.g.python_ruff = vim.g.python_ruff or "ruff"
 local python_lsp = vim.g.python_lsp or "pyright"
 local python_ruff = vim.g.python_ruff or "ruff"
 
-local test_term = nil
-
 return {
   {
     "nvim-treesitter/nvim-treesitter",
@@ -82,6 +80,7 @@ return {
         "<leader>tt",
         function()
           local file = vim.fn.expand("%")
+          local quote = require("util.fs").escape_shell_arg
           local is_test = string.match(file, "test")
           local cmd = ""
 
@@ -113,21 +112,22 @@ return {
           end
 
           if vim.fn.executable("pytest") == 1 then
-            cmd = "pytest --color=yes " .. file
+            local target = file
             if func_name then
               if class_name then
-                cmd = cmd .. "::" .. class_name .. "::" .. func_name
+                target = target .. "::" .. class_name .. "::" .. func_name
               else
-                cmd = cmd .. "::" .. func_name
+                target = target .. "::" .. func_name
               end
             end
+            cmd = "pytest --color=yes " .. quote(target)
           elseif is_test then
-            cmd = "python3 " .. file
+            cmd = "python3 " .. quote(file)
             if func_name then
               if class_name then
-                cmd = cmd .. " " .. class_name .. "." .. func_name
+                cmd = cmd .. " " .. quote(class_name .. "." .. func_name)
               else
-                cmd = cmd .. " " .. func_name
+                cmd = cmd .. " " .. quote(func_name)
               end
             end
             cmd = cmd .. " -v"
@@ -139,10 +139,10 @@ return {
             cmd = cmd .. "-e 's/FAIL:/" .. [[\x1b[31mFAIL:\x1b[0m]] .. "/' "
             cmd = cmd .. "-e 's/ERROR/" .. [[\x1b[31mERROR\x1b[0m]] .. "/'"
           else
-            cmd = "python3 " .. file
+            cmd = "python3 " .. quote(file)
           end
 
-          require("util.terminal").run_in_split(cmd, { focus_original = true })
+          require("util.terminal").run_in_split(cmd, { owner = "python", focus_original = true })
         end,
         desc = "Run Python File",
         ft = "python",

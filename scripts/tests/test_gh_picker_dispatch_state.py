@@ -42,32 +42,15 @@ class TestGhPickerDispatchState(unittest.TestCase):
     def _run_batch_and_its_reloads(
         self, script: Path, selection_file: Path, env: dict[str, str]
     ) -> subprocess.CompletedProcess[str]:
-        # Reloads are detached background curls in the batch's process group, so they can
-        # land after the script exits; wait until the whole group is gone before reading them.
-        proc = subprocess.Popen(
-            [modern_bash(), str(script), str(selection_file), "--background"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+        command = [modern_bash(), str(script), str(selection_file), "--background"]
+        # Detached reloads retain FD 3 until exit even after redirecting stdout/stderr.
+        return subprocess.run(
+            [command[0], "-c", 'exec 3>&1; exec "$@"', "reload-test", *command],
+            capture_output=True,
             text=True,
             env=env,
-            start_new_session=True,
+            timeout=30,
         )
-        try:
-            stdout, stderr = proc.communicate(timeout=30)
-        except subprocess.TimeoutExpired:
-            os.killpg(proc.pid, signal.SIGKILL)
-            proc.communicate()
-            raise
-        deadline = time.monotonic() + 5
-        while True:
-            try:
-                os.killpg(proc.pid, 0)
-            except ProcessLookupError:
-                return subprocess.CompletedProcess(proc.args, proc.returncode, stdout, stderr)
-            if time.monotonic() > deadline:
-                os.killpg(proc.pid, signal.SIGKILL)
-                self.fail("background reloads never finished")
-            time.sleep(0.02)
 
     def _setup_fixture(self, tmp_path: Path) -> dict[str, Path]:
         home = tmp_path / "home"
@@ -75,6 +58,9 @@ class TestGhPickerDispatchState(unittest.TestCase):
         cache_dir = cache_home / "tmux"
         cache_dir.mkdir(parents=True)
         (home / "bin").mkdir(parents=True)
+        selected_targets = home / ".config/tmux/scripts/pickers/github/lib/gh_selected_targets.py"
+        selected_targets.parent.mkdir(parents=True)
+        selected_targets.write_bytes((TMUX_PICKERS / "github/lib/gh_selected_targets.py").read_bytes())
 
         patcher = home / ".config/tmux/scripts/pickers/github/lib/gh_patch_picker_cache.py"
         self._write_executable(
@@ -143,7 +129,7 @@ class TestGhPickerDispatchState(unittest.TestCase):
             fixture = self._setup_fixture(Path(tmp))
             cache_dir = fixture["cache_dir"]
             (cache_dir / "gh_picker_scope").write_text("focus")
-            (cache_dir / "gh_picker_port").write_text("5151")
+            (cache_dir / "gh_picker_sock").write_text("global.sock")
 
             env = {
                 **os.environ,
@@ -152,7 +138,7 @@ class TestGhPickerDispatchState(unittest.TestCase):
                 "PATCH_LOG": str(fixture["patch_log"]),
                 "CURL_LOG": str(fixture["curl_log"]),
                 "GH_PICKER_DISPATCH_SCOPE": "all",
-                "GH_PICKER_DISPATCH_PORT": "4141",
+                "GH_PICKER_DISPATCH_SOCK": "dispatch.sock",
                 "GH_PICKER_DISPATCH_CACHE_FILE": str(fixture["dispatch_cache"]),
                 "PATH": f"{fixture['home'] / 'bin'}:{os.environ['PATH']}",
             }
@@ -165,8 +151,8 @@ class TestGhPickerDispatchState(unittest.TestCase):
             assert str(fixture["global_cache"]) not in patch_log
 
             curl_log = fixture["curl_log"].read_text()
-            assert "127.0.0.1:4141" in curl_log
-            assert "127.0.0.1:5151" not in curl_log
+            assert "--unix-socket dispatch.sock" in curl_log
+            assert "--unix-socket global.sock" not in curl_log
             assert "GH_PICKER_SCOPE=all" in curl_log
             assert "GH_PICKER_SCOPE=focus" not in curl_log
 
@@ -177,7 +163,7 @@ class TestGhPickerDispatchState(unittest.TestCase):
             fixture = self._setup_fixture(Path(tmp))
             cache_dir = fixture["cache_dir"]
             (cache_dir / "gh_picker_scope").write_text("focus")
-            (cache_dir / "gh_picker_port").write_text("5151")
+            (cache_dir / "gh_picker_sock").write_text("global.sock")
 
             env = {
                 **os.environ,
@@ -191,9 +177,8 @@ class TestGhPickerDispatchState(unittest.TestCase):
             # fallback path must see a clean env so it reads the shared globals.
             for key in (
                 "GH_PICKER_DISPATCH_SCOPE",
-                "GH_PICKER_DISPATCH_PORT",
+                "GH_PICKER_DISPATCH_SOCK",
                 "GH_PICKER_DISPATCH_CACHE_FILE",
-                "FZF_PORT",
                 "FZF_SOCK",
             ):
                 env.pop(key, None)
@@ -206,7 +191,7 @@ class TestGhPickerDispatchState(unittest.TestCase):
             assert str(fixture["dispatch_cache"]) not in patch_log
 
             curl_log = fixture["curl_log"].read_text()
-            assert "127.0.0.1:5151" in curl_log
+            assert "--unix-socket global.sock" in curl_log
             assert "GH_PICKER_SCOPE=focus" in curl_log
 
     def test_foreground_dispatch_preserves_current_tmux_socket(self):
@@ -217,7 +202,7 @@ class TestGhPickerDispatchState(unittest.TestCase):
             nohup_log = Path(tmp) / "nohup.log"
             self._write_executable(
                 fixture["home"] / "bin/nohup",
-                '#!/usr/bin/env bash\nprintf \'%s\\n\' "$*" > "$NOHUP_LOG"\n',
+                '#!/usr/bin/env bash\nprintf \'%s\\n\' "$*" > "$NOHUP_LOG.tmp"\nmv "$NOHUP_LOG.tmp" "$NOHUP_LOG"\n',
             )
             env = {
                 **os.environ,
@@ -250,7 +235,7 @@ class TestGhPickerDispatchState(unittest.TestCase):
             nohup_log = Path(tmp) / "nohup.log"
             self._write_executable(
                 fixture["home"] / "bin/nohup",
-                '#!/usr/bin/env bash\nprintf \'%s\\n\' "$*" > "$NOHUP_LOG"\n',
+                '#!/usr/bin/env bash\nprintf \'%s\\n\' "$*" > "$NOHUP_LOG.tmp"\nmv "$NOHUP_LOG.tmp" "$NOHUP_LOG"\n',
             )
             env = {
                 **os.environ,
@@ -290,7 +275,13 @@ class TestGhPickerDispatchState(unittest.TestCase):
                     set -euo pipefail
                     file="$1"
                     tmp="${file}.edited"
-                    awk '/^#/ { print; next } /\\|$/ { print $0 "fix/test/generated"; next } { print }' "$file" > "$tmp"
+                    awk '
+                      /^#/ { print; next }
+                      /^owner\\/repo-c#/ { print; print $0 "fix/ignored"; next }
+                      /^owner\\/repo-b#/ { printf "%sfix/test/generated", $0; next }
+                      /\\|$/ { print $0 "fix/test/generated"; print $0 "fix/test/generated"; print $0 "fix/ignored"; next }
+                      { print }
+                    ' "$file" > "$tmp"
                     mv "$tmp" "$file"
                     """
                 ),
@@ -314,6 +305,8 @@ class TestGhPickerDispatchState(unittest.TestCase):
             selection = fixture["selection_file"]
             selection.write_text(
                 "Issue A\tissue\towner/repo-a\t1\thttps://example.test/a/1\n"
+                "Issue A in another section\tissue\towner/repo-a\t1\thttps://example.test/a/1\n"
+                "Skipped issue\tissue\towner/repo-c\t1\thttps://example.test/c/1\n"
                 "Issue B\tissue\towner/repo-b\t1\thttps://example.test/b/1\n"
             )
             env = {
@@ -325,7 +318,7 @@ class TestGhPickerDispatchState(unittest.TestCase):
                 "WORKTREE_LOG": str(worktree_log),
                 "EDITOR": str(editor),
                 "GH_PICKER_DISPATCH_SCOPE": "all",
-                "GH_PICKER_DISPATCH_PORT": "4141",
+                "GH_PICKER_DISPATCH_SOCK": "dispatch.sock",
                 "GH_PICKER_DISPATCH_CACHE_FILE": str(fixture["dispatch_cache"]),
                 "PATH": f"{fixture['home'] / 'bin'}:/opt/homebrew/bin:/usr/bin:/bin:{os.environ['PATH']}",
             }
@@ -356,6 +349,7 @@ class TestGhPickerDispatchState(unittest.TestCase):
                 ("owner/repo-b", "1"),
             ], calls
             assert not selection.exists(), "detached batch never consumed the picker snapshot"
+            assert all("--branch fix/test/generated" in call for call in calls), calls
 
     def test_background_serializes_worktree_creates(self):
         script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"
@@ -393,7 +387,7 @@ class TestGhPickerDispatchState(unittest.TestCase):
                 "PATCH_LOG": str(fixture["patch_log"]),
                 "CURL_LOG": str(fixture["curl_log"]),
                 "GH_PICKER_DISPATCH_SCOPE": "all",
-                "GH_PICKER_DISPATCH_PORT": "4141",
+                "GH_PICKER_DISPATCH_SOCK": "dispatch.sock",
                 "GH_PICKER_DISPATCH_CACHE_FILE": str(fixture["dispatch_cache"]),
                 "PATH": f"{fixture['home'] / 'bin'}:{os.environ['PATH']}",
             }
@@ -435,7 +429,7 @@ class TestGhPickerDispatchState(unittest.TestCase):
                 "PATCH_LOG": str(fixture["patch_log"]),
                 "CURL_LOG": str(fixture["curl_log"]),
                 "GH_PICKER_DISPATCH_SCOPE": "all",
-                "GH_PICKER_DISPATCH_PORT": "4141",
+                "GH_PICKER_DISPATCH_SOCK": "dispatch.sock",
                 "GH_PICKER_DISPATCH_CACHE_FILE": str(fixture["dispatch_cache"]),
                 "PATH": f"{fixture['home'] / 'bin'}:{os.environ['PATH']}",
             }
@@ -492,7 +486,7 @@ class TestGhPickerDispatchState(unittest.TestCase):
                 "CURL_LOG": str(fixture["curl_log"]),
                 "SPINNER_FD_LOG": str(spinner_fd_log),
                 "GH_PICKER_DISPATCH_SCOPE": "all",
-                "GH_PICKER_DISPATCH_PORT": "4141",
+                "GH_PICKER_DISPATCH_SOCK": "dispatch.sock",
                 "GH_PICKER_DISPATCH_CACHE_FILE": str(fixture["dispatch_cache"]),
                 "PATH": f"{fixture['home'] / 'bin'}:{os.environ['PATH']}",
             }
@@ -539,7 +533,7 @@ class TestGhPickerDispatchState(unittest.TestCase):
                 "PATCH_LOG": str(fixture["patch_log"]),
                 "CURL_LOG": str(fixture["curl_log"]),
                 "GH_PICKER_DISPATCH_SCOPE": "all",
-                "GH_PICKER_DISPATCH_PORT": "4141",
+                "GH_PICKER_DISPATCH_SOCK": "dispatch.sock",
                 "GH_PICKER_DISPATCH_CACHE_FILE": str(fixture["dispatch_cache"]),
                 "PATH": f"{fixture['home'] / 'bin'}:{os.environ['PATH']}",
             }
@@ -622,7 +616,7 @@ printf 'survived\n'
                 "PATCH_LOG": str(fixture["patch_log"]),
                 "CURL_LOG": str(fixture["curl_log"]),
                 "GH_PICKER_DISPATCH_SCOPE": "all",
-                "GH_PICKER_DISPATCH_PORT": "4141",
+                "GH_PICKER_DISPATCH_SOCK": "dispatch.sock",
                 "GH_PICKER_DISPATCH_CACHE_FILE": str(fixture["dispatch_cache"]),
                 "PATH": f"{fixture['home'] / 'bin'}:{os.environ['PATH']}",
             }
@@ -699,7 +693,7 @@ printf 'survived\n'
                 "RELEASE_PUBLICATION": str(release_publication),
                 "WORKTREE_LOG": str(worktree_log),
                 "GH_PICKER_DISPATCH_SCOPE": "all",
-                "GH_PICKER_DISPATCH_PORT": "4141",
+                "GH_PICKER_DISPATCH_SOCK": "dispatch.sock",
                 "GH_PICKER_DISPATCH_CACHE_FILE": str(fixture["dispatch_cache"]),
                 "GH_BATCH_TOTAL_TIMEOUT_SECS": "10",
                 "PATH": f"{fixture['home'] / 'bin'}:{os.environ['PATH']}",
@@ -793,7 +787,7 @@ printf 'survived\n'
                 "RELEASE_DROP": str(release_drop),
                 "WORKTREE_LOG": str(worktree_log),
                 "GH_PICKER_DISPATCH_SCOPE": "all",
-                "GH_PICKER_DISPATCH_PORT": "4141",
+                "GH_PICKER_DISPATCH_SOCK": "dispatch.sock",
                 "GH_PICKER_DISPATCH_CACHE_FILE": str(fixture["dispatch_cache"]),
                 "GH_BATCH_TOTAL_TIMEOUT_SECS": "10",
                 "PATH": f"{fixture['home'] / 'bin'}:{os.environ['PATH']}",
@@ -911,7 +905,7 @@ printf 'survived\n'
                 "CURL_LOG": str(fixture["curl_log"]),
                 "WORKTREE_LOG": str(worktree_log),
                 "GH_PICKER_DISPATCH_SCOPE": "all",
-                "GH_PICKER_DISPATCH_PORT": "4141",
+                "GH_PICKER_DISPATCH_SOCK": "dispatch.sock",
                 "GH_PICKER_DISPATCH_CACHE_FILE": str(fixture["dispatch_cache"]),
                 "PATH": f"{fixture['home'] / 'bin'}:{os.environ['PATH']}",
             }
@@ -967,7 +961,7 @@ printf 'survived\n'
                 "PATCH_LOG": str(fixture["patch_log"]),
                 "CURL_LOG": str(fixture["curl_log"]),
                 "GH_PICKER_DISPATCH_SCOPE": "all",
-                "GH_PICKER_DISPATCH_PORT": "4141",
+                "GH_PICKER_DISPATCH_SOCK": "dispatch.sock",
                 "GH_PICKER_DISPATCH_CACHE_FILE": str(fixture["dispatch_cache"]),
                 "PATH": f"{fixture['home'] / 'bin'}:{os.environ['PATH']}",
             }
@@ -1028,7 +1022,7 @@ printf 'survived\n'
                 "PATCH_LOG": str(fixture["patch_log"]),
                 "CURL_LOG": str(fixture["curl_log"]),
                 "GH_PICKER_DISPATCH_SCOPE": "all",
-                "GH_PICKER_DISPATCH_PORT": "4141",
+                "GH_PICKER_DISPATCH_SOCK": "dispatch.sock",
                 "GH_PICKER_DISPATCH_CACHE_FILE": str(fixture["dispatch_cache"]),
                 "GH_BATCH_ITEM_TIMEOUT_SECS": "10",
                 "GH_BATCH_TOTAL_TIMEOUT_SECS": "10",
@@ -1090,7 +1084,7 @@ printf 'survived\n'
                 "PATCH_LOG": str(fixture["patch_log"]),
                 "CURL_LOG": str(fixture["curl_log"]),
                 "GH_PICKER_DISPATCH_SCOPE": "all",
-                "GH_PICKER_DISPATCH_PORT": "4141",
+                "GH_PICKER_DISPATCH_SOCK": "dispatch.sock",
                 "GH_PICKER_DISPATCH_CACHE_FILE": str(fixture["dispatch_cache"]),
                 "PATH": f"{fixture['home'] / 'bin'}:{os.environ['PATH']}",
             }
@@ -1133,7 +1127,7 @@ printf 'survived\n'
                 "PATCH_LOG": str(fixture["patch_log"]),
                 "CURL_LOG": str(fixture["curl_log"]),
                 "GH_PICKER_DISPATCH_SCOPE": "all",
-                "GH_PICKER_DISPATCH_PORT": "4141",
+                "GH_PICKER_DISPATCH_SOCK": "dispatch.sock",
                 "GH_PICKER_DISPATCH_CACHE_FILE": str(fixture["dispatch_cache"]),
                 "PATH": f"{fixture['home'] / 'bin'}:{os.environ['PATH']}",
             }
@@ -1162,7 +1156,7 @@ printf 'survived\n'
             "PATCH_LOG": str(fixture["patch_log"]),
             "CURL_LOG": str(fixture["curl_log"]),
             "GH_PICKER_DISPATCH_SCOPE": "all",
-            "GH_PICKER_DISPATCH_PORT": "4141",
+            "GH_PICKER_DISPATCH_SOCK": "dispatch.sock",
             "GH_PICKER_DISPATCH_CACHE_FILE": str(fixture["dispatch_cache"]),
             "PATH": f"{fixture['home'] / 'bin'}:/opt/homebrew/bin:/usr/bin:/bin:{os.environ['PATH']}",
         }

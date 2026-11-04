@@ -36,7 +36,7 @@ Use in every non-trivial review.
 - Establish base invariants first (`git show <base>:<path>` + local `rg`), then validate PR/branch reality (diff + full file reads).
 - Trace concrete risks across changed contracts: caller/callee disagreement, incorrect test or mock assumptions, partial batch failures, async ordering, inconsistent mappings, and errors silently treated as success.
   Select boundary and predicate counterexamples for the material risks; do not enumerate mutations for every changed condition.
-- When evaluating a proposed change: prefer smallest repro in `/tmp` or smallest safe experiment in worktree.
+- When evaluating a proposed change, use the smallest disposable reproduction under `/tmp`; copy project context there when needed.
 - Reuse existing check results for this snapshot; do not rerun passing checks.
 - Keep an evidence log per comment/thread: base behavior, semantic delta, tests run, observations.
 
@@ -80,7 +80,8 @@ Evidence is the snapshot's present checks: PR CI checks (`~/.agents/skills/k-rev
 
 Apply to reviewed behavior that is stateful, parser-like, branch-heavy, or dependent on ordered conditions:
 assess correctness from source/contracts and existing checks, and separately enforce minimum sufficient test protection under `~/AGENTS.md` §3.
-Missing durable coverage for new/changed material behavior is a finding; an uncovered branch alone is not a test quota.
+A missing-test finding must identify distinct behavioral protection worth its maintenance cost under that rule;
+changed behavior or absent coverage alone is insufficient.
 
 Examples include parsers, tokenizers, formatters, routing/matching logic, retry/workflow loops, permission matrices, compatibility-sensitive branching, multi-flag control flow.
 

@@ -11,6 +11,9 @@
 set -euo pipefail
 
 BODY_MAX=15
+fetch_only=0
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+lock_helper="$script_dir/../lib/resource_lock.py"
 
 # Expand mode: 0=all collapsed, 1=body expanded, 2=everything expanded
 expand_mode="${GH_PREVIEW_EXPAND:-0}"
@@ -19,6 +22,7 @@ for a in "$@"; do
   case "$a" in
     --expand=*) expand_mode="${a#--expand=}" ;;
     --full) expand_mode=2 ;;
+    --fetch) fetch_only=1 ;;
     *) args+=("$a") ;;
   esac
 done
@@ -54,7 +58,7 @@ cache_file="${cache_dir}/${kind}_${safe_repo}_${num}.md"
 cache_ttl=120
 fetch_lock_dir="${cache_file}.fetch.lock"
 
-if [ "${expand_mode:-0}" -eq 0 ]; then
+if [ "$fetch_only" -eq 0 ] && [ "${expand_mode:-0}" -eq 0 ]; then
   if [ -f "$cache_file" ]; then
     mt="$(stat -c %Y "$cache_file" 2> /dev/null || stat -f %m "$cache_file" 2> /dev/null || echo 0)"
     now="$(date +%s)"
@@ -72,7 +76,6 @@ fi
 
 active_key_file="${cache_dir}/active_key"
 global_fetch_lock_dir="${cache_dir}/fetch_global.lock"
-debounce_lock_dir="${cache_dir}/debounce.lock"
 active_key="${kind}:${safe_repo}:${num}"
 
 _dashboard_summary() {
@@ -244,96 +247,13 @@ _render_with_timeout() {
 }
 
 _spawn_fetch() {
-  # At most one debounce worker at a time; avoids accumulating sleepers while scrolling.
-  if ! mkdir "$debounce_lock_dir" 2> /dev/null; then
-    # bash 3.2 doesn't expose BASHPID reliably; use lock age to clear stale dirs.
-    mt="$(stat -c %Y "$debounce_lock_dir" 2> /dev/null || stat -f %m "$debounce_lock_dir" 2> /dev/null || echo 0)"
-    now="$(date +%s)"
-    age=$((now - mt))
-    if [ "$age" -gt 2 ]; then
-      rm -rf "$debounce_lock_dir" 2> /dev/null || true
-      mkdir "$debounce_lock_dir" 2> /dev/null || return 0
-    else
-      return 0
-    fi
-  fi
-
-  # Debounce: only fetch if selection remains stable briefly.
   printf '%s\n' "$active_key" > "$active_key_file" 2> /dev/null || true
-
   (
-    set +e
     sleep 0.25
-    cur="$(cat "$active_key_file" 2> /dev/null || true)"
-    if [ "$cur" != "$active_key" ]; then
-      rm -rf "$debounce_lock_dir" 2> /dev/null || true
-      exit 0
-    fi
-
-    # Global limiter: avoid accumulating many concurrent gh calls while scrolling.
-    if ! mkdir "$global_fetch_lock_dir" 2> /dev/null; then
-      mt="$(stat -c %Y "$global_fetch_lock_dir" 2> /dev/null || stat -f %m "$global_fetch_lock_dir" 2> /dev/null || echo 0)"
-      now="$(date +%s)"
-      age=$((now - mt))
-      if [ "$age" -gt 30 ]; then
-        rm -rf "$global_fetch_lock_dir" 2> /dev/null || true
-        mkdir "$global_fetch_lock_dir" 2> /dev/null || exit 0
-      else
-        # The lock is fresh: wait briefly for the in-flight fetch to finish.
-        i=0
-        while [ "$i" -lt 15 ]; do
-          sleep 0.1
-          if mkdir "$global_fetch_lock_dir" 2> /dev/null; then
-            break
-          fi
-          i=$((i + 1))
-        done
-        if [ ! -d "$global_fetch_lock_dir" ]; then
-          rm -rf "$debounce_lock_dir" 2> /dev/null || true
-          exit 0
-        fi
-      fi
-    fi
-
-    # Per-item lock to avoid redundant fetches.
-    if ! mkdir "$fetch_lock_dir" 2> /dev/null; then
-      mt="$(stat -c %Y "$fetch_lock_dir" 2> /dev/null || stat -f %m "$fetch_lock_dir" 2> /dev/null || echo 0)"
-      now="$(date +%s)"
-      age=$((now - mt))
-      if [ "$age" -gt 30 ]; then
-        rm -rf "$fetch_lock_dir" 2> /dev/null || true
-        mkdir "$fetch_lock_dir" 2> /dev/null || exit 0
-      else
-        rm -rf "$global_fetch_lock_dir" 2> /dev/null || true
-        rm -rf "$debounce_lock_dir" 2> /dev/null || true
-        exit 0
-      fi
-    fi
-
-    local content=""
-    case "$kind" in
-      pr) content="$(_render_with_timeout 10 _render_pr)" ;;
-      issue) content="$(_render_with_timeout 10 _render_issue)" ;;
-    esac
-    if [ -n "$content" ]; then
-      {
-        _dashboard_summary
-        printf '%s\n' "$content"
-      } | _atomic_write "$cache_file" 2> /dev/null || true
-      # If the user is still looking at this item, ask fzf to refresh the preview.
-      cur="$(cat "$active_key_file" 2> /dev/null || true)"
-      if [ "$cur" = "$active_key" ]; then
-        local pf="${XDG_CACHE_HOME:-$HOME/.cache}/tmux/gh_picker_port"
-        local port=""
-        port="$(cat "$pf" 2> /dev/null || true)"
-        if [ -n "$port" ]; then
-          curl -s --max-time 2 -XPOST "http://127.0.0.1:${port}" -d 'refresh-preview' 2> /dev/null || true
-        fi
-      fi
-    fi
-    rm -rf "$fetch_lock_dir" 2> /dev/null || true
-    rm -rf "$global_fetch_lock_dir" 2> /dev/null || true
-    rm -rf "$debounce_lock_dir" 2> /dev/null || true
+    [ "$(cat "$active_key_file" 2> /dev/null || true)" = "$active_key" ] || exit 0
+    python3 "$lock_helper" --timeout 1.5 run "$global_fetch_lock_dir" \
+      python3 "$lock_helper" --timeout 0 run "$fetch_lock_dir" \
+      /bin/bash "$0" --fetch "--expand=$expand_mode" "$line"
   ) > /dev/null 2>&1 &
   disown 2> /dev/null || true
 }
@@ -352,6 +272,27 @@ _show_cache() {
   fi
   return 2
 }
+
+if [ "$fetch_only" -eq 1 ]; then
+  content=""
+  case "$kind" in
+    pr) content="$(_render_with_timeout 10 _render_pr)" ;;
+    issue) content="$(_render_with_timeout 10 _render_issue)" ;;
+  esac
+  if [ -n "$content" ]; then
+    {
+      _dashboard_summary
+      printf '%s\n' "$content"
+    } | _atomic_write "$cache_file"
+    if [ "$(cat "$active_key_file" 2> /dev/null || true)" = "$active_key" ]; then
+      sock="$(cat "${XDG_CACHE_HOME:-$HOME/.cache}/tmux/gh_picker_sock" 2> /dev/null || true)"
+      if [ -n "$sock" ]; then
+        curl -s --max-time 2 --unix-socket "$sock" -XPOST http://localhost -d 'refresh-preview' 2> /dev/null || true
+      fi
+    fi
+  fi
+  exit 0
+fi
 
 rc=0
 _show_cache || rc=$?

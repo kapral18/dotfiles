@@ -47,10 +47,12 @@ chezmoi apply
 
 Reconciliation rules:
 
-| Rule              | Detail                                                                       |
-| ----------------- | ---------------------------------------------------------------------------- |
-| Removed module    | its binary is deleted from `GOBIN` on the next apply                         |
-| Safety ledger     | `~/.cache/chezmoi/golang-pkgs-state` records binaries this tooling installed |
-| Hand installs     | binaries installed manually with `go install` are left untouched             |
-| Install detection | checks the binary in `GOBIN` (`go env GOBIN`, else `$(go env GOPATH)/bin`)   |
-| Not used          | `go list -m all`, because it does not enumerate installed binaries           |
+| Rule               | Detail                                                                                            |
+| ------------------ | ------------------------------------------------------------------------------------------------- |
+| Removed module     | its binary is deleted from `GOBIN` on the next apply                                              |
+| Successful install | ownership is recorded immediately, so a later failure or retry cannot turn it into a hand install |
+| Failed removal     | ownership stays recorded until a later apply can remove the binary                                |
+| Safety ledger      | `~/.cache/chezmoi/golang-pkgs-state` records binaries this tooling installed                      |
+| Hand installs      | binaries installed manually with `go install` are left untouched                                  |
+| Install detection  | checks the binary in `GOBIN` (`go env GOBIN`, else `$(go env GOPATH)/bin`)                        |
+| Not used           | `go list -m all`, because it does not enumerate installed binaries                                |

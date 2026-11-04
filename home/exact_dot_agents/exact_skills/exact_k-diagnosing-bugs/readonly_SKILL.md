@@ -67,6 +67,7 @@ Distinguish a source-established defect from runtime behavior that could not be 
 Do not report an unrun runtime criterion as passed.
 
 Ask for a missing artifact, access or user-owned decision only when it blocks the requested conclusion and safe local evidence cannot resolve it.
-A diagnosis-only request ends with the evidence and proposed fix; it does not authorize edits.
+A standalone diagnosis request grants no edit authority.
+A diagnostic follow-up inside an authorized fix task does not revoke that authority; continue the in-scope fix under `~/AGENTS.md` §1.
 For a requested fix, read `~/.agents/skills/k-diagnosing-bugs/references/fix-and-cleanup.md` before writing the regression test or fix.
 Use `k-codebase-design` only when an in-scope seam or design question blocks the fix; do not start an automatic post-fix architecture pass.

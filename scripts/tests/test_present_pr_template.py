@@ -4,10 +4,12 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import sys
 import tempfile
 import unittest
+from html.parser import HTMLParser
 from pathlib import Path
 
 from _test_support import REPO
@@ -175,6 +177,169 @@ class TestPresentationTemplate(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn(b"output must be separate from its inputs", result.stderr)
                 self.assertFalse(missing.exists())
+
+
+class TemplateDocument(HTMLParser):
+    def __init__(self, source):
+        super().__init__()
+        self.root = {"tag": "document", "attrs": {}, "children": [], "parent": None}
+        self.current = self.root
+        self.nodes = []
+        self.feed(source)
+
+    def handle_starttag(self, tag, attrs):
+        node = {"tag": tag, "attrs": dict(attrs), "children": [], "parent": self.current}
+        self.current["children"].append(node)
+        self.nodes.append(node)
+        if tag not in {"meta", "link", "img", "br", "hr", "input"}:
+            self.current = node
+
+    def handle_endtag(self, tag):
+        node = self.current
+        while node["parent"] is not None:
+            if node["tag"] == tag:
+                self.current = node["parent"]
+                break
+            node = node["parent"]
+
+    def handle_data(self, data):
+        self.current["children"].append(data)
+
+
+def stylesheet_rules(source, conditions=()):
+    source = re.sub(r"/\*.*?\*/", "", source, flags=re.S)
+    cursor = 0
+    while cursor < len(source):
+        opening = source.find("{", cursor)
+        if opening < 0:
+            return
+        selector = source[cursor:opening].strip()
+        depth, closing = 1, opening + 1
+        while depth:
+            depth += (source[closing] == "{") - (source[closing] == "}")
+            closing += 1
+        body = source[opening + 1 : closing - 1]
+        cursor = closing
+        if selector.startswith("@media"):
+            yield from stylesheet_rules(body, conditions + (selector,))
+        elif not selector.startswith("@"):
+            declarations = dict(item.split(":", 1) for item in body.split(";") if ":" in item)
+            for item in selector.split(","):
+                yield conditions, item.strip(), declarations
+
+
+def selector_matches(node, selector, state=""):
+    parts = selector.split()
+
+    def matches(candidate, part):
+        pseudo = re.search(r"::(before|after)", part)
+        if (pseudo.group(1) if pseudo else "") != candidate.get("pseudo", ""):
+            return False
+        part = re.sub(r"::(?:before|after)", "", part)
+        for required in re.findall(r":(hover|focus-visible)", part):
+            if required != state:
+                return False
+        part = re.sub(r":[\w-]+(?:\([^)]*\))?", "", part)
+        tag = re.match(r"^[\w-]+", part)
+        if tag and candidate["tag"] != tag.group():
+            return False
+        attrs = candidate["attrs"]
+        return all(attrs.get("id") == value for value in re.findall(r"#([\w-]+)", part)) and all(
+            value in attrs.get("class", "").split() for value in re.findall(r"\.([\w-]+)", part)
+        )
+
+    if not matches(node, parts[-1]):
+        return False
+    ancestor = node["parent"]
+    for part in reversed(parts[:-1]):
+        while ancestor is not None and not matches(ancestor, part):
+            ancestor = ancestor["parent"]
+        if ancestor is None:
+            return False
+        ancestor = ancestor["parent"]
+    return True
+
+
+def computed_style(node, rules, width, reduced=False, state=""):
+    values = {}
+    for order, (conditions, selector, declarations) in enumerate(rules):
+        applies = True
+        for condition in conditions:
+            for bound, value in re.findall(r"(min|max)-width\s*:\s*(\d+)px", condition):
+                applies &= width >= int(value) if bound == "min" else width <= int(value)
+            if "prefers-reduced-motion" in condition:
+                applies &= reduced
+        if not applies or not selector_matches(node, selector, state):
+            continue
+        specificity = (
+            selector.count("#"),
+            len(re.findall(r"[.:](?!:)[\w-]+", selector)),
+            len(re.findall(r"(?:^|\s)[a-z]+", selector)),
+        )
+        for key, value in declarations.items():
+            priority = ("!important" in value, *specificity, order)
+            if key.strip() not in values or priority >= values[key.strip()][0]:
+                values[key.strip()] = priority, value.replace("!important", "").strip()
+    return {key: value for key, (_, value) in values.items()}
+
+
+class PresentationAccessibilityTests(unittest.TestCase):
+    def setUp(self):
+        source = TEMPLATE.read_text()
+        self.document = TemplateDocument(source)
+        self.rules = list(stylesheet_rules(source.split("<style>", 1)[1].split("</style>", 1)[0]))
+
+    def name(self, node, width):
+        if isinstance(node, str):
+            return node
+        if computed_style(node, self.rules, width).get("display") == "none":
+            return ""
+        return node["attrs"].get("aria-label") or "".join(self.name(child, width) for child in node["children"])
+
+    def test_hidden_rail_is_unavailable_until_its_navigation_is_visible(self):
+        rail = next(node for node in self.document.nodes if node["attrs"].get("id") == "rail")
+        for width in [1025, 1100, 1319]:
+            self.assertEqual(computed_style(rail, self.rules, width).get("visibility", "visible"), "hidden")
+        rail["attrs"]["class"] = "show"
+        for width in [1025, 1100, 1319]:
+            self.assertEqual(computed_style(rail, self.rules, width).get("visibility", "visible"), "visible")
+
+    def test_visible_rail_links_keep_names_when_the_viewport_hides_the_sidebars(self):
+        rail = next(node for node in self.document.nodes if node["attrs"].get("id") == "rail")
+        rail["attrs"]["class"] = "show"
+        links = [node for node in rail["children"] if isinstance(node, dict) and node["tag"] == "a"]
+        self.assertTrue(links)
+        for width in [1025, 1100, 1319]:
+            self.assertNotEqual(computed_style(rail, self.rules, width).get("display"), "none")
+            for link in links:
+                self.assertTrue(self.name(link, width).strip(), f"unnamed rail link at {width}px")
+                text = next(
+                    child
+                    for child in link["children"]
+                    if isinstance(child, dict) and "rtxt" in child["attrs"].get("class", "")
+                )
+                self.assertEqual(computed_style(text, self.rules, width, state="focus-visible").get("opacity"), "1")
+
+    def test_reduced_motion_stops_animation_and_keeps_entrance_content_visible(self):
+        html = next(node for node in self.document.nodes if node["tag"] == "html")
+        self.assertEqual(computed_style(html, self.rules, 1100, reduced=True).get("scroll-behavior"), "auto")
+        animated = []
+        for node in self.document.nodes:
+            for pseudo in ["", "before", "after"]:
+                candidate = node | {"pseudo": pseudo}
+                normal = computed_style(candidate, self.rules, 1100)
+                if normal.get("animation", "none") != "none":
+                    animated.append(candidate)
+                    reduced = computed_style(candidate, self.rules, 1100, reduced=True)
+                    self.assertEqual(reduced.get("animation"), "none", node["attrs"])
+                    self.assertEqual(reduced.get("transition"), "none", node["attrs"])
+                    if normal.get("opacity") == "0":
+                        self.assertEqual(reduced.get("opacity"), "1", node["attrs"])
+        self.assertTrue(animated, "the fixture must exercise its animated elements")
+        reveals = [node for node in self.document.nodes if "reveal" in node["attrs"].get("class", "").split()]
+        self.assertTrue(reveals)
+        for node in reveals:
+            self.assertEqual(computed_style(node, self.rules, 1100, reduced=True).get("opacity"), "1")
 
 
 if __name__ == "__main__":

@@ -285,7 +285,7 @@ def remember_findings(card: dict, candidates: list[dict], records: list[dict]) -
             kept.append(previous)
         else:
             kept.append(append(card, "findings", "F", anchor=anchor, concern=concern, status="open"))
-    return kept
+    return list({finding["id"]: finding for finding in kept}.values())
 
 
 _LIST = re.compile(r"^( {0,3}(?:[-+*]|\d{1,9}[.)]))( +|$)")
@@ -414,14 +414,22 @@ def _report_prose(answer: str):
 
 def report_items(answer: str):
     """Extract report prose; each bullet needs its own citation."""
-    section, item, reported = None, "", False
+    section, item, reported, gap = None, "", False, False
     for line in _report_prose(answer):
         stripped = line.strip()
+        if not stripped:
+            gap = True
+            continue
         match = re.match(
             r"^[\s*_#+-]*(Checked|Assumptions|Proposed|Decision needed|Open)(?:\*\*|__)?"
             r"(?:[ \t]*\([^)\n]*\))?(?::(?:\*\*|__)?\s*(.*)|[ \t]*)$",
             stripped,
         )
+        # Prose after a blank line ends a finished item: it is the answer's next paragraph, not more of that item.
+        if gap and section and item.strip() and not match and not line[:1].isspace() and not _LIST.match(line):
+            yield section, item
+            section, item, reported = None, "", True
+        gap = False
         bullet = re.match(r"^\s*(?:[-*+]|\d+[.)])\s+(.*)$", line)
         if match or bullet or stripped.startswith("#"):
             if section and (item.strip() or ((match or stripped.startswith("#")) and not reported)):

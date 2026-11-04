@@ -6,7 +6,7 @@ description: "Use to search past-session knowledge with ,ai-kb before working on
 # Durable Knowledge (`,ai-kb`)
 
 `,ai-kb` is an on-demand local knowledge base of short capsules. Nothing injects it automatically; you search and write it yourself.
-Task progress does not belong here: use `,handoff` (`k-handoff`) for that.
+Task progress does not belong here: use `,task handoff` (`k-handoff`) for that.
 The CLI contract is `~/.agents/skills/k-ai-kb/references/cli.md`; `,ai-kb <command> --help` wins on conflict.
 
 ## Search

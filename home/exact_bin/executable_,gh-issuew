@@ -61,8 +61,11 @@ resolve_issues() {
     if [[ "$target" =~ ^[0-9]+$ ]]; then
       echo "$target"
       return 0
-    elif [[ "$target" =~ /issues/([0-9]+) ]]; then
-      echo "${BASH_REMATCH[1]}"
+    elif [[ "$target" =~ ^https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/issues/[0-9]+([/?#].*)?$ ]]; then
+      echo "$target"
+      return 0
+    elif [[ "$target" == *://* ]]; then
+      echo "$target"
       return 0
     else
       if [[ "$target" =~ -([0-9]+)$ ]] || [[ "$target" =~ /([0-9]+)$ ]]; then
@@ -75,10 +78,15 @@ resolve_issues() {
   fi
 
   # 1. Worktree metadata
-  local wt_num
+  local wt_num wt_repo
   if wt_num=$(git config --worktree --get comma.w.issue.number 2>/dev/null); then
     if [ -n "$wt_num" ]; then
-      echo "$wt_num"
+      wt_repo=$(git config --worktree --get comma.w.issue.repo 2>/dev/null || true)
+      if [ -n "$wt_repo" ]; then
+        echo "https://github.com/$wt_repo/issues/$wt_num"
+      else
+        echo "$wt_num"
+      fi
       return 0
     fi
   fi
@@ -102,7 +110,7 @@ resolve_issues() {
       pr_body=$(gh pr view "$pr_num" --json body -q .body 2>/dev/null || true)
       if [ -n "$pr_body" ]; then
         local extracted
-        extracted=$(echo "$pr_body" | grep -ioE '(close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved|address|addresses|addressed|mention|mentions)[[:space:]]*(:|,)?[[:space:]]*(https://github.com/[^[:space:]"]+/issues/|#)[0-9]+' | grep -oE '[0-9]+$' || true)
+        extracted=$(echo "$pr_body" | grep -ioE '(close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved|address|addresses|addressed|mention|mentions)[[:space:]]*(:|,)?[[:space:]]*(https://github.com/[^[:space:]"]+/issues/|#)[0-9]+' | grep -ioE '(https://github.com/[^[:space:]"]+/issues/[0-9]+|#[0-9]+)$' | sed 's/^#//' || true)
 
         if [ -n "$extracted" ]; then
           echo "$extracted" | sort -u
@@ -127,13 +135,19 @@ if [ -z "$issues" ]; then
 fi
 
 if [ "$mode" = "number" ]; then
-  echo "$issues"
+  while IFS= read -r issue; do
+    if [[ "$issue" =~ /issues/([0-9]+) ]]; then
+      echo "${BASH_REMATCH[1]}"
+    else
+      echo "$issue"
+    fi
+  done <<<"$issues"
   exit 0
 fi
 
 if [ "$mode" = "url" ]; then
   base=$(gh_base_repo)
-  for issue in $issues; do
+  while IFS= read -r issue; do
     if [[ "$issue" =~ ^[0-9]+$ ]]; then
       if [ -n "$base" ]; then
         gh issue view -R "$base" "$issue" --json url -q .url
@@ -143,12 +157,12 @@ if [ "$mode" = "url" ]; then
     else
       echo "$issue"
     fi
-  done
+  done <<<"$issues"
   exit 0
 fi
 
 base=$(gh_base_repo)
-for issue in $issues; do
+while IFS= read -r issue; do
   if [[ "$issue" =~ ^[0-9]+$ ]]; then
     if [ -n "$base" ]; then
       gh issue view -R "$base" -w "$issue"
@@ -158,4 +172,4 @@ for issue in $issues; do
   else
     gh issue view -w "$issue"
   fi
-done
+done <<<"$issues"

@@ -13,7 +13,7 @@ This page holds the detailed behavior behind the [Session picker](session-picker
 1. Select one or more sessions, worktrees, or directories with `tab`.
 2. Press `ctrl-s`.
 3. Type the command.
-4. `enter` dispatches to each selected entry's first idle shell pane.
+4. `enter` dispatches to each selected entry's first detected shell pane, falling back to its first pane when no shell is found.
 5. `esc` cancels and returns to normal picker mode.
 
 Mixed selections are supported:
@@ -69,7 +69,7 @@ The empty picker keeps `--no-sort`, preserving grouped/frecency order. For a non
 
 ### Frecency
 
-Session/worktree rows are ordered by a mix of recency and frequency so recently used work stays near the top without losing stable grouping.
+Session/worktree rows are ordered by a mix of recency and frequency so recently used work stays near the top without losing stable grouping. Concurrent accesses serialize updates to the frecency store.
 
 ### View filter (`alt-o`)
 
@@ -88,11 +88,13 @@ The GitHub picker uses `alt-r` for quote-reply; the session picker keeps `alt-r`
 
 ## Remove worktrees (`alt-x`)
 
-`alt-x` runs the remover synchronously from fzf so any dirty/unpushed confirmation opens inline in the existing picker context instead of trying to nest another tmux popup. Safe selected worktree rows still remove in the background and hide optimistically only after the `,w remove --preflight` check says the selection is safe; choosing Force in the inline prompt continues the same removal with `--force`, while cancel leaves rows visible and unmutated. Detached-HEAD worktrees are included for `--paths` removals (the picker uses that path). When a root worktree selection maps to a wrapper directory such as `~/code/repo`, the remover deletes only the worktrees reported by that repo's `git worktree list`. Ordinary non-worktree leftovers under an otherwise removable wrapper are preserved under `.bag/pickers/session/` before the empty wrapper is removed. If the wrapper also contains an independent git repo or worktree root, the wrapper is kept in place and those sibling git roots are neither deleted nor moved into `.bag`.
+`alt-x` runs the remover synchronously from fzf so any confirmation for unsaved work or submodule safety opens inline in the existing picker context instead of trying to nest another tmux popup. Safe selected worktree rows still remove in the background and hide optimistically only after the `,w remove --preflight` check says the selection is safe; choosing Force in the inline prompt continues the same removal with `--force`, while cancel leaves rows visible and unmutated. Detached-HEAD worktrees are included for `--paths` removals (the picker uses that path). When a root worktree selection maps to a wrapper directory such as `~/code/repo`, the remover deletes only the worktrees reported by that repo's `git worktree list`. Ordinary non-worktree leftovers under an otherwise removable wrapper are preserved under `.bag/pickers/session/` before the empty wrapper is removed. Existing timestamp archives survive a later removal that moves no leftovers. If the wrapper also contains an independent git repo or worktree root at any depth, the wrapper is kept in place and those sibling git roots are neither deleted nor moved into `.bag`. If the scan cannot read a directory, preservation stops before any content moves and cleans up its temporary scan status.
 
-Deletion is boundary-guarded: the background remover only `rm`s targets that resolve to a strict descendant of `$HOME` or a configured `@pick_session_worktree_scan_roots` entry (the scan roots are passed through from the picker, which still holds tmux context). The roots themselves, `/`, empty paths, and anything resolving outside every approved root are refused.
+Preflight rejects missing paths, nested paths that are not checkout roots, failed Git queries, dirty files, and commits that would lose their retained refs. A linked or detached checkout can be removed when its commits remain reachable from another branch, tag, or remote-tracking ref. Removing an entire repository requires commits from every checkout HEAD (including detached siblings) and every local ref, including stashes, notes, branches, and tags to exist on remote-tracking refs, because its local refs disappear with the repository. Reflog-only and unreachable objects are outside this preflight check. The background remover repeats this check before deletion; Force explicitly bypasses the unsaved-work and submodule-history safeguards. Non-forced removal also refuses registered submodules and populated submodule administration stores, including deinitialized, removed, and per-worktree stores. The superproject’s remote refs do not retain its submodules’ independent objects. This guard requires Force even for clean, pushed submodules; it does not attempt to prove their nested history is recoverable.
 
-Removing a plain (non-worktree) directory row also kills its tmux session. The picker resolves the exact session name while still attached and passes it to the background remover, so the session is torn down by name even though `$TMUX` is unset for the detached job.
+Directory removal is boundary-guarded: targets must resolve to a strict descendant of `$HOME` or a configured `@pick_session_worktree_scan_roots` entry. A target that is an approved root, contains one, resolves outside every approved root, or is `/` or empty is refused. This applies to recursive removal and empty-wrapper or bag cleanup, including Force. Removing a checkout directly under a scan root leaves the scan root in place. The picker forwards its exact scan-root setting to the background remover.
+
+Plain (non-worktree) rows — directory rows, sessions outside a worktree, and stale worktree directories whose gitdir is gone — are deleted recursively, so `alt-x` always blocks them and only a second `alt-x` (Force) deletes them. Removing a plain directory row also kills its tmux session. The picker resolves the exact session name while still attached and passes it to the background remover, so the session is torn down by name even though `$TMUX` is unset for the detached job.
 
 ## Hand off to GitHub (`alt-g`)
 
@@ -118,9 +120,17 @@ Main cache files live under `~/.cache/tmux/`:
 | `pick_session_gh.json`      | PR/issue metadata with smart TTLs                        |
 | mutation/pending tombstones | optimistic hide for killed sessions or removed worktrees |
 
+Session-cache injection uses the same directory lock as index publication and deletion. If a publisher is busy, opening a session leaves that snapshot intact and still switches immediately; the scheduled quick refresh can then add the session. Updaters preserve a live injector’s lock. Updater, injector, and action-pruner ownership transitions serialize under `pick_session_items.tsv.owner.flock`. Records include PID, start identity, command digest, and generation. Manual refresh preempts only a verified updater; injectors and pruners are nonpreemptible. Live PID-only or unverified owners remain busy, even when their command mentions the updater. The updater rechecks identity before TERM/KILL and releases only its own generation. It forgets completed generator PIDs and checks current parent/identity before child cleanup. These inspections do not provide atomic OS process handles. The five-second owner grace lets cleanup stop both generator children before escalation.
+
+Pending removals, mutation tombstones, and their pruning use one advisory `.flock` file per resource, so publication cannot overwrite a concurrent append. Lock files persist after release; only the acquired file descriptor owns a lock.
+
 PR/issue cache TTLs are state-aware: open items refresh more often than merged/closed items, and cache misses have their own shorter TTL.
 
-GitHub lookups are tri-state. A successful lookup writes fresh PR/issue metadata; a confirmed absence (the branch has no PR, or the issue does not resolve) clears any stale badge; a transient failure (rate limit, network error, timeout, `gh` unavailable) preserves the last-known cached badge instead of erasing it. Badges therefore survive a flaky `gh` call rather than flickering to empty.
+Concurrent quick and full scans merge changed GitHub metadata under its own advisory lock after their lookups finish. Newer per-worktree results survive an older scan finishing later; unchanged entries cannot undo a full scan’s pruning.
+
+GitHub lookups are tri-state. A successful lookup writes fresh PR/issue metadata; a confirmed absence (the branch has no PR, or the issue does not resolve) clears stale metadata; a transient failure (rate limit, network error, timeout) preserves the disk entry. Scans reuse its badges and links only when the cached branch and repository identity match the current worktree. This also applies to `--skip-gh`, which ignores TTL while retaining the identity check. A changed branch or repository suppresses old metadata in newly generated rows without deleting its disk entry; stale metadata for the same identity remains visible after a failed lookup.
+
+Repository identity follows local remote resolution. Matching empty repository values retain the existing cache behavior; missing identity fields are ineligible for reuse. These checks apply when scans generate rows. The picker’s first paint still replays the cached TSV snapshot until refresh.
 
 GitHub metadata resolves after live sessions join the index, so a contributor PR session receives the same dark-pink review treatment as its worktree row even when the quick session pass found it first. Rows whose linked upstream PR is `MERGED` or `CLOSED` are dimmed.
 
@@ -131,16 +141,18 @@ The indexer scans configured roots for git worktrees, checks dirty state in para
 Issue detection runs in this order:
 
 1. `comma.w.issue.number` worktree-local git config.
-2. Branch suffix heuristic such as `fix/1234-desc`.
+2. Branch suffix heuristic such as `fix/description-1234`.
 3. PR `closingIssuesReferences` from the same `gh pr view` call.
 
 Cross-repo closing issues preserve their exact `owner/repo` and do not rely on cwd inference.
 
 ## Session naming and collision recovery
 
-Naming and path helpers are centralized in `pickers/session/lib/session_naming.sh`, shared by both regular open and send-command flows. Picker TSV rows preserve all six positional columns, including empty metadata and target fields, so a search-only match key cannot become a tmux session name.
+Naming and path helpers are centralized in `pickers/session/lib/session_naming.sh`, shared by both regular open and send-command flows. Picker TSV rows preserve all six positional columns, including empty metadata and target fields, so a search-only match key cannot become a tmux session name. Previews address that session by its exact name; a stale target cannot fall back to a longer name with the same prefix.
 
-Name collisions first try the `@bag` recovery path: if the existing session points at a bagged removal path, it is renamed to `<name>@bag[N]`, freeing the canonical session name. Only non-bagged sessions at different paths fall back to `<name>@<basename>`.
+Session metadata places `expected=` last, after the status and GitHub fields. Its entire remaining value is the canonical session name, including the `|` in `<repo_id>|<branch>`; the picker treats that value as opaque when renaming and switching sessions. Cached values that would change during sanitization are ignored, preserving the original selection. Renaming existing sessions requires `@pick_session_auto_rename_sessions` to be `on`; its default `off` preserves existing names. A failed rename keeps the original session selected.
+
+Directory and worktree rows share resolved-path collision handling. Regular open reuses a session already at the selected path; otherwise it allocates a unique suffix when another path holds the canonical name. With auto-renaming enabled, it can rename the selected-path session to an available canonical name. Both regular open and send-command flows can also move a holder at a bagged removal path to `<name>@bag[N]`, freeing the canonical name, only when auto-renaming is enabled.
 
 ## Popup performance
 

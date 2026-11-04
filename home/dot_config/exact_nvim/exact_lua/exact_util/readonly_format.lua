@@ -33,7 +33,7 @@ function M.format(opts)
     return
   end
 
-  if vim.g.autoformat == false and not opts.force then
+  if (vim.g.autoformat == false or vim.b[buf].autoformat == false) and not opts.force then
     return
   end
 
@@ -76,24 +76,24 @@ end
 function M.snacks_toggle(buf)
   local snacks = require("snacks")
 
-  if buf == true then
-    buf = vim.api.nvim_get_current_buf()
-  end
-  if buf and not vim.api.nvim_buf_is_valid(buf) then
-    buf = nil
+  local function target_buffer()
+    local target = buf == true and vim.api.nvim_get_current_buf() or buf
+    return target and vim.api.nvim_buf_is_valid(target) and target or nil
   end
 
   return snacks.toggle({
     name = buf and "Buffer Autoformat" or "Autoformat",
     get = function()
-      if buf and vim.api.nvim_buf_is_valid(buf) then
-        return vim.b[buf].autoformat ~= false and vim.g.autoformat ~= false
+      local target = target_buffer()
+      if target then
+        return vim.b[target].autoformat ~= false and vim.g.autoformat ~= false
       end
       return vim.g.autoformat ~= false
     end,
     set = function(state)
-      if buf and vim.api.nvim_buf_is_valid(buf) then
-        vim.b[buf].autoformat = state
+      local target = target_buffer()
+      if target then
+        vim.b[target].autoformat = state
       else
         vim.g.autoformat = state
       end

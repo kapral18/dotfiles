@@ -1,4 +1,4 @@
-import type { Register } from 'claude-code'
+import type { EngineInterface, Register } from 'claude-code'
 
 // Throwaway locations never get a map.
 const SCRATCH = /^(\/private)?\/(tmp|var\/folders)\//
@@ -17,6 +17,14 @@ const WRITES =
 
 // The files `find` lists per call, to stay under the argument limit.
 const CHUNK = 200
+
+// Each fire goes to the guard ledger (`,task guards`); a missing `,task` never changes what the guard decides.
+const logFire = async ($: EngineInterface, guard: string, detail: string) => {
+  try {
+    const session = await $.session.id()
+    await $.process.run([',task', 'guard', 'log', guard, '--harness', 'claude', '--session', session, '--detail', detail.slice(0, 200)], { timeoutMs: 5000 })
+  } catch { /* The ledger is best-effort. */ }
+}
 
 export const register: Register = on => {
   // Directories already stopped once and map items already shown, per repo.
@@ -62,6 +70,7 @@ export const register: Register = on => {
       : (lines.find(line => line.startsWith('unmapped: '))?.slice('unmapped: '.length).split(', ') ?? []).filter(dir => !seen.has(`${repo}\0dir\0${dir}`))
     if (unmapped.length > 0) {
       for (const dir of unmapped) seen.add(`${repo}\0dir\0${dir}`)
+      await logFire($, 'behavior-map-guard:unmapped-edit', relative)
       return {
         deny:
           `${$.plugin.name}: ${unmapped.join(', ')} in ${repo} has no behavior-map area. ` +
@@ -74,6 +83,7 @@ export const register: Register = on => {
     const ran = await next(e)
     if (ran.deny !== undefined || ran.isError === true) return ran
     const note = touched(repo, lines)
+    if (note !== undefined) await logFire($, 'behavior-map-guard:touched-entries', relative)
     return note === undefined ? ran : { ...ran, context: [...(ran.context ?? []), note] }
   }).catch(($, e, next) => next(e))
 
@@ -125,6 +135,7 @@ export const register: Register = on => {
       // Its own key: a note does not use up the Edit refusal for the same directory.
       if (unmapped.length > 0) {
         for (const dir of unmapped) seen.add(`${repo}\0noted\0${dir}`)
+        await logFire($, 'behavior-map-guard:unmapped-shell', unmapped.join(', '))
         notes.push(
           `${$.plugin.name}: this command changed code in ${unmapped.join(', ')} in ${repo}, which has no behavior-map area. ` +
             'Map it now: k-behavior-map skill, area init. ' +
@@ -132,7 +143,10 @@ export const register: Register = on => {
         )
       }
       const note = touched(repo, lines)
-      if (note !== undefined) notes.push(note)
+      if (note !== undefined) {
+        notes.push(note)
+        await logFire($, 'behavior-map-guard:touched-entries', files.join(', '))
+      }
       return notes.length === 0 ? ran : { ...ran, context: [...(ran.context ?? []), ...notes] }
     } finally {
       await $.process.run(['rm', '-f', marker]).catch(() => undefined)

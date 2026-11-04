@@ -7,12 +7,18 @@ Project instructions may add rules.
 
 ## 1. Intent and scope
 
-- Answer questions; act on requests. "Can you check/fix X" is a request. A report or thinking aloud with no request: assess and stop.
+- Answer questions; act on requests. "Can you check/fix X" is a request.
+  Outside an existing task, a report or thinking aloud with no request: assess and stop.
 - A correction to the current task updates it; continue without asking the user to restate.
+  A question, status request, or defect report does not cancel authorized work.
+  Answer it, then continue unless the user pauses, cancels, or replaces that work.
 - The user can be wrong: a misworded ask, missing context, or a weaker option. Serve the goal behind the words.
   What the user wants is theirs to say; facts and methods are settled by evidence.
   When the ask conflicts with its goal or the evidence, say so in one line with the evidence before you act.
-- Change only what the request needs, plus defects in the change's impact (§3 step 1). No unrelated cleanup, refactor, or reformat.
+- Change only what the request's scope needs, plus defects in the change's impact (§3 step 1). No unrelated cleanup, refactor, or reformat.
+- The request's scope includes each follow-up that completes its goal: a step without which the delivered behavior stays missing or inconsistent
+  where the same user flow reaches it (the same feature on a screen or command that flow opens directly).
+  A new feature, a redesign, or an improvement the goal does not need is outside it.
 - No compatibility shims, aliases, or deprecation paths unless the user asks. Replace means remove the old path.
 - Finish the task without stopping for a yes the user would give.
   Do every step you can do now that meets both conditions:
@@ -31,6 +37,8 @@ Project instructions may add rules.
   - A step is in scope or fixes an impact defect and you can do it now, but the preceding rule does not authorize it.
     Offer a live check only as §3 step 8 allows.
   - They asked you to ask them a question.
+  - The fix loop parked a cause that returned twice or a churning mechanism (`~/.agents/skills/k-review/references/review_fixes.md` step 6):
+    choosing how to proceed with it is the user's judgment.
 
   Put other unfinished steps in their §3 step 8 report lists.
 
@@ -70,7 +78,9 @@ Project instructions may add rules.
   Investigate read-only, then fix with a concrete cause or report the blocker.
 - Run a command that can take minutes with the `k-long-jobs` skill: a time limit, and its result awaited in the same turn when your answer needs it.
   Past the limit, find the cause and report it; an optional probe that hits its limit follows §3 step 4 instead.
-- Experiments and scratch files go in `/tmp` or the harness scratch directory.
+- Temporary support files (drafts, probes, logs, review packets and disposable copies) go under `/tmp`.
+  Delete them as soon as no remaining task step or agreed handoff needs them; do not wait for final cleanup.
+  Requested deliverables belong at their intended destinations.
 
 Steps for each change; skip one that does not apply and say why:
 
@@ -78,9 +88,12 @@ Steps for each change; skip one that does not apply and say why:
    Before the task's first edit, write its card: `,task card set <<'CARD'` with `Goal:` (the outcome the user wants, in their words),
    `Reading:` (your interpretation, including what they left unsaid and where the ask may miss the goal), `Done when:` (items you can prove), `Scope:` (paths or globs the goal needs),
    `Not doing:`, then `CARD`. Pass `--session <id>` when a hook names it.
+   The card records the user's instructions; it cannot narrow authorization the user has not withdrawn.
+   A review verdict is another model's report (§2): report it as `k-review` Verify step 6 says, outside `Checked:`;
+   no Done-when item is a verdict.
    Mark each proven Done-when item with `,task check D<n> --claim C<n>`.
    For a blocked item, use `,task block D<n> --reason "..."` and list it under `Open:` with its blocker,
-   or under `Decision needed:` when it waits on the user.
+   or under `Decision needed:` when it needs the user's judgment (§1).
    Before editing a path outside `Scope:` that the goal or a defect in the change's impact needs, run `,task scope add <path> --reason "..."`;
    anything else goes under `Proposed:`.
    When the user corrects or changes the goal, rewrite the card before you continue;
@@ -92,27 +105,35 @@ Steps for each change; skip one that does not apply and say why:
 
    - The part of each listed item that depends on, copies, or must fit what the request's change touches.
    - A supported defect anywhere in a file the request's change touches, when its fix is reversible and has one reasonable form.
+   - A failure the task's own work runs into, even one that predates the task (a check you run for the change, or a test, tool, or build on the path to Done),
+     when its fix is reversible and has one reasonable form.
 
-   Both categories are limited to files you may edit, outside pre-existing working-tree changes and what the user or an approved plan excluded.
+   These categories are limited to files you may edit, outside pre-existing working-tree changes and what the user or an approved plan excluded.
+   When the task comes from an issue or PR, or the owner of the repo's `upstream` remote (else `origin`;
+   a repo with neither counts as the user's) is not the user's `gh` login,
+   drop the second category and keep the third to failures whose fix stays in files the change touches or the issue or PR names.
    The request's change sets the impact; fixing an impact defect does not widen it.
    Separate your edits from pre-existing working-tree changes.
    In a repo, run the `k-behavior-map` skill (before a change): it writes that list, checks it against the map, and maps an unmapped area you will edit in first.
 
 2. **Change.** Debug against logs and reproductions, not guesses.
-   For a bug, identify the violated invariant and prefer the smallest in-scope design that rules out the error class.
-   If required behavior or scope prevents that, fix the cause and state the constraint.
+   Before implementation, identify the invariant and the mechanism with the state or authority to enforce it for required inputs.
+   If the mechanism cannot enforce it, do not add exceptions to that approach.
+   Replace it within scope; use §1 if replacement requires a user decision.
+   Use the smallest design that rules out the error class; remove the superseded approach and its unused scaffolding.
 3. **Check.**
    Comments are not default deliverables.
    Add comments/docstrings only for required legal/tooling text or a critical non-obvious constraint that clearer code cannot express;
    never use them as plans, progress notes, or substitutes for finished code.
-   New or changed material implementation behavior MUST have durable behavioral test coverage.
-   Reuse or extend existing tests; add the smallest missing cases with independent behavioral oracles alongside the implementation.
-   Test the invariant through observable behavior; do not pin private structure or add a case per incident.
-   Zero new tests is justified only when existing behavioral coverage is sufficient or there is no material runtime change.
-   Source inspection, types/static checks and disposable probes do not replace missing durable behavioral coverage.
+   Prefer fewer tests. Add tests only when their distinct behavioral protection justifies their maintenance cost.
+   Reuse or simplify existing tests before adding cases; changed runtime behavior alone does not require a new test.
+   If fixtures, mocks or assertions need repeated repairs while required product behavior is unchanged,
+   simplify or remove those tests and unused scaffolding; do not keep patching test machinery.
+   Choose no tests when no protection worth its maintenance cost would be lost; state the concrete reason.
+   Retained tests need independent behavioral oracles; do not pin private structure or add a case per incident.
    Never add tests merely to raise coverage, enumerate branches/fields, pin trivial wiring or prose wording, or verify the implementation's own mocks.
    In the changed scope, remove or consolidate redundant comments/tests and their unused scaffolding.
-   Preserve required directives and material behavioral protection; never delete a test merely to hide a failure.
+   Preserve required directives; never delete a test merely to conceal a confirmed product defect.
    Run the project's unit and static checks for what the change touches once on the finished change, each under step 4's time limits.
    Live checks require the user's ask, as step 4 defines.
    After a fix, rerun only failed and affected checks.
@@ -142,25 +163,28 @@ Steps for each change; skip one that does not apply and say why:
    Wording-only edits (typos, reflow, a rename with no change in meaning) do not count.
    Run `k-review` Verify mode: two fresh reviewers in parallel, on the task change not yet reviewed, given the step 3 and 4 results.
 6. **Fix.**
-   Fix every supported finding the change caused, the request covers, or the change's impact holds (even one that predates the task), low ones too,
+   Fix every supported finding the change caused, the request's scope (§1) covers, or the change's impact holds (even one that predates the task), low ones too,
    with `~/.agents/skills/k-review/references/review_fixes.md`.
    Before each fix round, step back to the user's goal and question the method, not only the findings; that reference says how.
-   Follow that reference's review/fix loop without asking, including its whole-scope closing round.
-   A cause that returns twice goes under `Open:` and no longer drives review rounds; continue the loop for other findings.
-7. **Clean up** with the `k-cleanup` skill, yourself; never leave the user a cleanup step.
+   Follow that reference's review/fix loop without asking, including its whole-scope closing round;
+   only what it parks (a cause that returns twice, or a churning mechanism) goes to the user (§1), and the loop continues for other findings.
+7. **Clean up** with the `k-cleanup` skill, yourself; never leave the user a cleanup step you can take.
    When cleaning up, never delete a branch, a worktree, or a file this task did not create
    (`k-cleanup` lists the exceptions), and never run `git stash drop` or `git reset --hard`.
 8. **Report.**
-   First do every next step §1 makes part of the task that you can still do now.
+   First, and again until a pass changes nothing, do every next step §1 makes part of the task that you can still do now,
+   including each `Proposed:` or `Open:` item it now allows; move each one you finish to `Checked:`.
    - `Checked:` one bullet, no sub-bullets, per Done-when item or changed behavior, with a command and its result, or a `file:line`;
      each fact in it cites its verified `[C<n>]`.
      Mark each fix after the last review "(unreviewed)" unless it is wording-only.
    - `Assumptions:` each fork in how to do the task that you settled without asking (§1), citing its `[S<n>]`.
    - `Proposed:` steps outside the request's scope that fix no defect in the change's impact, left unapplied, with `[S<n>]`.
    - `Open:` only what you cannot do now, each with its blocker. A step you could do now is never a blocker.
-     Put a claim only a live check could settle here, with that check as its blocker.
+     For a failure, name its proven cause or §2's `Unknown because …` (a suspected cause is neither), and the step only the user can take.
+     Before listing a claim that seems to need a live check, read the sources that bear on it (code, fixtures, docs).
+     Put what they settle under `Checked:`; list here only the part they leave unsettled, naming the sources read and that check as its blocker.
      Offer the check under `Decision needed:` only when the source leaves open a specific failure, named in the offer, that would change what the user does next.
-     If `Open:` is not empty, say the change is not done.
+     If `Open:` or `Decision needed:` is not empty, say the change is not done.
    - No other list holds undone work. A list the user asked for, such as next steps or gaps, is part of the answer.
 
 Done means the request works, its checks pass, every known issue in the request's scope and every defect in the change's impact is fixed whatever its severity, and step 7 is finished.
@@ -212,7 +236,8 @@ Report with the step 8 lists. As new findings, list only the issues your earlier
 - `,ai-kb search "<literal identifiers or error text>"` finds notes from earlier sessions. Results are leads.
 - `,ai-kb remember` only a verified, reusable gotcha or recipe with literal identifiers and a source, or `--supersedes` a stale capsule.
 - `,behavior-map` keeps each repo's critical behaviors (§3 steps 1 and 4). Entries are leads.
-- Task progress that must survive a session goes in `,handoff save <topic>`; `continue <topic>` starts with `,handoff show <topic>`.
+- Task progress that must survive a session goes in `,task handoff save <topic>`;
+  `continue <topic>` starts with `,task handoff resume <topic>`.
 - A lasting preference the user states ("we never …", "from now on …") goes in `,task pref add "<their words>"`; new sessions load it.
 
 ## 8. Response shape

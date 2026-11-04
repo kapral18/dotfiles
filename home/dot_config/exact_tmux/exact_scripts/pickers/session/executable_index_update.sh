@@ -118,82 +118,33 @@ if [ "$force" -ne 1 ]; then
   fi
 fi
 
-lock_dir="${cache_file}.lock"
-pid_file="${lock_dir}/pid"
-# Manual --force invocations (alt-r, ctrl-r) pre-empt an in-flight updater
-# (typically a live_refresh tick) so they aren't silently no-op'd. Without
-# pre-emption the manual refresh would defer to the live tick and the user
-# would see stale rows after their explicit refresh. Pattern mirrors the
-# refresh pre-emption in pickers/github/gh_items.sh.
-while ! mkdir "$lock_dir" 2> /dev/null; do
-  pid=""
-  [ -f "$pid_file" ] && pid="$(cat "$pid_file" 2> /dev/null || true)"
-  if [ -n "$pid" ] && kill -0 "$pid" 2> /dev/null && ps -p "$pid" -o command= 2> /dev/null | grep -q 'index_update\.sh'; then
-    if [ "$force" -eq 1 ] && [ "$defer_if_busy" -ne 1 ]; then
-      kill "$pid" 2> /dev/null || true
-      waited=0
-      while kill -0 "$pid" 2> /dev/null && [ "$waited" -lt 30 ]; do
-        sleep 0.1
-        waited="$((waited + 1))"
-      done
-      if kill -0 "$pid" 2> /dev/null; then
-        kill -KILL "$pid" 2> /dev/null || true
-        sleep 0.1
-      fi
-      rm -rf "$lock_dir" 2> /dev/null || true
-      continue
-    fi
-    exit 0
-  fi
-  # No live owner: either lock_dir is a leftover from a crashed updater
-  # (no pid file) past the stale window, or pid file points at a dead pid.
-  if [ ! -f "$pid_file" ]; then
-    mt="$(mtime_epoch "$lock_dir" 2> /dev/null || echo 0)"
-    age="$(($(now_epoch) - mt))"
-    if [ "$age" -lt "$lock_stale_seconds" ]; then
-      # Race: another updater is mid-startup (mkdir'd but hasn't written pid
-      # yet). Defer rather than steal.
-      exit 0
-    fi
-  fi
-  rm -rf "$lock_dir" 2> /dev/null || exit 0
-done
+owner_helper="$script_dir/../lib/resource_lock.py"
+request_preemption=0
+if [ "$force" -eq 1 ] && [ "$defer_if_busy" -ne 1 ]; then
+  request_preemption=1
+fi
+ownership="$(python3 "$owner_helper" owner-acquire "$cache_file" "$$" "$request_preemption" "$lock_stale_seconds")"
+case "$ownership" in
+  owned\ *) generation="${ownership#owned }" ;;
+  *) exit 0 ;;
+esac
+
 gen_pids=()
 cleanup() {
-  # Take any in-flight `gen` children with us so they don't keep running and
-  # racing the successor's writes. pkill -TERM -P also catches their python
-  # grandchildren (gen is a thin bash wrapper around python3 index_main.py).
-  local _p
-  for _p in ${gen_pids[@]+"${gen_pids[@]}"}; do
-    [ -n "$_p" ] || continue
-    if kill -0 "$_p" 2> /dev/null; then
-      pkill -TERM -P "$_p" 2> /dev/null || true
-      kill -TERM "$_p" 2> /dev/null || true
-    fi
-  done
+  python3 "$owner_helper" owner-release "$cache_file" "$$" "$generation" ${gen_pids[@]+"${gen_pids[@]}"} || true
   rm -f "${tmp_quick:-}" "${tmp_full:-}" "${tmp_combined:-}" "${tmp_sessions:-}" "${tmp_err_quick:-}" "${tmp_err_full:-}" 2> /dev/null || true
-  # Ownership-checked release: if we've been pre-empted by a successor that
-  # already wrote its own $$ into pid_file, do not unlink their lock.
-  if [ -d "$lock_dir" ]; then
-    local _cur_pid
-    _cur_pid="$(cat "$pid_file" 2> /dev/null || true)"
-    if [ "$_cur_pid" = "$$" ]; then
-      rm -f "$pid_file" 2> /dev/null || true
-      rmdir "$lock_dir" 2> /dev/null || true
-    fi
-  fi
 }
-# TERM/HUP from a pre-empting successor must exit promptly so cleanup runs
-# (and the successor can take the lock). We exit 0 (not 143) so that
-# `tmux run-shell -b` invocations of this script do not surface a visible
-# "returned 143" error in the UI for expected pre-emptions (e.g. rapid
-# ctrl-r or alt-r). The `wait` on `gen` children can still see rc=143 from
-# pkill during our own cleanup, but the post-wait notify paths are bypassed
-# by the forced exit before we reach them.
 trap 'exit 0' TERM HUP
 trap 'exit 130' INT
 trap cleanup EXIT
-printf '%s\n' "$$" > "${lock_dir}/pid" 2> /dev/null || true
+
+generator_running() {
+  local running_pid
+  for running_pid in $(jobs -pr); do
+    [ "$running_pid" = "$1" ] && return 0
+  done
+  return 1
+}
 
 gen="$HOME/.config/tmux/scripts/pickers/session/index.sh"
 ordered_update_cmd="$HOME/.config/tmux/scripts/pickers/session/ordered_cache_update.sh"
@@ -383,6 +334,7 @@ if [ "$quick_only" -eq 1 ]; then
   wait "$pid_quick"
   gen_rc=$?
   set -e
+  gen_pids=()
   if [ "$gen_rc" -eq 0 ]; then
     quick_ok=1
     if [ -s "$tmp_quick" ]; then
@@ -416,11 +368,13 @@ else
     notify_error "quick scan" "$tmp_err_quick"
   fi
 
+  gen_pids=("$pid_full")
+
   # Stream progressively-complete snapshots from the full scan into cache while
   # index generation is still running. This keeps picker refresh responsive:
   # fzf always reads the latest cache snapshot without waiting for scan end.
   last_stream_size=-1
-  while kill -0 "$pid_full" 2> /dev/null; do
+  while generator_running "$pid_full"; do
     if [ -s "$tmp_full" ]; then
       cur_size="$(wc -c < "$tmp_full" 2> /dev/null || echo 0)"
       case "$cur_size" in
@@ -444,6 +398,7 @@ else
   done
 
   if wait "$pid_full"; then
+    gen_pids=()
     full_ok=1
     # Record that a full scan completed so its dedicated TTL gate can throttle
     # the next one without being reset by interleaved quick-only refreshes.
@@ -458,6 +413,7 @@ else
       publish_merged_preserving_discovered "$tmp_quick" || true
     fi
   else
+    gen_pids=()
     notify_error "full scan" "$tmp_err_full"
   fi
 

@@ -3,7 +3,7 @@
 ## Source-inspection branch
 
 Identify the canonical upstream and question-specific ref before reading code;
-clone or refresh `/tmp/agent-src/<owner>/<repo>`, then inspect that ref locally.
+clone or refresh `/tmp/agent-src/<session>/<owner>/<repo>`, then inspect that ref locally.
 
 ### Procedure
 
@@ -23,11 +23,11 @@ Do not start with raw content URLs or GitHub contents/tree APIs before you have 
 
 #### 2) Clone into `/tmp` (and reuse it)
 
-Pick a stable location:
+Pick a session-owned location:
 
-- `/tmp/agent-src/<owner>/<repo>`
+- `/tmp/agent-src/<session>/<owner>/<repo>`
 
-If it exists: reuse it and update it.
+Reuse and update only a clone this session owns and still needs; do not mutate another session's active checkout.
 
 #### 3) Resolve the target ref before inspecting
 
@@ -78,8 +78,8 @@ Use web fetches for:
 
 ### Reuse rule
 
-Keep the `/tmp/agent-src/...` clone around for reuse unless cleanup is explicitly requested.
-Always run `git fetch --prune --tags` before relying on it.
+Reuse the clone only while a remaining inspection or agreed handoff needs it; remove it immediately afterward under `k-cleanup`.
+Run `git fetch --prune --tags` before relying on a retained clone.
 Do not run `git pull` unless the user explicitly asks to update a local tracking branch.
 
 Output:

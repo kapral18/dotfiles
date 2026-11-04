@@ -80,7 +80,7 @@ worktree_branch_in_use() {
 }
 
 show_usage() {
-  cat << EOF
+  cat << 'EOF'
 Usage: ,w remove [--tmux-notify] [--paths <path...>]
 
 Interactively remove git worktrees.
@@ -88,7 +88,7 @@ Interactively remove git worktrees.
 Options:
   -h, --help        Show this help message
   --paths           Remove specific worktree path(s) (skip interactive picker)
-  --force           Skip the unsaved-work preflight (dirty files, unpushed commits)
+  --force           Bypass unsaved-work and submodule-history safeguards
   --preflight       With --paths: only print paths that would be skipped, remove nothing
   --tmux-notify     If running inside tmux, show progress via tmux messages
 
@@ -105,7 +105,7 @@ Description:
 Notes:
   - The default branch (main/master) cannot be removed
   - Interactive mode skips detached HEAD worktrees; --paths removes them
-  - If you have stale worktree metadata, run $(,w prune) first
+  - If you have stale worktree metadata, run ,w prune first
 EOF
 }
 
@@ -170,29 +170,33 @@ notify() {
 
 _check_worktree_safe_to_remove() {
   local path="$1"
-  local detached="$2"
   local issues=()
 
-  # -unormal (git's default) so untracked-but-not-ignored files count as unsaved
-  # work too; -uno would silently allow deleting a worktree of only new files.
-  local dirty_files
-  dirty_files="$(git -C "$path" status --porcelain -unormal 2> /dev/null || true)"
+  local top branch_ref ref unsafe_commits dirty_files
+  top="$(git -C "$path" rev-parse --show-toplevel 2> /dev/null)" || return 1
+  [ "$(realpath "$path" 2> /dev/null)" = "$(realpath "$top" 2> /dev/null)" ] || return 1
+  dirty_files="$(git -C "$path" status --porcelain -unormal 2> /dev/null)" || return 1
   if [ -n "$dirty_files" ]; then
-    local count
-    count="$(printf '%s\n' "$dirty_files" | wc -l | tr -d ' ')"
-    issues+=("dirty: $count uncommitted or untracked file(s)")
+    issues+=("uncommitted or untracked files")
   fi
 
-  # With zero remotes, --not --remotes excludes nothing and every commit would
-  # count as unpushed, permanently blocking removal; skip the check instead.
-  if [ "$detached" != "1" ] && [ -n "$(git -C "$path" remote 2> /dev/null)" ]; then
-    local unpushed
-    unpushed="$(git -C "$path" rev-list HEAD --not --remotes 2> /dev/null || true)"
-    if [ -n "$unpushed" ]; then
-      local count
-      count="$(printf '%s\n' "$unpushed" | wc -l | tr -d ' ')"
-      issues+=("unpushed: $count commit(s) not present on any remote")
-    fi
+  local main_path
+  main_path="$(git -C "$path" worktree list --porcelain | sed -n 's/^worktree //p' | head -n 1)"
+  if [ "$(realpath "$main_path" 2> /dev/null)" = "$(realpath "$path" 2> /dev/null)" ]; then
+    python3 "$script_dir/../shared/worktree_nested_git.py" "$path" --all-worktrees || return 1
+    unsafe_commits="$(git -C "$path" rev-list --all HEAD --not --remotes 2> /dev/null)" || return 1
+  else
+    python3 "$script_dir/../shared/worktree_nested_git.py" "$path" || return 1
+    branch_ref="$(git -C "$path" symbolic-ref -q HEAD 2> /dev/null || true)"
+    local -a retained_refs=()
+    while IFS= read -r ref; do
+      [ "$ref" = "$branch_ref" ] || retained_refs+=("$ref")
+    done < <(git -C "$path" for-each-ref --format='%(refname)')
+    unsafe_commits="$(git -C "$path" rev-list HEAD --not "${retained_refs[@]}" 2> /dev/null)" || return 1
+  fi
+
+  if [ -n "$unsafe_commits" ]; then
+    issues+=("commits not reachable from retained refs")
   fi
 
   if [ ${#issues[@]} -gt 0 ]; then
@@ -217,13 +221,7 @@ if [ "$preflight_mode" -eq 1 ]; then
   fi
   for p in "${paths[@]}"; do
     wp="$(realpath "$p" 2> /dev/null || printf '%s' "$p")"
-    [ -d "$wp" ] || continue
-    # Match removal semantics: detached HEAD skips the unpushed-commit check.
-    det=0
-    if ! git -C "$wp" symbolic-ref -q HEAD > /dev/null 2>&1; then
-      det=1
-    fi
-    if ! _check_worktree_safe_to_remove "$wp" "$det" 2> /dev/null > /dev/null; then
+    if ! _check_worktree_safe_to_remove "$wp" 2> /dev/null > /dev/null; then
       printf '%s\n' "$p"
     fi
   done
@@ -386,7 +384,7 @@ for worktree in "${worktrees[@]}"; do
   _tsv_assign "$worktree" worktree_path worktree_branch worktree_detached
 
   if [ "$force_remove" -eq 0 ]; then
-    if ! _check_worktree_safe_to_remove "$worktree_path" "${worktree_detached:-0}"; then
+    if ! _check_worktree_safe_to_remove "$worktree_path"; then
       continue
     fi
   fi

@@ -1093,5 +1093,55 @@ equal(chooser.visible, true)
 """)
 
 
+@unittest.skipUnless(LUA, "Lua is not installed")
+class WindowGeometryTests(unittest.TestCase):
+    def test_window_hotkeys_use_the_focused_screens_absolute_usable_frame(self):
+        harness = r"""
+local bindings, actual, frame, focused = {}, nil, nil, true
+local window = {
+  screen = function() return { frame = function() return frame end } end,
+  setFrame = function(_, geometry) actual = geometry end,
+}
+Hyper = {}
+hs = {
+  window = { focusedWindow = function() return focused and window or nil end },
+  hotkey = { bind = function(_, key, action) bindings[key] = action end },
+  geometry = function(x, y, w, h) return { x, y, w, h } end,
+}
+dofile(arg[1])
+for _, scenario in ipairs({
+  { frame = { x = -1920, y = 60, w = 1920, h = 1080 }, expected = {
+    h = { -1920, 60, 960, 1080 }, l = { -960, 60, 960, 1080 },
+    k = { -1920, 60, 1920, 540 }, j = { -1920, 600, 1920, 540 }, m = { -1920, 60, 1920, 1080 },
+  } },
+  { frame = { x = 0, y = 25, w = 1440, h = 900 }, expected = {
+    h = { 0, 25, 720, 900 }, l = { 720, 25, 720, 900 },
+    k = { 0, 25, 1440, 450 }, j = { 0, 475, 1440, 450 }, m = { 0, 25, 1440, 900 },
+  } },
+}) do
+  frame = scenario.frame
+  for key, expected in pairs(scenario.expected) do
+    bindings[key]()
+    for index, value in ipairs(expected) do
+      assert(actual[index] == value, key .. ' placed the window outside its usable screen frame')
+    end
+  end
+end
+focused, actual = false, nil
+for _, action in pairs(bindings) do action() end
+assert(actual == nil, 'no focused window must be a no-op')
+"""
+        with tempfile.TemporaryDirectory(prefix="window-geometry-") as temporary:
+            result = subprocess.run(
+                [LUA, "-", str(REPO / "home/dot_hammerspoon/readonly_window.lua")],
+                input=harness,
+                capture_output=True,
+                text=True,
+                env=os.environ | {"HOME": temporary},
+                timeout=10,
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()

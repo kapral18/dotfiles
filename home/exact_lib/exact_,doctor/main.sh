@@ -81,7 +81,7 @@ section() {
   printf '\n%s── %s%s\n' "$C_HEAD" "$1" "$C_R"
 }
 
-has_cmd() { command -v "$1" > /dev/null 2>&1; }
+has_cmd() { type -P "$1" > /dev/null 2>&1; }
 
 check_core() {
   section "Core"

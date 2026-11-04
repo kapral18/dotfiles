@@ -19,24 +19,8 @@ cache_file="${cache_dir}/pick_session_items.tsv"
 mutation_file="${cache_dir}/pick_session_mutations.tsv"
 mkdir -p "$cache_dir"
 
-lock_dir="${cache_file}.lock"
-acquire_lock() {
-  local waited=0
-  while ! mkdir "$lock_dir" 2> /dev/null; do
-    sleep 0.02
-    waited="$((waited + 20))"
-    [ "$waited" -ge 200 ] && return 1
-  done
-  return 0
-}
-release_lock() { rmdir "$lock_dir" 2> /dev/null || true; }
-
-# `sel_file` is a per-binding snapshot minted by `dispatch_async.sh`. We're
-# the last consumer of that snapshot, so clean it up on EXIT (covers normal
-# completion, errors, and interrupts) along with releasing the cache lock.
 _action_kill_cleanup() {
   rm -f "$sel_file" 2> /dev/null || true
-  release_lock
 }
 trap _action_kill_cleanup EXIT
 
@@ -134,14 +118,10 @@ now_epoch="$(date +%s)"
     [ -n "$d" ] || continue
     printf '%s\tPATH_EXACT\t%s\n' "$now_epoch" "$d"
   done
-} >> "$mutation_file"
+} | python3 "$script_dir/../lib/resource_lock.py" append "$mutation_file"
 
 if [ ! -f "$cache_file" ]; then
   exit 0
 fi
 
-if ! acquire_lock; then
-  exit 0
-fi
-
-CACHE_FILE="$cache_file" SESSIONS="$(printf '%s\n' "${sess[@]}")" DIRS="$(printf '%s\n' "${dirs_to_remove[@]}")" python3 "$script_dir/lib/cache_prune_sessions.py"
+CACHE_FILE="$cache_file" SESSIONS="$(printf '%s\n' "${sess[@]}")" DIRS="$(printf '%s\n' "${dirs_to_remove[@]}")" python3 "$script_dir/../lib/resource_lock.py" --timeout 0.2 cache-run "$cache_file" python3 "$script_dir/lib/cache_prune_sessions.py" || true

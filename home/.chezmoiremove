@@ -13,6 +13,7 @@ lib/,palantir
 .config/fish/completions/,fleet.fish
 .config/fish/completions/,ralph.fish
 .config/fish/completions/,palantir.fish
+.config/fish/completions/,handoff.fish
 .config/tmux/conf.d/44-ralph.conf
 .config/tmux/conf.d/4x-fleet.conf
 .config/tmux/conf.d/45-palantir.conf
@@ -32,20 +33,9 @@ lib/,palantir
 # Retired Gemini CLI and Antigravity config & directories
 .gemini/GEMINI.md
 .gemini/settings.json
-.gemini/settings.json.bak-premise-nudge
-.gemini/settings.json.orig
 .gemini/agents
 .gemini/commands
-.gemini/google_accounts.json
-.gemini/installation_id
-.gemini/mcp-oauth-tokens-v2.json
-.gemini/projects.json
-.gemini/state.json
-.gemini/trustedFolders.json
-.gemini/history
-.gemini/tmp
-.gemini/extensions
-.gemini/.env
+.gemini/skills
 .gemini/config/AGENTS.md
 .gemini/config/skills
 .gemini/config/mcp_config.json

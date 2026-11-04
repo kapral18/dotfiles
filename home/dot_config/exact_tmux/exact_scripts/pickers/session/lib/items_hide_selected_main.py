@@ -10,6 +10,9 @@ from pathlib import Path
 import frecency
 from pick_session_grouping import grouped_output, simple_resolve
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "lib"))
+from resource_lock import resource_lock  # noqa: E402
+
 sel_file = sys.argv[1]
 items_cmd = sys.argv[2]
 mode = sys.argv[3] if len(sys.argv) > 3 else ""
@@ -202,8 +205,9 @@ def append_mutation_tombstones():
     if not lines:
         return
     try:
-        with open(mutation_file, "a", encoding="utf-8") as mf:
-            mf.writelines(lines)
+        with resource_lock(mutation_file):
+            with open(mutation_file, "a", encoding="utf-8") as mf:
+                mf.writelines(lines)
     except Exception:
         pass
 

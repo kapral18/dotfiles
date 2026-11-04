@@ -211,3 +211,4 @@ complete -c ,w -n '__fish_seen_subcommand_from prune' -l all -d 'Prune tmux sess
 complete -c ,w -n '__fish_seen_subcommand_from doctor' -d 'Check dependencies and state'
 
 complete -c ,w -n '__fish_seen_subcommand_from remove' -d "Remove worktrees interactively"
+complete -c ,w -n '__fish_seen_subcommand_from remove' -l force -d 'Allow unsaved work or submodule repositories'

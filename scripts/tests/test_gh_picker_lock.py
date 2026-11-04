@@ -1,17 +1,24 @@
 #!/usr/bin/env python3
-"""Regression tests for the GitHub picker fetch-lock publication race."""
+"""Regression tests for GitHub picker fetch ownership and lock publication."""
 
 from __future__ import annotations
 
 import contextlib
+import hashlib
+import importlib.util
+import itertools
+import json
 import os
 import shutil
+import signal
 import subprocess
+import sys
 import tempfile
 import textwrap
 import time
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from _test_support import REPO, modern_bash
 
@@ -50,13 +57,24 @@ class TestLockLoopEndToEnd(unittest.TestCase):
         so copying it to a scratch directory relocates every relative path
         (``lib/gh_items_main.py``, ``gh-picker.yml``) automatically.
         """
-        script_copy = base / "gh_items.sh"
+        script_dir = base / "pickers" / "github"
+        script_dir.mkdir(parents=True)
+        script_copy = script_dir / "gh_items.sh"
         shutil.copy(SCRIPT, script_copy)
         script_copy.chmod(0o755)
-        (base / "gh-picker.yml").write_text("# stub config\n")
+        (script_dir / "gh-picker.yml").write_text("# stub config\n")
 
-        lib = base / "lib"
+        lib = script_dir / "lib"
         lib.mkdir()
+        helper = SCRIPT.parent / "lib" / "gh_fetch_lock.py"
+        if helper.exists():
+            shutil.copy(helper, lib / helper.name)
+            shared_lib = base / "pickers" / "lib"
+            shared_lib.mkdir()
+            for name in ("resource_lock.py", "picker_owner.py"):
+                source = SCRIPT.parent.parent / "lib" / name
+                if source.exists():
+                    shutil.copy(source, shared_lib / name)
         counter_file = base / "counter"
         counter_file.write_text("0")
 
@@ -110,38 +128,117 @@ class TestLockLoopEndToEnd(unittest.TestCase):
         env = {
             **os.environ,
             "PATH": f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}",
+            "HOME": str(base / "home"),
             "XDG_CACHE_HOME": str(base / "cache"),
         }
         env.pop("STUB_BLOCK", None)
 
         cache_file = base / "cache" / "tmux" / "gh_picker.tsv"
-        lock_dir = Path(f"{cache_file}.lock")
+        lock_dir = Path(f"{cache_file}.fetch.lock")
         return script_copy, env, counter_file, cache_file, lock_dir
 
     def _read_counter(self, path: Path) -> int:
         return int((path.read_text() or "0").strip() or "0")
 
     def test_dead_owner_lock_is_recovered_and_fetch_runs(self):
-        """A pre-existing lock owned by a dead pid must be reaped so the new
-        invocation can fetch — this is the stale-owner recovery path."""
+        for shell in dict.fromkeys(("/bin/bash", modern_bash())):
+            with self.subTest(shell=shell), tempfile.TemporaryDirectory() as tmp:
+                base = Path(tmp)
+                script, env, counter, cache_file, lock_dir = self._make_env(base)
+                (base / "cache" / "tmux").mkdir(parents=True)
+                lock_dir.mkdir()
+                (lock_dir / "pid").write_text(f"{_find_dead_pid()}\n")
+
+                r = subprocess.run(
+                    [shell, str(script)],
+                    capture_output=True,
+                    text=True,
+                    env=env,
+                    timeout=15,
+                )
+                self.assertEqual(r.returncode, 0, r.stderr)
+                self.assertEqual(self._read_counter(counter), 1)
+                self.assertTrue(cache_file.exists())
+                self.assertFalse(lock_dir.exists(), "lock leaked after dead-owner recovery")
+
+    def test_completed_fetch_worker_is_not_a_cleanup_target(self):
+        for shell in dict.fromkeys(("/bin/bash", modern_bash())):
+            for worker_status in (0, 7):
+                with self.subTest(shell=shell, worker_status=worker_status), tempfile.TemporaryDirectory() as tmp:
+                    base = Path(tmp)
+                    script, env, *_ = self._make_env(base)
+                    released = base / "released.json"
+                    helper = script.parent / "lib/gh_fetch_lock.py"
+                    helper.write_text(
+                        "import json,sys\nfrom pathlib import Path\n"
+                        'if sys.argv[1] == "acquire": print("owned fixture-generation")\n'
+                        f"else: Path({str(released)!r}).write_text(json.dumps(sys.argv[5:]))\n"
+                    )
+                    (helper.parent / "gh_items_main.py").write_text(f"raise SystemExit({worker_status})\n")
+
+                    result = subprocess.run(
+                        [shell, str(script), "--refresh"], capture_output=True, text=True, env=env, timeout=15
+                    )
+
+                    self.assertEqual(result.returncode, worker_status, result.stderr)
+                    self.assertEqual([pid for pid in json.loads(released.read_text()) if pid], [])
+
+    def test_refresh_preserves_unverified_live_pid_owner(self):
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
             script, env, counter, cache_file, lock_dir = self._make_env(base)
-            (base / "cache" / "tmux").mkdir(parents=True)
+            cache_file.parent.mkdir(parents=True)
+            cache_file.write_text("cached_row\n")
             lock_dir.mkdir()
-            (lock_dir / "pid").write_text(f"{_find_dead_pid()}\n")
+            innocent = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"])
+            try:
+                (lock_dir / "pid").write_text(f"{innocent.pid}\n")
 
-            r = subprocess.run(
-                [modern_bash(), str(script)],
-                capture_output=True,
-                text=True,
-                env=env,
-                timeout=15,
+                actual = subprocess.run(
+                    [modern_bash(), str(script), "--refresh"], capture_output=True, text=True, env=env, timeout=10
+                )
+
+                self.assertIsNone(innocent.poll(), "refresh signaled an unverified PID from a legacy lock")
+                self.assertNotEqual(actual.returncode, 0)
+                self.assertIn("unverified", actual.stderr)
+                self.assertEqual(self._read_counter(counter), 0)
+                self.assertEqual(cache_file.read_text(), "cached_row\n")
+                self.assertEqual((lock_dir / "pid").read_text(), f"{innocent.pid}\n")
+            finally:
+                if innocent.poll() is None:
+                    innocent.kill()
+                innocent.wait(timeout=5)
+
+    def test_refresh_preempts_verified_owner_and_stops_its_fetch(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            script, env, counter, cache_file, lock_dir = self._make_env(base)
+            block = base / "unblock"
+            owner_env = {**env, "STUB_BLOCK": str(block)}
+            owner = subprocess.Popen(
+                [modern_bash(), str(script)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=owner_env
             )
-            self.assertEqual(r.returncode, 0, r.stderr)
-            self.assertEqual(self._read_counter(counter), 1)
-            self.assertTrue(cache_file.exists())
-            self.assertFalse(lock_dir.exists(), "lock leaked after dead-owner recovery")
+            try:
+                _wait_for(lambda: self._read_counter(counter) == 1)
+                ownership = json.loads((lock_dir / "owner.json").read_text())
+                self.assertEqual(ownership["pid"], owner.pid)
+                self.assertNotIn(str(script), (lock_dir / "owner.json").read_text())
+
+                actual = subprocess.run(
+                    [modern_bash(), str(script), "--refresh"], capture_output=True, text=True, env=env, timeout=10
+                )
+                stdout, stderr = owner.communicate(timeout=5)
+
+                self.assertEqual(actual.returncode, 0, actual.stderr)
+                self.assertEqual(owner.returncode, 143, stdout + stderr)
+                self.assertEqual(self._read_counter(counter), 2)
+                self.assertTrue(cache_file.exists())
+                self.assertFalse(lock_dir.exists(), "verified refresh left its fetch lock behind")
+            finally:
+                block.touch()
+                if owner.poll() is None:
+                    owner.kill()
+                owner.communicate(timeout=5)
 
     def test_orphaned_lock_beyond_grace_is_recovered(self):
         """A lock with no pid file, older than the fixed 2s publish grace, is
@@ -290,6 +387,152 @@ class TestLockLoopEndToEnd(unittest.TestCase):
                 # Our test owns this lock; the waiter's cleanup trap only
                 # rmdirs when the pid file names $$, so we must clean up.
                 shutil.rmtree(lock_dir, ignore_errors=True)
+
+    def test_row_marker_patch_publishes_while_a_fetch_owns_its_lock(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            script, env, counter, cache, _lock = self._make_env(base)
+            block = base / "unblock"
+            env["STUB_BLOCK"] = str(block)
+            cache.parent.mkdir(parents=True)
+            cache.write_text("\x1b[32m●\x1b[0m   row\tpr\towner/repo\t1\turl\n")
+            owner = subprocess.Popen(
+                [modern_bash(), str(script), "--refresh"],
+                env=env,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            try:
+                _wait_for(lambda: self._read_counter(counter) == 1)
+                patcher = SCRIPT.parent / "lib/gh_patch_picker_cache.py"
+                patched = subprocess.run(
+                    [
+                        "python3",
+                        str(patcher),
+                        "--cache-file",
+                        str(cache),
+                        "--kind",
+                        "pr",
+                        "--repo",
+                        "owner/repo",
+                        "--num",
+                        "1",
+                    ],
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                )
+                self.assertEqual(patched.returncode, 0, patched.stderr)
+                self.assertIn("◆", cache.read_text())
+                self.assertIsNone(owner.poll())
+            finally:
+                block.touch()
+                stdout, stderr = owner.communicate(timeout=10)
+                self.assertEqual(owner.returncode, 0, stdout + stderr)
+
+
+class TestFetchLockOwnership(unittest.TestCase):
+    def _module(self):
+        path = SCRIPT.parent.parent / "lib" / "picker_owner.py"
+        spec = importlib.util.spec_from_file_location("gh_fetch_lock_test", path)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = module
+        spec.loader.exec_module(module)
+        return module
+
+    def _owner(self, lock_dir: Path) -> dict:
+        owner = {
+            "pid": 12345,
+            "start": "Tue Nov 3 12:00:00 2026",
+            "command_sha256": hashlib.sha256(b"bash gh_items.sh --token=fixture-secret").hexdigest(),
+            "generation": "a" * 32,
+            "preemptible": True,
+        }
+        lock_dir.mkdir(parents=True)
+        (lock_dir / "pid").write_text("12345\n")
+        (lock_dir / "owner.json").write_text(json.dumps(owner))
+        return owner
+
+    def test_replaced_generation_survives_late_release_and_signal(self):
+        module = self._module()
+        with tempfile.TemporaryDirectory() as tmp:
+            cache = Path(tmp) / "cache.tsv"
+            lock = module.PickerOwner(cache, "fetch")
+            old_owner = self._owner(lock.directory)
+            successor = {**old_owner, "generation": "b" * 32}
+            (lock.directory / "owner.json").write_text(json.dumps(successor))
+
+            def ps_result(argv, **kwargs):
+                output = "Tue Nov 3 12:00:00 2026 12345 S python3 gh_items_main.py\n" if argv[0] == "ps" else ""
+                return subprocess.CompletedProcess(argv, 0, stdout=output, stderr="")
+
+            with (
+                mock.patch.object(module.subprocess, "run", side_effect=ps_result),
+                mock.patch.object(module.os, "kill") as kill,
+                mock.patch.object(module.time, "monotonic", side_effect=itertools.count(step=10)),
+            ):
+                actual = lock.signal_owner(old_owner, signal.SIGKILL)
+                lock.release(old_owner["pid"], old_owner["generation"], child_pids=(12346,))
+
+            self.assertEqual(actual, "changed")
+            self.assertEqual(json.loads((lock.directory / "owner.json").read_text()), successor)
+            kill.assert_not_called()
+
+    def test_refresh_rechecks_identity_before_escalating_to_kill(self):
+        module = self._module()
+        changed_processes = (
+            "Tue Nov 3 12:00:01 2026 1 S bash gh_items.sh --token=fixture-secret\n",
+            "Tue Nov 3 12:00:00 2026 1 S bash unrelated.sh\n",
+        )
+        for changed_process in changed_processes:
+            with self.subTest(changed_process=changed_process), tempfile.TemporaryDirectory() as tmp:
+                lock = module.PickerOwner(Path(tmp) / "cache.tsv", "fetch")
+                self._owner(lock.directory)
+                sent_signals = []
+
+                def ps_result(argv, **kwargs):
+                    output = (
+                        changed_process
+                        if sent_signals
+                        else "Tue Nov 3 12:00:00 2026 1 S bash gh_items.sh --token=fixture-secret\n"
+                    )
+                    return subprocess.CompletedProcess(argv, 0, stdout=output, stderr="")
+
+                with (
+                    mock.patch.object(module.subprocess, "run", side_effect=ps_result),
+                    mock.patch.object(module.os, "kill", side_effect=lambda pid, sig: sent_signals.append((pid, sig))),
+                    mock.patch.object(module.time, "monotonic", side_effect=itertools.count(step=10)),
+                ):
+                    with self.assertRaises(module.PickerOwnerError):
+                        lock.acquire(os.getpid(), refresh=True)
+
+                self.assertEqual(sent_signals, [(12345, signal.SIGTERM)])
+                self.assertTrue(lock.directory.exists())
+
+    def test_invalid_pids_are_preserved_without_process_group_signals(self):
+        module = self._module()
+        for raw_pid in ("0", "-123", "not-a-pid"):
+            with self.subTest(raw_pid=raw_pid), tempfile.TemporaryDirectory() as tmp:
+                lock = module.PickerOwner(Path(tmp) / "cache.tsv", "fetch")
+                lock.directory.mkdir()
+                (lock.directory / "pid").write_text(raw_pid + "\n")
+
+                with (
+                    mock.patch.object(module.os, "kill") as kill,
+                    mock.patch.object(
+                        module.subprocess,
+                        "run",
+                        return_value=subprocess.CompletedProcess(["ps"], 1, stdout="", stderr=""),
+                    ) as process_query,
+                ):
+                    with self.assertRaisesRegex(module.PickerOwnerError, "unverified"):
+                        lock.acquire(os.getpid(), refresh=True)
+
+                self.assertEqual((lock.directory / "pid").read_text(), raw_pid + "\n")
+                kill.assert_not_called()
+                process_query.assert_not_called()
 
 
 if __name__ == "__main__":

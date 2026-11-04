@@ -2,17 +2,40 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import shutil
-import signal
 import subprocess
 import sys
 from pathlib import Path
 
 from assets import ambient_theme_style, detect_ambient_theme, inject_ambient_theme, starter_html
-from feedback import active_poller_record, active_poller_records, clear_ended, poll_feedback, stop_poller_record
-from paths import artifact_path, artifacts_dir, cache_root, context, ensure_session, session_dir
-from server import live_script_command, live_start_command, read_server_state, run_server, server_base_url, start_server
+from feedback import (
+    active_poller_record,
+    active_poller_records,
+    clear_ended,
+    poll_feedback,
+    process_is_running,
+    record_matches_live_poller,
+    stop_poller_record,
+)
+from paths import (
+    _read_json,
+    artifact_path,
+    artifacts_dir,
+    cache_root,
+    context,
+    ensure_session,
+    lifecycle_lock,
+    session_dir,
+)
+from server import (
+    live_script_command,
+    live_start_command,
+    read_server_state,
+    record_matches_live_server,
+    run_server,
+    start_server,
+    stop_server,
+)
 
 
 def write_artifact(args: argparse.Namespace) -> Path:
@@ -50,39 +73,55 @@ def list_pollers(_: argparse.Namespace) -> None:
 
 
 def poll_stop(args: argparse.Namespace) -> None:
-    ensure_session()
-    if args.all:
-        records = active_poller_records()
-    else:
-        record = active_poller_record(args.name)
-        records = [record] if record else []
-    for record in records:
-        stop_poller_record(record)
-    print(json.dumps({"stopped": len(records), "session": context()}, indent=2))
+    with lifecycle_lock():
+        ensure_session()
+        if args.all:
+            records = active_poller_records()
+        else:
+            record = active_poller_record(args.name)
+            records = [record] if record else []
+        for record in records:
+            stop_poller_record(record)
+        print(json.dumps({"stopped": len(records), "session": context()}, indent=2))
+
+
+def preflight_context(sdir: Path) -> None:
+    with lifecycle_lock():
+        state = read_server_state(sdir) or {}
+        pid = state.get("pid")
+        if process_is_running(pid) and not record_matches_live_server(sdir, state):
+            raise SystemExit(f"ERROR: cannot verify active server PID {pid} at {sdir}; cache preserved")
+        for path in sorted((sdir / "pollers").glob("*.json")):
+            record = _read_json(path) or {}
+            pid = record.get("pid")
+            if process_is_running(pid) and not record_matches_live_poller(record):
+                raise SystemExit(f"ERROR: cannot verify active poller PID {pid} at {path}; cache preserved")
+
+
+def stop_context(sdir: Path) -> None:
+    with lifecycle_lock():
+        preflight_context(sdir)
+        for record in active_poller_records(sdir):
+            stop_poller_record(record)
+        stop_server(sdir)
 
 
 def clean(args: argparse.Namespace) -> None:
-    root = cache_root() if args.all else session_dir()
-    if root.exists():
-        shutil.rmtree(root)
-    print(root)
+    with lifecycle_lock():
+        root = cache_root() if args.all else session_dir()
+        contexts = sorted((root / "sessions").glob("*/*")) if args.all else [root]
+        contexts = [sdir for sdir in contexts if sdir.is_dir() and not sdir.is_symlink()]
+        for sdir in contexts:
+            preflight_context(sdir)
+        for sdir in contexts:
+            stop_context(sdir)
+        if root.exists():
+            shutil.rmtree(root)
+        print(root)
 
 
 def stop(_: argparse.Namespace) -> None:
-    sdir = session_dir()
-    for record in active_poller_records():
-        stop_poller_record(record)
-    if not server_base_url(sdir):
-        return
-    state = read_server_state(sdir)
-    if not state:
-        return
-    pid = state.get("pid")
-    if isinstance(pid, int):
-        try:
-            os.kill(pid, signal.SIGTERM)
-        except OSError:
-            pass
+    stop_context(session_dir())
 
 
 def path_command(args: argparse.Namespace) -> None:

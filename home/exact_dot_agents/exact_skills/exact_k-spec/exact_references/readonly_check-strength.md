@@ -14,6 +14,5 @@ A check names an observable acceptance condition, its independent oracle, the re
 - Run the checks once, on the finished change. Unrun checks are `planned`, never red/green proof.
 - Select only cases needed to settle concrete material risks and necessary preserved behavior.
   Prefer source/contracts and existing checks; add a bounded disposable probe only when those cannot settle the risk.
-  Separately plan reused behavioral coverage or the smallest durable additions for new/changed material behavior under `~/AGENTS.md` §3.
-  Source evidence and disposable probes do not replace missing durable coverage.
+  Apply `~/AGENTS.md` §3's test-value rule when planning durable coverage; prefer reuse or simplification, including no tests when added protection does not earn its maintenance cost.
 - Mutation testing is optional evidence for high-risk criteria, not a prerequisite for every plan.

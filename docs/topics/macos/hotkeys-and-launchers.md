@@ -14,7 +14,7 @@ Key pieces:
 - Window management hotkeys: [`home/dot_hammerspoon/readonly_window.lua`](../../../home/dot_hammerspoon/readonly_window.lua)
 - Grid-mouse (keyboard mouse): [`home/dot_hammerspoon/readonly_gridmouse.lua`](../../../home/dot_hammerspoon/readonly_gridmouse.lua) (currently not enabled in `init.lua`)
 
-In `init.lua`, `Hyper` is configured as `ctrl+alt+cmd`.
+In `init.lua`, `Hyper` is configured as `ctrl+alt+cmd`. `Hyper+H/J/K/L` places the focused window in the left/bottom/top/right half of its current screen; `Hyper+M` fills that screen's usable frame. Positions include the screen's absolute origin and menu-bar/Dock offsets, including secondary displays.
 
 This setup pulls the `EmmyLua.spoon` via externals:
 

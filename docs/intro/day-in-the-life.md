@@ -64,7 +64,7 @@ claude
 
 Per-tool configuration (auth, models, MCP, config merging) lives in [Tool configs](../topics/ai-assistants/tool-configs/index.md).
 
-To continue a task in another session or harness, ask for "handoff X" and later "continue X"; agents save and read notes with `,handoff`. Reusable gotchas go into `,ai-kb` on demand. See [Memory and handoffs](../topics/ai-assistants/memory-and-handoffs.md).
+To continue a task in another session or harness, ask for "handoff X" and later "continue X"; agents save and resume the task with `,task handoff`. Reusable gotchas go into `,ai-kb` on demand. See [Memory and handoffs](../topics/ai-assistants/memory-and-handoffs.md).
 
 ## Review
 

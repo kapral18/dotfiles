@@ -25,8 +25,8 @@ Recency tracking:
 
 Execution model:
 
-- **`,*` commands and git aliases**: sent to the active pane via `tmux send-keys … Enter` so the command runs in your shell with full environment context.
-- **Tmux bindings**: re-invoked via `tmux send-keys C-Space <key>` so the binding fires exactly as if you pressed it.
+- **`,*` commands and git aliases**: inserted into the active pane with a trailing space; press Enter to run them.
+- **Tmux bindings**: the selected tmux action runs immediately.
 
 Options (tmux `set -g`):
 
@@ -39,7 +39,9 @@ Extensibility:
 
 - Drop a `.tsv` file into `~/.config/tmux/palette.d/` with three tab-separated columns per line: `<display>\t<unique-key>\t<exec-command>`. Entries appear automatically on next palette open.
 
-Popup spawn temporarily overrides `default-shell` to `/bin/sh` via `command_palette/popup.sh` to avoid heavy-shell initialization overhead (~1s with fish).
+Popup launchers pass `/bin/bash` and the script path directly to `display-popup`. They leave the server’s `default-shell` unchanged, including while another client opens a pane. Command previews read the script’s first 40 source lines; they never execute `--help`.
+
+The separate `gh-dash` dashboard starts its nested session with a Bash login shell and restarts the dashboard after exit. Its config path, outer socket and client name pass as arguments, so spaces, quotes and shell metacharacters remain literal data.
 
 ## GitHub picker popup
 
@@ -53,7 +55,7 @@ Implementation notes:
 - Single `fzf` popup (no nested tmux server). Popup opens at 95%×95%.
 - Items are fetched by `gh_items.sh` / `lib/gh_items_main.py`, which parses the gh-picker config file and runs GitHub Search API queries.
 - `alt-g` closes the popup and reopens the session picker at its configured dimensions (and vice versa). The close-and-reopen loop lives in the outer wrapper scripts (`popup.sh` / `gh_popup.sh`).
-- Popup spawn temporarily overrides `default-shell` to `/bin/sh` to avoid heavy-shell initialization overhead (~1s with fish).
+- Popup launch passes the script directly to `/bin/bash` without changing the server’s `default-shell`.
 
 For full keybindings and details, see [Tmux GitHub picker](github-picker.md).
 
@@ -62,7 +64,7 @@ For full keybindings and details, see [Tmux GitHub picker](github-picker.md).
 - Binding: `prefix` then `B`
 - Prompts for a GitHub repo spec like `owner/repo`, then runs `,gh-tfork`.
 - `,gh-tfork` clones under `~/code`.
-- Popup spawn temporarily overrides `default-shell` to `/bin/sh` to avoid heavy-shell initialization overhead (~1s with fish).
+- Popup launch passes the script directly to `/bin/bash` without changing the server’s `default-shell`.
 
 ## Lowfi (music in tmux)
 

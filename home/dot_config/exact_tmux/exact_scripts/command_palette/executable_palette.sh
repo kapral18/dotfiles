@@ -251,7 +251,8 @@ preview_cmd() {
       local cmd_name="${kind_key#bin:}"
       local cmd_path="${BIN_DIR}/${cmd_name}"
       if [ -x "$cmd_path" ]; then
-        "$cmd_path" --help 2>&1 | head -40 || head -30 "$cmd_path"
+        printf 'Command: %s\n\n' "$cmd_name"
+        head -40 "$cmd_path"
       fi
       ;;
     tmux:*)

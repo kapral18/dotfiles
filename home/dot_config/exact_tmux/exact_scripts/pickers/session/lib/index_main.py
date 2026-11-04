@@ -11,11 +11,13 @@ import subprocess
 import sys
 import tempfile
 import time
+from copy import deepcopy
 from pathlib import Path
 from typing import Any, Literal
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "lib"))
 from gh_ci_state import extract_ci_state  # noqa: E402
+from resource_lock import resource_lock  # noqa: E402
 
 # If the consumer (fzf) exits early, don't spam tracebacks.
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)
@@ -748,24 +750,38 @@ def _gh_cache_load() -> dict[str, Any]:
     return {}
 
 
-def _gh_cache_save(data: dict[str, Any]) -> None:
+def _gh_cache_save(entries: dict[str, dict[str, Any]], baseline: dict[str, dict[str, Any]]) -> None:
     try:
-        GH_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
-        fd, tmp = tempfile.mkstemp(dir=GH_CACHE_FILE.parent, suffix=".tmp")
-        closed = False
-        try:
-            os.write(fd, json.dumps(data, separators=(",", ":")).encode("utf-8"))
-            os.close(fd)
-            closed = True
-            os.replace(tmp, GH_CACHE_FILE)
-        except BaseException:
-            if not closed:
-                os.close(fd)
+        with resource_lock(GH_CACHE_FILE):
+            disk_cache = _gh_cache_load()
+            raw_entries = disk_cache.get("entries")
+            merged = raw_entries if isinstance(raw_entries, dict) else {}
+            for path, previous in baseline.items():
+                if path not in entries and merged.get(path) == previous:
+                    merged.pop(path, None)
+            for path, entry in entries.items():
+                previous = baseline.get(path)
+                if entry == previous:
+                    continue
+                current = merged.get(path)
+                if current is None or current == previous or entry.get("ts", 0) > current.get("ts", 0):
+                    merged[path] = entry
+            fd, tmp = tempfile.mkstemp(dir=GH_CACHE_FILE.parent, suffix=".tmp")
+            closed = False
             try:
-                os.unlink(tmp)
-            except OSError:
-                pass
-            raise
+                data = {"version": 1, "entries": merged}
+                os.write(fd, json.dumps(data, separators=(",", ":")).encode("utf-8"))
+                os.close(fd)
+                closed = True
+                os.replace(tmp, GH_CACHE_FILE)
+            except BaseException:
+                if not closed:
+                    os.close(fd)
+                try:
+                    os.unlink(tmp)
+                except OSError:
+                    pass
+                raise
     except Exception:
         pass
 
@@ -774,8 +790,12 @@ _TERMINAL_PR = frozenset({"MERGED", "CLOSED"})
 _TERMINAL_ISSUE = frozenset({"CLOSED", "COMPLETED", "NOT_PLANNED"})
 
 
+def _gh_cache_matches_identity(entry: dict[str, Any] | None, branch: str, nwo: str) -> bool:
+    return isinstance(entry, dict) and entry.get("branch") == branch and entry.get("nwo") == nwo
+
+
 def _gh_cache_fresh(entry: dict[str, Any], branch: str, nwo: str, now: float) -> bool:
-    if not entry or entry.get("branch") != branch or entry.get("nwo") != nwo:
+    if not _gh_cache_matches_identity(entry, branch, nwo):
         return False
     age = now - entry.get("ts", 0)
     pr = entry.get("pr")
@@ -930,7 +950,7 @@ def _batch_ci_graphql(pr_numbers: dict[str, set[int]]) -> dict[str, dict[int, tu
         if not owner:
             continue
         for n in nums:
-            alias = f"_p{owner}_{name}_{n}".replace("-", "_")
+            alias = f"_p{len(alias_map)}"
             aliases.append(
                 f'{alias}: repository(owner: "{owner}", name: "{name}") '
                 f"{{ pullRequest(number: {n}) {{ number reviewDecision "
@@ -1030,23 +1050,18 @@ def _apply_gh_lookup_result(
     lookup: dict[str, Any],
 ) -> None:
     status = lookup.get("status")
-    if status == GH_LOOKUP_FAILURE:
+    if status not in (GH_LOOKUP_SUCCESS, GH_LOOKUP_ABSENT):
         cached = gh_entries.get(wt_path)
-        if isinstance(cached, dict) and (cached.get("pr") or cached.get("issue")):
+        if _gh_cache_matches_identity(cached, branch, nwo) and (cached.get("pr") or cached.get("issue")):
             wt_gh_info[wt_path] = {"pr": cached.get("pr"), "issue": cached.get("issue")}
         return
 
     if status == GH_LOOKUP_SUCCESS:
         pr = lookup.get("pr")
         issue = lookup.get("issue")
-    elif status == GH_LOOKUP_ABSENT:
+    else:
         pr = None
         issue = None
-    else:
-        cached = gh_entries.get(wt_path)
-        if isinstance(cached, dict) and (cached.get("pr") or cached.get("issue")):
-            wt_gh_info[wt_path] = {"pr": cached.get("pr"), "issue": cached.get("issue")}
-        return
 
     gh_entries[wt_path] = {"pr": pr, "issue": issue, "branch": branch, "nwo": nwo, "ts": now}
     if status == GH_LOOKUP_SUCCESS and (pr or issue):
@@ -1423,13 +1438,12 @@ if _gh_all:
     _gh_disk_cache = _gh_cache_load()
     _raw_entries = _gh_disk_cache.get("entries")
     _gh_entries: dict[str, dict[str, Any]] = _raw_entries if isinstance(_raw_entries, dict) else {}
+    _gh_baseline = deepcopy(_gh_entries)
     _now = time.time()
     _gh_need_fetch: list[tuple[str, str, str]] = []
     for p, br, nwo in _gh_all:
         cached = _gh_entries.get(p)
-        # skip-gh mode treats any cached entry as usable (stale-ok) so a fast
-        # scan never blocks on the network; the next normal scan re-fetches.
-        if cached and (skip_gh or _gh_cache_fresh(cached, br, nwo, _now)):
+        if _gh_cache_matches_identity(cached, br, nwo) and (skip_gh or _gh_cache_fresh(cached, br, nwo, _now)):
             if cached.get("pr") or cached.get("issue"):
                 wt_gh_info[p] = {"pr": cached.get("pr"), "issue": cached.get("issue")}
         else:
@@ -1505,7 +1519,7 @@ if _gh_save_pending:
             cached_pr = _gh_pruned[p].get("pr") or {}
             if cached_pr and gh["pr"].get("ci") and not cached_pr.get("ci"):
                 cached_pr["ci"] = gh["pr"]["ci"]
-    _gh_cache_save({"version": 1, "entries": _gh_pruned})
+    _gh_cache_save(_gh_pruned, _gh_baseline)
 
 exclude_exact = set()
 exclude_worktree_roots = set()
@@ -1526,8 +1540,6 @@ def emit_sessions_and_worktrees():
                 expected = tmux_sanitize_session_name(f"{repo}|{br}" if br else repo)
                 meta = f"sess_root:{br}" if wt_path == root_checkout else f"sess_wt:{br}"
                 meta += f"|repo={repo}"
-                if expected and sess_name != expected:
-                    meta += f"|expected={expected}"
                 flags = wt_status.get(wt_path, set[str]())
                 sf = status_meta_flags(flags)
                 if sf:
@@ -1540,6 +1552,8 @@ def emit_sessions_and_worktrees():
                 terminal = pr_is_terminal(ghi)
                 if review:
                     meta += "|prrole=review"
+                if expected and sess_name != expected:
+                    meta += f"|expected={expected}"
                 disp = display_session_entry(sess_name, review, terminal) + status_badge(flags) + gh_badges(ghi)
                 mk = match_key(sess_name, expected, repo, br)
                 print(f"{disp}\tsession\t{wt_path}\t{meta}\t{sess_name}\t{mk}")

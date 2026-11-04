@@ -374,14 +374,13 @@ function K8sSchema.get_schema_filename(api_version, kind)
   return kind_lower .. "-" .. group_prefix .. "-" .. version .. ".json"
 end
 
-function K8sSchema.fetch_schema(filename, callback)
-  if K8sSchema.schema_cache[filename] then
-    callback(K8sSchema.schema_cache[filename])
-    return
-  end
-
+function K8sSchema.fetch_schema(filename, callback, base_url)
   local function try_fetch(version_url, is_fallback)
     local url = version_url .. filename
+    if K8sSchema.schema_cache[url] then
+      callback(K8sSchema.schema_cache[url], version_url)
+      return
+    end
     vim.system(
       { "curl", "-sfL", url },
       { text = true },
@@ -389,8 +388,8 @@ function K8sSchema.fetch_schema(filename, callback)
         if result.code == 0 and result.stdout and result.stdout ~= "" then
           local ok, schema = pcall(vim.json.decode, result.stdout)
           if ok then
-            K8sSchema.schema_cache[filename] = schema
-            callback(schema)
+            K8sSchema.schema_cache[url] = schema
+            callback(schema, version_url)
             return
           end
         end
@@ -400,7 +399,6 @@ function K8sSchema.fetch_schema(filename, callback)
           local default_url = "https://raw.githubusercontent.com/yannh/kubernetes-json-schema/master/"
             .. default_ver
             .. "-standalone-strict/"
-          -- Avoid infinite loop if target WAS already default
           if version_url ~= default_url then
             vim.notify("Schema not found for target version, falling back to " .. default_ver, vim.log.levels.INFO)
             try_fetch(default_url, true)
@@ -413,7 +411,7 @@ function K8sSchema.fetch_schema(filename, callback)
     )
   end
 
-  try_fetch(K8sSchema.get_base_url(), false)
+  try_fetch(base_url or K8sSchema.get_base_url(), false)
 end
 
 function K8sSchema.has_type(schema, type_name)
@@ -431,9 +429,10 @@ function K8sSchema.has_type(schema, type_name)
   return false
 end
 
-function K8sSchema.navigate_schema(schema, path, callback, current_index, root_schema)
+function K8sSchema.navigate_schema(schema, path, callback, current_index, root_schema, base_url)
   current_index = current_index or 1
   root_schema = root_schema or schema
+  base_url = base_url or K8sSchema.get_base_url()
 
   if current_index > #path then
     callback(schema, table.concat(path, "."))
@@ -456,7 +455,14 @@ function K8sSchema.navigate_schema(schema, path, callback, current_index, root_s
       if ref:sub(1, 1) == "#" then
         local def_name = ref:match("#/definitions/(.+)")
         if def_name and root_schema.definitions and root_schema.definitions[def_name] then
-          K8sSchema.navigate_schema(root_schema.definitions[def_name], path, callback, current_index + 1, root_schema)
+          K8sSchema.navigate_schema(
+            root_schema.definitions[def_name],
+            path,
+            callback,
+            current_index + 1,
+            root_schema,
+            base_url
+          )
           return
         end
       end
@@ -464,20 +470,20 @@ function K8sSchema.navigate_schema(schema, path, callback, current_index, root_s
       local ref_type = ref:match("%.([%w]+)$")
       if ref_type then
         local ref_filename = ref_type:lower() .. "-v1.json"
-        K8sSchema.fetch_schema(ref_filename, function(ref_schema)
+        K8sSchema.fetch_schema(ref_filename, function(ref_schema, resolved_url)
           if ref_schema then
-            K8sSchema.navigate_schema(ref_schema, path, callback, current_index + 1, ref_schema)
+            K8sSchema.navigate_schema(ref_schema, path, callback, current_index + 1, ref_schema, resolved_url)
           else
             ref_filename = ref_type:lower() .. ".json"
-            K8sSchema.fetch_schema(ref_filename, function(ref_schema2)
+            K8sSchema.fetch_schema(ref_filename, function(ref_schema2, resolved_url2)
               if ref_schema2 then
-                K8sSchema.navigate_schema(ref_schema2, path, callback, current_index + 1, ref_schema2)
+                K8sSchema.navigate_schema(ref_schema2, path, callback, current_index + 1, ref_schema2, resolved_url2)
               else
                 callback(nil, "Could not resolve $ref: " .. ref)
               end
-            end)
+            end, base_url)
           end
-        end)
+        end, base_url)
         return
       end
     end
@@ -490,7 +496,14 @@ function K8sSchema.navigate_schema(schema, path, callback, current_index, root_s
         if ref:sub(1, 1) == "#" then
           local def_name = ref:match("#/definitions/(.+)")
           if def_name and root_schema.definitions and root_schema.definitions[def_name] then
-            K8sSchema.navigate_schema(root_schema.definitions[def_name], path, callback, current_index + 1, root_schema)
+            K8sSchema.navigate_schema(
+              root_schema.definitions[def_name],
+              path,
+              callback,
+              current_index + 1,
+              root_schema,
+              base_url
+            )
             return
           end
         end
@@ -498,17 +511,17 @@ function K8sSchema.navigate_schema(schema, path, callback, current_index, root_s
         local ref_type = ref:match("%.([%w]+)$")
         if ref_type then
           local ref_filename = ref_type:lower() .. "-v1.json"
-          K8sSchema.fetch_schema(ref_filename, function(ref_schema)
+          K8sSchema.fetch_schema(ref_filename, function(ref_schema, resolved_url)
             if ref_schema then
-              K8sSchema.navigate_schema(ref_schema, path, callback, current_index + 1, ref_schema)
+              K8sSchema.navigate_schema(ref_schema, path, callback, current_index + 1, ref_schema, resolved_url)
             else
               callback(nil, "Could not resolve array item $ref: " .. ref)
             end
-          end)
+          end, base_url)
           return
         end
       else
-        K8sSchema.navigate_schema(items, path, callback, current_index + 1, root_schema)
+        K8sSchema.navigate_schema(items, path, callback, current_index + 1, root_schema, base_url)
         return
       end
     end
@@ -516,7 +529,7 @@ function K8sSchema.navigate_schema(schema, path, callback, current_index, root_s
     if current_index == #path then
       callback(prop_schema, table.concat(path, "."))
     else
-      K8sSchema.navigate_schema(prop_schema, path, callback, current_index + 1, root_schema)
+      K8sSchema.navigate_schema(prop_schema, path, callback, current_index + 1, root_schema, base_url)
     end
     return
   end
@@ -565,7 +578,7 @@ function K8sSchema.show_property()
 
   local display_path = kind .. "." .. table.concat(path, ".")
 
-  K8sSchema.fetch_schema(schema_filename, function(schema)
+  K8sSchema.fetch_schema(schema_filename, function(schema, resolved_url)
     if not schema then
       vim.notify("Could not fetch schema: " .. schema_filename, vim.log.levels.ERROR)
       return
@@ -577,7 +590,7 @@ function K8sSchema.show_property()
       else
         vim.notify(result_path or "Schema property not found", vim.log.levels.ERROR)
       end
-    end, 1, schema)
+    end, 1, schema, resolved_url)
   end)
 end
 

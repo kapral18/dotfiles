@@ -79,14 +79,32 @@ def iter_untracked_changed_lines() -> Iterator[tuple[str, int, str]]:
 
 def iter_diff_added_lines(diff_text: str) -> Iterator[tuple[str, int, str]]:
     current_file: str | None = None
-    old_line: int | None = None
-    new_line: int | None = None
+    old_line = 0
+    new_line = 0
+    old_remaining = 0
+    new_remaining = 0
 
     for raw in diff_text.splitlines():
+        if old_remaining or new_remaining:
+            if raw.startswith("+"):
+                if current_file is not None:
+                    yield current_file, new_line, raw[1:]
+                new_line += 1
+                new_remaining -= 1
+            elif raw.startswith("-"):
+                old_line += 1
+                old_remaining -= 1
+            elif raw.startswith(" "):
+                old_line += 1
+                new_line += 1
+                old_remaining -= 1
+                new_remaining -= 1
+            continue
+
         if raw.startswith("diff --git "):
             current_file = None
-            old_line = None
-            new_line = None
+            old_line = 0
+            new_line = 0
             continue
 
         if raw.startswith("+++ "):
@@ -103,27 +121,8 @@ def iter_diff_added_lines(diff_text: str) -> Iterator[tuple[str, int, str]]:
         if m:
             old_line = int(m.group(1))
             new_line = int(m.group(3))
-            continue
-
-        if not current_file or new_line is None or old_line is None:
-            continue
-
-        if raw.startswith("\\"):
-            continue
-
-        if raw.startswith("+") and not raw.startswith("+++"):
-            yield current_file, new_line, raw[1:]
-            new_line += 1
-            continue
-
-        if raw.startswith("-") and not raw.startswith("---"):
-            old_line += 1
-            continue
-
-        if raw.startswith(" "):
-            old_line += 1
-            new_line += 1
-            continue
+            old_remaining = int(m.group(2)) if m.group(2) is not None else 1
+            new_remaining = int(m.group(4)) if m.group(4) is not None else 1
 
 
 def main() -> int:
