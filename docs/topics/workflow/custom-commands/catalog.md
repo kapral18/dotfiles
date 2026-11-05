@@ -133,7 +133,7 @@ These are used by scripts, fzf integrations, and Neovim; you rarely invoke them 
 make verify-bin-surface
 command -v ,w
 command -v ,gh-prw
-command -v ,tmux-run-all
+command -v ,herdr-run-all
 ```
 
 If commands are missing after apply, verify the script exists under `home/exact_bin/`, has the correct `executable_` prefix, has a matching Fish completion under `home/dot_config/fish/completions/`, and that `~/bin` is on `PATH`.

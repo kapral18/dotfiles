@@ -107,17 +107,16 @@ detached=0
 locked=0
 
 parent_dir=$(_get_worktree_parent_dir)
-parent_name="$(_comma_w_tmux_parent_name_from_dir "$parent_dir")"
+parent_name="$(_comma_w_parent_name_from_dir "$parent_dir")"
 pwd_path="$PWD"
 default_branch="$(git config --get init.defaultbranch 2> /dev/null || echo "main")"
 
-tmux_sessions_file=""
-tmux_sessions=()
-if [ "$selectable" -eq 0 ] && command -v tmux > /dev/null 2>&1; then
-  while IFS= read -r session; do
-    [ -z "$session" ] && continue
-    tmux_sessions+=("$session")
-  done < <(_comma_w_tmux list-sessions -F '#{session_name}' 2> /dev/null || true)
+workspace_labels=()
+if [ "$selectable" -eq 0 ] && command -v herdr > /dev/null 2>&1; then
+  while IFS= read -r label; do
+    [ -z "$label" ] && continue
+    workspace_labels+=("$label")
+  done < <(_comma_w_herdr workspace list 2> /dev/null | jq -r '.result.workspaces[].label' 2> /dev/null || true)
 fi
 
 relpath_for() {
@@ -183,16 +182,16 @@ ahead_behind_for() {
   printf '%s\n' "$counts" | awk '{print $1 "\t" $2}'
 }
 
-tmux_has_session_for_branch() {
+has_workspace_for_branch() {
   local branch="$1"
-  if [ ${#tmux_sessions[@]} -eq 0 ]; then
+  if [ ${#workspace_labels[@]} -eq 0 ]; then
     printf '%s\n' "-"
     return 0
   fi
   local session_name
-  session_name="$(_comma_w_tmux_session_name "$parent_name" "$branch")"
+  session_name="$(_comma_w_workspace_name "$parent_name" "$branch")"
   local s
-  for s in "${tmux_sessions[@]}"; do
+  for s in "${workspace_labels[@]}"; do
     if [ "$s" = "$session_name" ]; then
       printf '%s\n' "+"
       return 0
@@ -292,19 +291,19 @@ emit() {
   upstream="-"
   ahead="-"
   behind="-"
-  tmux_col="-"
+  ws_col="-"
 
   if [ -n "$branch" ]; then
     upstream="$(upstream_for_branch "$branch")"
-    tmux_col="$(tmux_has_session_for_branch "$branch")"
+    ws_col="$(has_workspace_for_branch "$branch")"
     if [ "$long_mode" -eq 1 ] && [ "$upstream" != "-" ]; then
       IFS=$'\t' read -r ahead behind < <(ahead_behind_for "$branch" "$upstream")
     fi
   fi
 
   # Always emit the superset columns:
-  # prio CUR BRANCH PATH UPSTREAM AHEAD BEHIND DIRTY TMUX STATE
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$prio" "$cur" "$branch_display" "$display_path" "$upstream" "$ahead" "$behind" "$dirty_col" "$tmux_col" "$state"
+  # prio CUR BRANCH PATH UPSTREAM AHEAD BEHIND DIRTY HERDR STATE
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$prio" "$cur" "$branch_display" "$display_path" "$upstream" "$ahead" "$behind" "$dirty_col" "$ws_col" "$state"
 }
 
 rows_file="$(mktemp -t ,w-ls-rows.XXXXXX)"
@@ -369,15 +368,15 @@ trap 'rm -f "$output_file" || true; rm -f "$sorted_file" || true; cleanup' EXIT
   if [ "$no_header" -eq 0 ]; then
     if [ "$long_mode" -eq 1 ]; then
       if [ "$dirty_mode" -eq 1 ]; then
-        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "CUR" "BRANCH" "PATH" "UPSTREAM" "AHEAD" "BEHIND" "DIRTY" "TMUX" "STATE"
+        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "CUR" "BRANCH" "PATH" "UPSTREAM" "AHEAD" "BEHIND" "DIRTY" "HERDR" "STATE"
       else
-        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "CUR" "BRANCH" "PATH" "UPSTREAM" "AHEAD" "BEHIND" "TMUX" "STATE"
+        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "CUR" "BRANCH" "PATH" "UPSTREAM" "AHEAD" "BEHIND" "HERDR" "STATE"
       fi
     else
       if [ "$dirty_mode" -eq 1 ]; then
-        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "CUR" "BRANCH" "PATH" "UPSTREAM" "DIRTY" "TMUX" "STATE"
+        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "CUR" "BRANCH" "PATH" "UPSTREAM" "DIRTY" "HERDR" "STATE"
       else
-        printf '%s\t%s\t%s\t%s\t%s\t%s\n' "CUR" "BRANCH" "PATH" "UPSTREAM" "TMUX" "STATE"
+        printf '%s\t%s\t%s\t%s\t%s\t%s\n' "CUR" "BRANCH" "PATH" "UPSTREAM" "HERDR" "STATE"
       fi
     fi
   fi

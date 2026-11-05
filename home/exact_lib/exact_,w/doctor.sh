@@ -47,7 +47,8 @@ check_cmd() {
 check_cmd git
 check_cmd fzf
 check_cmd gh
-check_cmd tmux
+check_cmd herdr
+check_cmd jq
 check_cmd zoxide
 check_cmd bat
 
@@ -57,8 +58,8 @@ if ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
 fi
 
 parent_dir=$(_get_worktree_parent_dir)
-parent_name="$(_comma_w_tmux_parent_name_from_dir "$parent_dir")"
-session_prefix="$(_comma_w_tmux_session_name "$parent_name" "")"
+parent_name="$(_comma_w_parent_name_from_dir "$parent_dir")"
+session_prefix="$(_comma_w_workspace_name "$parent_name" "")"
 session_prefix="${session_prefix%|}"
 
 stale_paths=()
@@ -83,44 +84,15 @@ if [ ${#stale_paths[@]} -gt 0 ]; then
   echo "Run: ,w prune"
 fi
 
-if [ -n "${TMUX:-}" ] && ! command -v tmux > /dev/null 2>&1; then
-  echo
-  echo "Warning: TMUX is set but 'tmux' is missing."
-fi
-
-if command -v tmux > /dev/null 2>&1; then
+if command -v herdr > /dev/null 2>&1; then
   stale_sessions=()
-  session_has_any_existing_pane_path() {
-    local session_name="$1"
-    local pane_path
-
-    while IFS= read -r pane_path; do
-      [ -z "$pane_path" ] && continue
-      if [ -e "$pane_path" ]; then
-        return 0
-      fi
-    done < <(_comma_w_tmux list-panes -t "$session_name" -F '#{pane_current_path}' 2> /dev/null || true)
-
-    return 1
-  }
-
-  while IFS=$'\t' read -r session_name _; do
-    [ -z "$session_name" ] && continue
-    case "$session_name" in
-      "${session_prefix}"\|*) ;;
-      *)
-        continue
-        ;;
-    esac
-
-    if ! session_has_any_existing_pane_path "$session_name"; then
-      stale_sessions+=("$session_name")
-    fi
-  done < <(_comma_w_tmux list-sessions -F $'#{session_name}\t#{session_path}' 2> /dev/null || true)
+  while IFS=$'\t' read -r _ ws_label; do
+    [ -n "$ws_label" ] && stale_sessions+=("$ws_label")
+  done < <(_comma_w_stale_workspaces "$session_prefix")
 
   if [ ${#stale_sessions[@]} -gt 0 ]; then
     echo
-    echo "Stale ,w tmux sessions for '$parent_name' (no existing pane paths):"
+    echo "Stale ,w workspaces for '$parent_name' (no existing pane paths):"
     printf '  %s\n' "${stale_sessions[@]}"
     echo "Run: ,w prune --apply"
   fi

@@ -9,7 +9,7 @@ This config ships small in-repo Lua plugins. Loaders live in [`exact_plugins_loc
 | Slice                                                                     | Owns                                                                         |
 | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
 | [Testing and commit AI](testing-and-commit-ai.md)                         | Jest split runner and Conventional Commit summarizer                         |
-| [Ownership, refactors, and tmux](ownership-refactors-and-tmux.md)         | CODEOWNERS lookup/search, TypeScript export moves, send-to-right-pane bridge |
+| [Ownership, refactors, and panes](ownership-refactors-and-panes.md)       | CODEOWNERS lookup/search, TypeScript export moves, send-to-right-pane bridge |
 | [Navigation and quickfix](navigation-and-quickfix.md)                     | source/test toggle, copy-to-quickfix dirs, quickfix cleanup                  |
 | [Screenshots and window ergonomics](screenshots-and-window-ergonomics.md) | `freeze`, fit-to-content width toggle, winbar path display                   |
 

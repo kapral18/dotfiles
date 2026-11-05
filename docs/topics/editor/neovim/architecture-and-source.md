@@ -34,10 +34,6 @@ Neovim itself is version-managed by mise:
 
 Plugins install through built-in `vim.pack`, with trigger-aware loading and an update dashboard provided by [`dash-paq.nvim`](https://github.com/kapral18/dash-paq.nvim). It is bootstrapped by [`core/init.lua`](../../../../home/dot_config/exact_nvim/exact_lua/exact_core/readonly_init.lua) and declared in [`plugins/dash-paq.lua`](../../../../home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_dash-paq.lua); commands, dashboard keys, and version policy are documented in the plugin's README.
 
-## Terminal redraw ownership
-
-When Neovim runs inside tmux, [`core/options.lua`](../../../../home/dot_config/exact_nvim/exact_lua/exact_core/readonly_options.lua) disables Neovim's `termsync`. Tmux 3.7b does not contain [the upstream fix that defers cursor writes while a pane is in synchronized-update mode](https://github.com/tmux/tmux/commit/11b6e7844a8bf9e4485df56e4f7f1c79e7f1edb9), so leaving `termsync` enabled exposes cursor-walk artifacts during floating-window redraws such as Neo-tree. Disabling it restores Neovim's cursor-hide fallback; direct terminal sessions keep Neovim's default synchronized redraw behavior.
-
 ## Quick start
 
 1. Install the pinned Neovim version:

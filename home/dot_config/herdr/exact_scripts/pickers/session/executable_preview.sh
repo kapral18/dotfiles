@@ -1,0 +1,299 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# shellcheck source=../lib/herdr_ws.sh
+. "$HOME/.config/herdr/scripts/pickers/lib/herdr_ws.sh"
+
+# Kill child processes (git, herdr, awk) when fzf terminates this preview.
+trap 'pkill -P $$ 2>/dev/null || true' INT TERM HUP
+
+# Portable upper-case for a single token; avoids the bash 4+ `${var^^}`
+# parameter expansion so this script runs unmodified under macOS' default
+# bash 3.2 (where fzf may invoke it via `/bin/sh` -> `/bin/bash`).
+_pp_upper() {
+  printf '%s' "${1-}" | tr '[:lower:]' '[:upper:]'
+}
+
+kind=""
+path=""
+meta=""
+target=""
+
+args=()
+for a in "$@"; do
+  case "$a" in
+    --kind=*) kind="${a#--kind=}" ;;
+    --path=*) path="${a#--path=}" ;;
+    --meta=*) meta="${a#--meta=}" ;;
+    --target=*) target="${a#--target=}" ;;
+    *) args+=("$a") ;;
+  esac
+done
+set -- "${args[@]+"${args[@]}"}"
+
+if [ -z "$kind" ] && [ -z "$path" ]; then
+  if [ -f "${1:-}" ]; then
+    line="$(head -n 1 "$1" 2> /dev/null || true)"
+  else
+    line="${1:-}"
+  fi
+  if [ -n "$line" ]; then
+    IFS=$'\037' read -r _disp kind path meta target _rest <<< "${line//$'\t'/$'\037'}"
+  fi
+fi
+
+[ -n "$kind" ] && [ -n "$path" ] || exit 0
+
+C_DIM=$'\033[2m'
+C_BOLD=$'\033[1m'
+C_BLUE=$'\033[38;5;111m'
+C_GREEN=$'\033[38;5;150m'
+C_YELLOW=$'\033[38;5;214m'
+C_CYAN=$'\033[38;5;81m'
+C_R=$'\033[0m'
+
+C_PURPLE=$'\033[38;5;141m'
+C_RED=$'\033[38;5;196m'
+
+gh_info_from_meta() {
+  local m="$1"
+  [ -n "$m" ] || return 0
+  local IFS='|'
+  local part num state review ci url
+  local _gh_cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/herdr-pickers"
+  for part in $m; do
+    case "$part" in
+      pr=*)
+        IFS=':' read -r num state review ci url <<< "${part#pr=}"
+        if [ -n "$num" ]; then
+          local sc="$C_GREEN"
+          local icon="open"
+          case "$(_pp_upper "$state")" in
+            MERGED)
+              sc="$C_PURPLE"
+              icon="merged"
+              ;;
+            CLOSED)
+              sc="$C_RED"
+              icon="closed"
+              ;;
+          esac
+          local review_label=""
+          case "$(_pp_upper "$review")" in
+            APPROVED) review_label="${C_GREEN}approved${C_R}" ;;
+            CHANGES_REQUESTED) review_label="${C_RED}changes requested${C_R}" ;;
+            REVIEW_REQUIRED) review_label="${C_YELLOW}review pending${C_R}" ;;
+          esac
+          printf '%s  %sPR #%s%s %s(%s)%s' "${C_DIM}gh${C_R}" "$sc" "$num" "$C_R" "$C_DIM" "$icon" "$C_R"
+          [ -n "$review_label" ] && printf '  %s' "$review_label"
+          if [ -n "$url" ]; then
+            printf '  %s%s%s' "$C_DIM" "$url" "$C_R"
+            local repo=""
+            case "$url" in
+              https://github.com/*/*)
+                local url_path="${url#https://github.com/}"
+                local owner="${url_path%%/*}"
+                local rest="${url_path#*/}"
+                local rname="${rest%%/*}"
+                [ -n "$owner" ] && [ -n "$rname" ] && repo="${owner}/${rname}"
+                ;;
+            esac
+            if [ -n "$repo" ]; then
+              local title=""
+              title="$(awk -F $'\t' -v k="pr" -v r="$repo" -v n="$num" '$2==k && $3==r && $4==n {print $1; exit}' "$_gh_cache_dir/gh_picker.tsv" 2> /dev/null || true)"
+              [ -n "$title" ] && printf '\n%s  %s' "${C_DIM}title${C_R}" "$title"
+            fi
+          fi
+          printf '\n'
+        fi
+        ;;
+      issue=*)
+        IFS=':' read -r num state url <<< "${part#issue=}"
+        if [ -n "$num" ]; then
+          local ic="$C_GREEN"
+          local ilabel="open"
+          case "$(_pp_upper "$state")" in
+            CLOSED | COMPLETED | NOT_PLANNED)
+              ic="$C_PURPLE"
+              ilabel="closed"
+              ;;
+            MERGED)
+              ic="$C_PURPLE"
+              ilabel="merged"
+              ;;
+          esac
+          printf '%s  %sIssue #%s%s %s(%s)%s' "${C_DIM}gh${C_R}" "$ic" "$num" "$C_R" "$C_DIM" "$ilabel" "$C_R"
+          if [ -n "$url" ]; then
+            printf '  %s%s%s' "$C_DIM" "$url" "$C_R"
+            local repo=""
+            case "$url" in
+              https://github.com/*/*)
+                local url_path="${url#https://github.com/}"
+                local owner="${url_path%%/*}"
+                local rest="${url_path#*/}"
+                local rname="${rest%%/*}"
+                [ -n "$owner" ] && [ -n "$rname" ] && repo="${owner}/${rname}"
+                ;;
+            esac
+            if [ -n "$repo" ]; then
+              local title=""
+              title="$(awk -F $'\t' -v k="issue" -v r="$repo" -v n="$num" '$2==k && $3==r && $4==n {print $1; exit}' "$_gh_cache_dir/gh_picker.tsv" 2> /dev/null || true)"
+              [ -n "$title" ] && printf '\n%s  %s' "${C_DIM}title${C_R}" "$title"
+            fi
+          fi
+          printf '\n'
+        fi
+        ;;
+    esac
+  done
+}
+
+git_summary() {
+  local dir="$1"
+  [ -d "$dir" ] || return 0
+  [ -e "$dir/.git" ] || return 0
+
+  if ! git -C "$dir" rev-parse --git-dir > /dev/null 2>&1; then
+    printf '%s  %s%s%s\n' "${C_DIM}git${C_R}" "$C_YELLOW" "stale worktree (gitdir missing)" "$C_R"
+    printf '\n%s\n' "${C_BOLD}${C_CYAN}contents${C_R}"
+    ls -1 "$dir" 2> /dev/null | head -20 || true
+    return 0
+  fi
+
+  local branch
+  branch="$(git -C "$dir" symbolic-ref --quiet --short HEAD 2> /dev/null || git -C "$dir" rev-parse --short HEAD 2> /dev/null || true)"
+  if [ -n "$branch" ]; then
+    printf '%s  %s%s%s\n' "${C_DIM}branch${C_R}" "$C_GREEN" "$branch" "$C_R"
+  fi
+
+  local lr
+  lr="$(git -C "$dir" rev-list --left-right --count '@{upstream}...HEAD' 2> /dev/null || true)"
+  if [ -n "$lr" ]; then
+    local behind ahead
+    read -r behind ahead <<< "$lr"
+    if [ "${ahead:-0}" != "0" ] || [ "${behind:-0}" != "0" ]; then
+      printf '%s  ' "${C_DIM}sync${C_R}"
+      [ "${ahead:-0}" != "0" ] && printf '%s↑%s%s ' "$C_YELLOW" "$ahead" "$C_R"
+      [ "${behind:-0}" != "0" ] && printf '%s↓%s%s ' "$C_BLUE" "$behind" "$C_R"
+      printf '\n'
+    fi
+  fi
+
+  local log_lines
+  log_lines="$(git -C "$dir" log --oneline --no-decorate -6 2> /dev/null || true)"
+  if [ -n "$log_lines" ]; then
+    printf '\n%s\n' "${C_BOLD}${C_CYAN}recent commits${C_R}"
+    printf '%s\n' "$log_lines"
+  fi
+}
+
+# Classify the active pane command into a coarse activity status so the
+# preview can show "what's happening here" at a glance:
+#   - known coding agents -> "agent (<cmd>)"
+#   - a login shell        -> "idle (shell)"
+#   - anything else        -> "busy (<cmd>)" (build/test/long-running process)
+pane_activity_status() {
+  local cmd="$1"
+  [ -n "$cmd" ] || return 0
+  case "$cmd" in
+    claude | aider | codex | opencode | goose | crush)
+      printf '%sagent%s (%s)' "$C_GREEN" "$C_R" "$cmd"
+      ;;
+    fish | zsh | bash | sh | nu | dash)
+      printf '%sidle%s (shell)' "$C_DIM" "$C_R"
+      ;;
+    nvim | vim | hx | helix | nano | emacs)
+      printf '%sediting%s (%s)' "$C_BLUE" "$C_R" "$cmd"
+      ;;
+    *)
+      printf '%sbusy%s (%s)' "$C_YELLOW" "$C_R" "$cmd"
+      ;;
+  esac
+}
+
+pane_capture() {
+  local sess="$1"
+  [ -n "$sess" ] || return 0
+
+  local pane active_cmd sess_path tab_count
+  pane="$(hws_shell_pane "$sess" 2> /dev/null || true)"
+  [ -n "$pane" ] || return 0
+  active_cmd="$(herdr pane get "$pane" 2> /dev/null | jq -r '.result.pane.agent // empty')"
+  [ -n "$active_cmd" ] || active_cmd="$(hws_pane_command "$pane")"
+  sess_path="$(hws_path "$sess")"
+  tab_count="$(herdr workspace get "$(_comma_w_workspace_id_by_label "$sess")" 2> /dev/null | jq -r '.result.workspace.tab_count // 1')"
+
+  if [ -n "$active_cmd" ]; then
+    printf '%s  %s\n' "${C_DIM}status${C_R}" "$(pane_activity_status "$active_cmd")"
+    printf '%s  %s%s%s\n' "${C_DIM}running${C_R}" "$C_YELLOW" "$active_cmd" "$C_R"
+  fi
+
+  if [ -n "$sess_path" ]; then
+    local tpath="$sess_path"
+    case "$sess_path" in
+      "$HOME") tpath="~" ;;
+      "$HOME"/*) tpath="~/${sess_path#"$HOME"/}" ;;
+    esac
+    printf '%s  %s%s%s\n' "${C_DIM}path${C_R}" "$C_BLUE" "$tpath" "$C_R"
+  fi
+
+  case "$tab_count" in
+    '' | 0 | 1) ;;
+    *) printf '%s  %s tabs\n' "${C_DIM}layout${C_R}" "$tab_count" ;;
+  esac
+
+  local pane_text
+  pane_text="$(herdr pane read "$pane" --source visible 2> /dev/null | awk 'NF{p=1} p' || true)"
+  if [ -n "$pane_text" ]; then
+    printf '\n%s\n' "${C_BOLD}${C_CYAN}pane content${C_R}"
+    printf '%s\n' "$pane_text" | tail -20
+  else
+    printf '\n%s\n' "${C_DIM}(empty pane)${C_R}"
+  fi
+}
+
+dir_preview() {
+  local dir="$1"
+  [ -d "$dir" ] || {
+    printf 'directory not found: %s\n' "$dir"
+    return 0
+  }
+
+  local tpath="$dir"
+  case "$dir" in
+    "$HOME") tpath="~" ;;
+    "$HOME"/*) tpath="~/${dir#"$HOME"/}" ;;
+  esac
+  printf '%s  %s%s%s\n' "${C_DIM}path${C_R}" "$C_BLUE" "$tpath" "$C_R"
+
+  if [ -e "$dir/.git" ]; then
+    git_summary "$dir"
+  else
+    printf '\n%s\n' "${C_BOLD}${C_CYAN}contents${C_R}"
+    ls -1 "$dir" 2> /dev/null | head -20 || true
+  fi
+}
+
+case "$kind" in
+  session)
+    gh_info_from_meta "$meta"
+    if [ -n "$target" ]; then
+      pane_capture "$target"
+    elif [ -n "$path" ] && [ -d "$path" ]; then
+      dir_preview "$path"
+    fi
+    ;;
+  worktree)
+    gh_info_from_meta "$meta"
+    if [ -n "$path" ] && [ -d "$path" ]; then
+      dir_preview "$path"
+    fi
+    ;;
+  dir)
+    if [ -n "$path" ] && [ -d "$path" ]; then
+      dir_preview "$path"
+    fi
+    ;;
+  *)
+    printf '%s\n' "$line"
+    ;;
+esac

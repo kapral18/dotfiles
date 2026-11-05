@@ -16,6 +16,7 @@ auto_recap = false
 status_line = ["model-with-reasoning", "current-dir", "context-remaining"]
 
 [features]
+hooks = true
 multi_agent = true
 prevent_idle_sleep = true
 # ai-kb is the sole durable semantic store (see docs/topics/ai-assistants/memory-and-handoffs.md);

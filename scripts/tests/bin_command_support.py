@@ -25,6 +25,7 @@ from _test_support import (
     ARTIFACT_COMMAND,
     CODEX_COMMAND,
     REPO,
+    install_fake_herdr,
     modern_bash,
 )
 

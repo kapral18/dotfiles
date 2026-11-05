@@ -49,14 +49,14 @@ fzf --preview-window "down,60%,border-top" --layout reverse --disabled --with-sh
     filter=""
     disp_filter=""
     while true; do
-      main_choice=$(printf "Duration...\nUpload Date...\nSort By...\nFeatures...\nClear Filter" | fzf-tmux -p 30,10 --header "Filter Categories" --reverse --no-preview --no-multi)
+      main_choice=$(printf "Duration...\nUpload Date...\nSort By...\nFeatures...\nClear Filter" | fzf --height=~50% --header "Filter Categories" --reverse --no-preview --no-multi)
 
       if [[ -z "$main_choice" ]]; then
         break
       fi
 
       if [[ "$main_choice" == "Duration..." ]]; then
-        choice=$(printf "<30s\n30-59s\n1-2m\n2-4m\n4-8m\n8-15m\n16-20m\n20-40m\n40-60m\n60-90m\n90-120m\n120-150m\n150-300m\n300-600m\n600-1200m\n1200-2400m\n2400m+" | fzf-tmux -p 30,20 --header "Duration (ESC to go back)" --reverse --no-preview --no-multi)
+        choice=$(printf "<30s\n30-59s\n1-2m\n2-4m\n4-8m\n8-15m\n16-20m\n20-40m\n40-60m\n60-90m\n90-120m\n120-150m\n150-300m\n300-600m\n600-1200m\n1200-2400m\n2400m+" | fzf --height=~50% --header "Duration (ESC to go back)" --reverse --no-preview --no-multi)
         if [[ -z "$choice" ]]; then continue; fi
         case "$choice" in
           "<30s") filter="dur:0-30"; disp_filter="<30s" ;;
@@ -79,19 +79,19 @@ fzf --preview-window "down,60%,border-top" --layout reverse --disabled --with-sh
         esac
         break
       elif [[ "$main_choice" == "Upload Date..." ]]; then
-        choice=$(printf "hour\ntoday\nweek\nmonth\nyear" | fzf-tmux -p 30,10 --header "Upload Date (ESC to go back)" --reverse --no-preview --no-multi)
+        choice=$(printf "hour\ntoday\nweek\nmonth\nyear" | fzf --height=~50% --header "Upload Date (ESC to go back)" --reverse --no-preview --no-multi)
         if [[ -z "$choice" ]]; then continue; fi
         filter="$choice"
         disp_filter="$choice"
         break
       elif [[ "$main_choice" == "Sort By..." ]]; then
-        choice=$(printf "recent\nviews\nrating" | fzf-tmux -p 30,10 --header "Sort By (ESC to go back)" --reverse --no-preview --no-multi)
+        choice=$(printf "recent\nviews\nrating" | fzf --height=~50% --header "Sort By (ESC to go back)" --reverse --no-preview --no-multi)
         if [[ -z "$choice" ]]; then continue; fi
         filter="$choice"
         disp_filter="$choice"
         break
       elif [[ "$main_choice" == "Features..." ]]; then
-        choice=$(printf "hd\n4k\nlive\n360\nhdr\nplaylist\nchannel\nmovie\ncreative" | fzf-tmux -p 30,15 --header "Features (ESC to go back)" --reverse --no-preview --no-multi)
+        choice=$(printf "hd\n4k\nlive\n360\nhdr\nplaylist\nchannel\nmovie\ncreative" | fzf --height=~50% --header "Features (ESC to go back)" --reverse --no-preview --no-multi)
         if [[ -z "$choice" ]]; then continue; fi
         filter="$choice"
         disp_filter="$choice"

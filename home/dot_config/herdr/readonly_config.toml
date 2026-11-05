@@ -1,0 +1,193 @@
+onboarding = false
+
+[theme]
+name = "catppuccin"
+
+# catppuccin frappé (herdr ships only mocha and latte)
+[theme.custom]
+accent = "#ca9ee6"
+panel_bg = "reset"
+sidebar_bg = "#292c3c"
+active_row_bg = "#414559"
+selection_bg = "#51576d"
+surface0 = "#414559"
+surface1 = "#51576d"
+surface_dim = "#232634"
+overlay0 = "#737994"
+overlay1 = "#838ba7"
+text = "#c6d0f5"
+subtext0 = "#a5adce"
+mauve = "#ca9ee6"
+green = "#a6d189"
+yellow = "#e5c890"
+red = "#e78284"
+blue = "#8caaee"
+teal = "#81c8be"
+peach = "#ef9f76"
+
+[keys]
+prefix = "ctrl+space"
+detach = "prefix+d"
+open_notification_target = "prefix+shift+n"
+cycle_pane_next = ["prefix+tab", "prefix+o"]
+reload_config = "prefix+shift+r"
+settings = "prefix+."
+workspace_picker = "prefix+w"
+goto = "prefix+g"
+new_workspace = "prefix+shift+c"
+rename_workspace = "prefix+$"
+close_workspace = "prefix+shift+x"
+new_worktree = "prefix+shift+w"
+open_worktree = "prefix+shift+o"
+previous_workspace = "prefix+("
+next_workspace = "prefix+)"
+new_tab = "prefix+c"
+rename_tab = "prefix+comma"
+previous_tab = ["prefix+p", "prefix+ctrl+p"]
+next_tab = ["prefix+n", "prefix+ctrl+n"]
+move_tab_previous = "prefix+<"
+move_tab_next = "prefix+>"
+close_tab = "prefix+ampersand"
+focus_pane_left = ["prefix+h", "prefix+ctrl+h", "prefix+left"]
+focus_pane_down = ["prefix+j", "prefix+ctrl+j", "prefix+down"]
+focus_pane_up = ["prefix+k", "prefix+ctrl+k", "prefix+up"]
+focus_pane_right = ["prefix+l", "prefix+ctrl+l", "prefix+right"]
+swap_pane_left = "prefix+{"
+swap_pane_right = "prefix+}"
+swap_pane_up = ""
+swap_pane_down = ""
+split_vertical = ["prefix+|", "prefix+percent"]
+split_horizontal = ["prefix+minus", "prefix+double_quote"]
+last_pane = "prefix+;"
+close_pane = "prefix+x"
+zoom = "prefix+f"
+resize_mode = "prefix+ctrl+r"
+resize_pane_left = ["prefix+shift+h", "prefix+ctrl+left", "prefix+alt+left"]
+resize_pane_down = ["prefix+shift+j", "prefix+ctrl+down", "prefix+alt+down"]
+resize_pane_up = ["prefix+shift+k", "prefix+ctrl+up", "prefix+alt+up"]
+resize_pane_right = ["prefix+shift+l", "prefix+ctrl+right", "prefix+alt+right"]
+
+[[keys.command]]
+key = "prefix+shift+s"
+type = "plugin_action"
+command = "k18.workspace-history.last"
+description = "last workspace"
+
+[[keys.command]]
+key = "prefix+shift+t"
+type = "popup"
+command = "bash ~/.config/herdr/scripts/pickers/popup_loop.sh session"
+description = "project picker"
+width = "90%"
+height = "90%"
+
+[[keys.command]]
+key = "prefix+shift+g"
+type = "popup"
+command = "bash ~/.config/herdr/scripts/pickers/popup_loop.sh github"
+description = "GitHub picker"
+width = "95%"
+height = "95%"
+
+[[keys.command]]
+key = "prefix+r"
+type = "popup"
+command = "bash ~/.config/herdr/scripts/command_palette/palette.sh"
+description = "command palette"
+width = "70%"
+height = "60%"
+
+[[keys.command]]
+key = "prefix+u"
+type = "popup"
+command = "bash ~/.config/herdr/scripts/pick_url/pick_url.sh"
+description = "open URLs from the pane"
+width = "60%"
+height = "35%"
+
+[[keys.command]]
+key = "prefix+shift+b"
+type = "popup"
+command = "bash ~/.config/herdr/scripts/gh_tfork/prompt.sh"
+description = "fork + clone a repo (,gh-tfork)"
+width = 90
+height = 5
+
+[[keys.command]]
+key = "prefix+shift+a"
+type = "popup"
+command = "\"$HOME/bin/,task\" board | less"
+description = "agent task board"
+width = "90%"
+height = "70%"
+
+[[keys.command]]
+key = "prefix+s"
+type = "popup"
+command = "bash ~/.config/herdr/scripts/panes/swap_table.sh"
+description = "swap pane (h/j/k/l) or move tab (H/L)"
+width = 40
+height = 3
+
+[[keys.command]]
+key = "prefix+t"
+type = "popup"
+command = "bash ~/.config/herdr/scripts/panes/join_pane.sh right"
+description = "join a pane from another workspace (right)"
+width = "80%"
+height = "60%"
+
+[[keys.command]]
+key = "prefix+ctrl+t"
+type = "popup"
+command = "bash ~/.config/herdr/scripts/panes/join_pane.sh down"
+description = "join a pane from another workspace (below)"
+width = "80%"
+height = "60%"
+
+[[keys.command]]
+key = "prefix+!"
+type = "shell"
+command = "bash ~/.config/herdr/scripts/panes/promote_tab.sh"
+description = "move this tab to a new workspace"
+
+[[keys.command]]
+key = "prefix+@"
+type = "shell"
+command = "herdr pane move \"$HERDR_ACTIVE_PANE_ID\" --new-workspace --focus"
+description = "move pane to a new workspace"
+
+[[keys.command]]
+key = "f10"
+type = "shell"
+command = "~/bin/,herdr-lowfi p"
+description = "lowfi play/pause"
+
+[[keys.command]]
+key = "f11"
+type = "shell"
+command = "~/bin/,herdr-lowfi s"
+description = "lowfi skip"
+
+[[keys.command]]
+key = "f12"
+type = "shell"
+command = "~/bin/,herdr-lowfi nt"
+description = "lowfi next tracklist"
+
+[ui]
+prompt_new_tab_name = false
+status_indicators = "symbols"
+
+[ui.sidebar.spaces]
+rows = [
+  ["state_icon", "workspace"],
+  [
+    "branch",
+    "git_status",
+    { token = "$dirty", fg = "#e5c890" },
+    { token = "$pr", fg = "#8caaee" },
+    { token = "$review", rules = [{ equals = "approved", fg = "#a6d189" }, { equals = "changes", fg = "#e78284" }] },
+    { token = "$ci", rules = [{ equals = "✓", fg = "#a6d189" }, { equals = "✗", fg = "#e78284" }, { equals = "…", fg = "#e5c890" }] },
+  ],
+]

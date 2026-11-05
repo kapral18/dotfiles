@@ -11,7 +11,7 @@ Recommend the improvement with the clearest benefit for its cost.
 Use when:
 
 - the user asks `/k-improve-targeted`
-- the user asks for the single smartest, most impactful, or highest-leverage addition to a targeted / specific part of the codebase (e.g. "the tmux pickers", "the github skill", "@src/components/foo")
+- the user asks for the single smartest, most impactful, or highest-leverage addition to a targeted / specific part of the codebase (e.g. "the herdr pickers", "the github skill", "@src/components/foo")
 - the target is a targeted part of the codebase (scoped dir/module/component), not the whole codebase, not only the current diff, and not the branch/PR/issue goal
 
 Do not use:

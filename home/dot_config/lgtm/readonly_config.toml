@@ -1,4 +1,4 @@
-# lgtm — terminal diff reviewer that runs in a tmux pane beside the agent
+# lgtm — terminal diff reviewer that runs in a herdr pane beside the agent
 # https://github.com/kunkka19xx/lgtm
 #
 # Source-of-truth: home/dot_config/lgtm/readonly_config.toml in the chezmoi

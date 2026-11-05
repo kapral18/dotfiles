@@ -4,7 +4,7 @@ sidebar_position: 3
 
 # Terminals
 
-This repo is designed around a tmux-first workflow, but you still need a solid terminal emulator and a few CLI UX defaults.
+This repo is designed around a herdr-first workflow, but you still need a solid terminal emulator and a few CLI UX defaults.
 
 ## Terminal emulator
 
@@ -16,12 +16,12 @@ Default terminal emulator config:
 
 Native Ghostty shells enable `ssh-env` and `ssh-terminfo`. Running `ssh` uses Ghostty's `+ssh` integration to install its bundled terminfo on the remote host and forward terminal environment variables. Successful installs are cached per host and port; failed installs fall back to `xterm-256color`. Environment forwarding depends on the remote server's `AcceptEnv` settings.
 
-Tmux panes keep their own `xterm-256color` identity and ordinary `ssh`. Ghostty's native shell integration is injected into the shell it launches, not every shell inside tmux. Do not alias `ssh` globally to `ghostty +ssh`: that wrapper selects `xterm-ghostty`, which describes Ghostty rather than tmux.
+herdr panes run inside a terminal herdr emulates with libghostty-vt, and keep ordinary `ssh`. Ghostty's native shell integration is injected into the shell it launches, not every shell inside herdr. Do not alias `ssh` globally to `ghostty +ssh`: that wrapper selects `xterm-ghostty`, which describes the Ghostty window rather than a herdr pane.
 
 These 1.4 improvements work through the defaults:
 
-- Compressed scrollback with a 50 MB limit per Ghostty terminal. Tmux's separate 10,000-line history stays unchanged.
-- Kitty graphics animation and relative placements, plus faster image handling. Tmux already enables passthrough; applications still need to support it.
+- Compressed scrollback with a 50 MB limit per Ghostty terminal; each herdr pane keeps its own 10 MB scrollback.
+- Kitty graphics animation and relative placements, plus faster image handling. herdr renders pane images through the Kitty graphics protocol; applications still need to support it.
 - Kitty clipboard support for images and other formats. Reads and writes follow the existing `clipboard-read` and `clipboard-write` settings.
 
 The explicit `copy-on-select = clipboard` still copies selections to the system clipboard on macOS. `Cmd+Up` and `Cmd+Down` jump between native shell prompts; `Cmd+Home` and `Cmd+End` scroll to the ends of the history. Configuration help is available with `ghostty +explain-config <key>`.
@@ -72,4 +72,4 @@ A PR-focused dashboard, gh-dash, is configured separately under [`home/dot_confi
 
 ## Next
 
-- [Tmux overview + key bindings](tmux/index.md)
+- [herdr overview + key bindings](herdr/index.md)

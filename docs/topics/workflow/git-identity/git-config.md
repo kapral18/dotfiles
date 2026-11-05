@@ -51,14 +51,14 @@ Relevant files:
 
 ## GitHub CLI and dashboard config
 
-| Component               | Source                                                                                                                                                                         |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| GitHub CLI config       | [`home/dot_config/exact_private_gh/`](../../../../home/dot_config/exact_private_gh/)                                                                                           |
-| gh picker config        | [`home/dot_config/exact_tmux/exact_scripts/pickers/github/readonly_gh-picker.yml`](../../../../home/dot_config/exact_tmux/exact_scripts/pickers/github/readonly_gh-picker.yml) |
-| Managed extensions hook | [`run_onchange_after_05-install-gh-extensions.fish.tmpl`](../../../../home/.chezmoiscripts/run_onchange_after_05-install-gh-extensions.fish.tmpl)                              |
+| Component               | Source                                                                                                                                                               |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GitHub CLI config       | [`home/dot_config/exact_private_gh/`](../../../../home/dot_config/exact_private_gh/)                                                                                 |
+| gh picker config        | [`home/dot_config/herdr/exact_scripts/pickers/github/readonly_gh-picker.yml`](../../../../home/dot_config/herdr/exact_scripts/pickers/github/readonly_gh-picker.yml) |
+| Managed extensions hook | [`run_onchange_after_05-install-gh-extensions.fish.tmpl`](../../../../home/.chezmoiscripts/run_onchange_after_05-install-gh-extensions.fish.tmpl)                    |
 
 ## Related
 
 - [Identity and keys](identity-and-keys.md)
 - [Worktrees](worktrees.md)
-- [GitHub picker](../tmux/github-picker.md)
+- [GitHub picker](../herdr/github-picker.md)

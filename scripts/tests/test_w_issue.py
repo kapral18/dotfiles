@@ -35,13 +35,10 @@ class TestWIssueCommand(unittest.TestCase):
                 gh = bin_dir / "gh"
                 gh.write_text("#!/bin/sh\nprintf 'current/tool\\n'\n")
                 gh.chmod(0o755)
-                tmux_log = root / "tmux.log"
-                tmux = bin_dir / "tmux"
-                tmux.write_text("""#!/bin/sh
-printf '%s\\n' "$*" >> "$TMUX_LOG"
-case " $* " in *' has-session '*) exit 1 ;; esac
-""")
-                tmux.chmod(0o755)
+                herdr_log = root / "herdr.log"
+                herdr_db = root / "workspaces.tsv"
+                herdr_db.write_text("")
+                install_fake_herdr(bin_dir)
                 repo = root / "repo"
                 repo.mkdir()
                 env = {
@@ -54,8 +51,10 @@ case " $* " in *' has-session '*) exit 1 ;; esac
                     "GIT_COMMITTER_NAME": "Fixture",
                     "GIT_COMMITTER_EMAIL": "fixture@example.invalid",
                     "COMMA_W_PRUNE": "0",
-                    "OUTER_TMUX_SOCKET": str(root / "outer.sock"),
-                    "TMUX_LOG": str(tmux_log),
+                    "XDG_CACHE_HOME": str(root / "cache"),
+                    "HERDR_SOCKET_PATH": str(root / "herdr.sock"),
+                    "HERDR_LOG": str(herdr_log),
+                    "HERDR_DB": str(herdr_db),
                 }
 
                 def git(*args):
@@ -92,7 +91,7 @@ case " $* " in *' has-session '*) exit 1 ;; esac
                     git("-C", str(foreign), "config", "--worktree", "--get", "comma.w.issue.number").strip(),
                     stored_number,
                 )
-                log = tmux_log.read_text() if tmux_log.exists() else ""
+                log = herdr_log.read_text() if herdr_log.exists() else ""
                 self.assertNotIn(str(foreign), log)
                 if route == "heuristic":
                     self.assertEqual(result.returncode, 0, result.stderr)
@@ -145,7 +144,7 @@ case " $* " in *' has-session '*) exit 1 ;; esac
             self.assertEqual((repo / ".git/config").read_bytes(), config_before)
             self.assertFalse((repo / ".git/worktrees").exists())
 
-    def test_should_create_and_focus_on_outer_tmux_with_read_only_helpers(self):
+    def test_should_create_and_focus_inside_herdr_with_read_only_helpers(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             home = root / "home"
@@ -153,18 +152,14 @@ case " $* " in *' has-session '*) exit 1 ;; esac
             w_dir = home / "lib/,w"
             shared_dir = home / "lib/shared"
             repo = root / "repo"
-            bin_dir.mkdir(parents=True)
-            w_dir.mkdir(parents=True)
-            shared_dir.mkdir(parents=True)
-            repo.mkdir()
+            for path in (bin_dir, w_dir, shared_dir, repo):
+                path.mkdir(parents=True)
 
-            source_w = REPO / "home/exact_lib/exact_,w"
-            source_shared = REPO / "home/exact_lib/exact_shared"
             for name in ("issue.sh", "issue_lib.sh", "add.sh", "open.sh", "switch.sh", "ls.sh"):
-                shutil.copyfile(source_w / name, w_dir / name)
+                shutil.copyfile(REPO / "home/exact_lib/exact_,w" / name, w_dir / name)
                 (w_dir / name).chmod(0o444)
             for name in ("bash_utils_lib.sh", "worktree_lib.sh"):
-                shutil.copyfile(source_shared / name, shared_dir / name)
+                shutil.copyfile(REPO / "home/exact_lib/exact_shared" / name, shared_dir / name)
                 (shared_dir / name).chmod(0o444)
 
             gh = bin_dir / "gh"
@@ -175,43 +170,32 @@ case " $* " in *' has-session '*) exit 1 ;; esac
             zoxide = bin_dir / "zoxide"
             zoxide.write_text("#!/usr/bin/env bash\nexit 0\n")
             zoxide.chmod(0o755)
-            tmux_log = root / "tmux.log"
-            tmux_session = root / "tmux-session"
-            tmux = bin_dir / "tmux"
-            tmux.write_text(
-                "#!/usr/bin/env bash\n"
-                'printf \'%s\\n\' "$*" >> "$TMUX_LOG"\n'
-                'case " $* " in\n'
-                "  *' has-session '*) [[ -f \"$TMUX_SESSION_FILE\" ]] ;;\n"
-                "  *' new-session '*)\n"
-                '    : > "$TMUX_SESSION_FILE"\n'
-                "    ;;\n"
-                "  *' list-clients '*) printf 'fixture-client\\n' ;;\n"
-                "  *' switch-client '*) exit 0 ;;\n"
-                "esac\n"
-            )
-            tmux.chmod(0o755)
+            install_fake_herdr(bin_dir)
+            herdr_log = root / "herdr.log"
+            herdr_db = root / "workspaces.tsv"
+            herdr_db.write_text("")
 
-            subprocess.run(["git", "init", "-b", "main"], cwd=repo, check=True, capture_output=True)
-            subprocess.run(["git", "config", "user.name", "Fixture"], cwd=repo, check=True)
-            subprocess.run(["git", "config", "user.email", "fixture@example.test"], cwd=repo, check=True)
-            subprocess.run(["git", "config", "commit.gpgSign", "false"], cwd=repo, check=True)
+            for args in (
+                ["init", "-b", "main"],
+                ["config", "user.name", "Fixture"],
+                ["config", "user.email", "fixture@example.test"],
+                ["config", "commit.gpgSign", "false"],
+            ):
+                subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True)
             (repo / "README").write_text("fixture\n")
             subprocess.run(["git", "add", "README"], cwd=repo, check=True)
             subprocess.run(["git", "commit", "-m", "fixture"], cwd=repo, check=True, capture_output=True)
 
             env = {
-                **os.environ,
+                **{k: v for k, v in os.environ.items() if not k.startswith("HERDR_")},
                 "HOME": str(home),
                 "PATH": f"{bin_dir}:/opt/homebrew/bin:/usr/bin:/bin",
                 "COMMA_W_PRUNE": "0",
-                "TMUX_LOG": str(tmux_log),
-                "TMUX_SESSION_FILE": str(tmux_session),
+                "XDG_CACHE_HOME": str(root / "cache"),
+                "HERDR_SOCKET_PATH": str(root / "herdr.sock"),
+                "HERDR_LOG": str(herdr_log),
+                "HERDR_DB": str(herdr_db),
             }
-            for key in ("TMUX", "TMUX_PANE", "OUTER_TMUX_SOCKET", "OUTER_TMUX_CLIENT"):
-                env.pop(key, None)
-            env["OUTER_TMUX_SOCKET"] = str(root / "outer.sock")
-
             result = subprocess.run(
                 [modern_bash(), str(w_dir / "issue.sh"), "--focus", "-q", "-b", "fix/test/create", "123"],
                 cwd=repo,
@@ -220,92 +204,54 @@ case " $* " in *' has-session '*) exit 1 ;; esac
                 text=True,
             )
 
-            assert result.returncode == 0, result.stderr
+            self.assertEqual(result.returncode, 0, result.stderr)
             worktrees = subprocess.run(
-                ["git", "worktree", "list", "--porcelain"],
-                cwd=repo,
-                capture_output=True,
-                text=True,
-                check=True,
+                ["git", "worktree", "list", "--porcelain"], cwd=repo, capture_output=True, text=True, check=True
             ).stdout
-            assert "branch refs/heads/fix/test/create-123" in worktrees
-            assert tmux_session.exists(), tmux_log.read_text() if tmux_log.exists() else "tmux was never invoked"
-            assert f"-S {root / 'outer.sock'} new-session -d" in tmux_log.read_text()
+            self.assertIn("branch refs/heads/fix/test/create-123", worktrees)
+            rows = [line.split("\t") for line in herdr_db.read_text().splitlines()]
+            self.assertEqual(len(rows), 1, herdr_log.read_text())
+            self.assertIn(f"workspace focus {rows[0][0]}", herdr_log.read_text())
 
-    def test_tmux_session_create_and_focus_use_exact_targets(self):
+    def test_workspace_create_and_focus_use_exact_labels(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             bin_dir = root / "bin"
             bin_dir.mkdir()
-            sessions = root / "sessions.txt"
-            sessions.write_text("repo|fix-long\n")
-            tmux_log = root / "tmux.log"
-            tmux = bin_dir / "tmux"
-            tmux.write_text(
-                """#!/usr/bin/env bash
-set -euo pipefail
-printf '%s\n' "$*" >> "$TMUX_LOG"
-if [ "${1:-}" = "-S" ]; then shift 2; fi
-command="${1:-}"
-shift || true
-target=""
-session=""
-args=("$@")
-for ((i = 0; i < ${#args[@]}; i++)); do
-  case "${args[i]}" in
-    -t) target="${args[i + 1]}" ;;
-    -s) session="${args[i + 1]}" ;;
-  esac
-done
-matches_target() {
-  local requested="$1"
-  if [[ "$requested" == =* ]]; then
-    grep -Fxq -- "${requested#=}" "$TMUX_SESSIONS"
-  else
-    awk -v prefix="$requested" 'index($0, prefix) == 1 { found = 1 } END { exit !found }' "$TMUX_SESSIONS"
-  fi
-}
-case "$command" in
-  has-session) matches_target "$target" ;;
-  new-session) printf '%s\n' "$session" >> "$TMUX_SESSIONS" ;;
-  list-clients) printf 'fixture-client\n' ;;
-  switch-client | attach-session) matches_target "$target" ;;
-esac
-"""
-            )
-            tmux.chmod(0o755)
+            install_fake_herdr(bin_dir)
+            herdr_log = root / "herdr.log"
+            herdr_db = root / "workspaces.tsv"
             worktree_path = root / "worktree"
             worktree_path.mkdir()
-            shared = REPO / "home/exact_lib/exact_shared/worktree_lib.sh"
+            herdr_db.write_text(f"w1\trepo|fix-long\t{worktree_path}\n")
             probe = subprocess.run(
                 [
                     modern_bash(),
                     "-c",
-                    'source "$1"; _add_worktree_tmux_session 1 repo fix "$2"; '
-                    '_comma_w_focus_tmux_session 1 "repo|fix" "$2"',
+                    'source "$1"; _add_worktree_workspace 1 repo fix "$2"; _comma_w_focus_workspace 1 "repo|fix" "$2"',
                     "fixture",
-                    str(shared),
+                    str(REPO / "home/exact_lib/exact_shared/worktree_lib.sh"),
                     str(worktree_path),
                 ],
                 env={
-                    **os.environ,
+                    **{k: v for k, v in os.environ.items() if not k.startswith("HERDR_")},
                     "HOME": str(root),
                     "PATH": f"{bin_dir}:{os.environ['PATH']}",
-                    "OUTER_TMUX_SOCKET": str(root / "outer.sock"),
-                    "OUTER_TMUX_CLIENT": "fixture-client",
-                    "TMUX_LOG": str(tmux_log),
-                    "TMUX_SESSIONS": str(sessions),
+                    "XDG_CACHE_HOME": str(root / "cache"),
+                    "HERDR_SOCKET_PATH": str(root / "herdr.sock"),
+                    "HERDR_LOG": str(herdr_log),
+                    "HERDR_DB": str(herdr_db),
                 },
                 capture_output=True,
                 text=True,
             )
-            assert probe.returncode == 0, probe.stderr
-            assert sessions.read_text().splitlines() == ["repo|fix-long", "repo|fix"]
-            log = tmux_log.read_text()
-            assert "has-session -t =repo|fix" in log
-            assert "switch-client -c fixture-client -t =repo|fix" in log
+            self.assertEqual(probe.returncode, 0, probe.stderr)
+            self.assertEqual(
+                [r.split("\t")[1] for r in herdr_db.read_text().splitlines()], ["repo|fix-long", "repo|fix"]
+            )
+            self.assertIn("workspace focus w2", herdr_log.read_text())
 
-    def test_pr_retry_repairs_session_after_new_session_failure(self):
+    def test_pr_retry_repairs_workspace_after_create_failure(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             home = root / "home"
@@ -317,10 +263,9 @@ esac
             for path in (bin_dir, w_dir, shared_dir, repo):
                 path.mkdir(parents=True)
 
-            shutil.copyfile(REPO / "home/exact_lib/exact_,w/prs.sh", w_dir / "prs.sh")
-            (w_dir / "prs.sh").chmod(0o444)
-            shutil.copyfile(REPO / "home/exact_lib/exact_,w/mv.sh", w_dir / "mv.sh")
-            (w_dir / "mv.sh").chmod(0o444)
+            for name in ("prs.sh", "mv.sh"):
+                shutil.copyfile(REPO / "home/exact_lib/exact_,w" / name, w_dir / name)
+                (w_dir / name).chmod(0o444)
             for name in ("bash_utils_lib.sh", "worktree_lib.sh"):
                 shutil.copyfile(REPO / "home/exact_lib/exact_shared" / name, shared_dir / name)
                 (shared_dir / name).chmod(0o444)
@@ -338,30 +283,19 @@ esac
             zoxide = bin_dir / "zoxide"
             zoxide.write_text("#!/usr/bin/env bash\nexit 0\n")
             zoxide.chmod(0o755)
-
-            tmux_session = root / "tmux-session"
-            fail_once = root / "tmux-fail-once"
-            tmux = bin_dir / "tmux"
-            tmux.write_text(
-                "#!/usr/bin/env bash\n"
-                'case " $* " in\n'
-                "  *' has-session '*) [[ -f \"$TMUX_SESSION_FILE\" ]] ;;\n"
-                "  *' new-session '*)\n"
-                "    if [[ -f $TMUX_FAIL_ONCE_FILE ]]; then\n"
-                '      rm -f "$TMUX_FAIL_ONCE_FILE"\n'
-                "      exit 1\n"
-                "    fi\n"
-                '    : > "$TMUX_SESSION_FILE"\n'
-                "    ;;\n"
-                "esac\n"
-            )
-            tmux.chmod(0o755)
+            install_fake_herdr(bin_dir)
+            herdr_db = root / "workspaces.tsv"
+            herdr_db.write_text("")
+            fail_once = root / "create-fails-once"
 
             subprocess.run(["git", "init", "--bare", str(remote)], check=True, capture_output=True)
-            subprocess.run(["git", "init", "-b", "main"], cwd=repo, check=True, capture_output=True)
-            subprocess.run(["git", "config", "user.name", "Fixture"], cwd=repo, check=True)
-            subprocess.run(["git", "config", "user.email", "fixture@example.test"], cwd=repo, check=True)
-            subprocess.run(["git", "config", "commit.gpgSign", "false"], cwd=repo, check=True)
+            for args in (
+                ["init", "-b", "main"],
+                ["config", "user.name", "Fixture"],
+                ["config", "user.email", "fixture@example.test"],
+                ["config", "commit.gpgSign", "false"],
+            ):
+                subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True)
             (repo / "README").write_text("fixture\n")
             subprocess.run(["git", "add", "README"], cwd=repo, check=True)
             subprocess.run(["git", "commit", "-m", "fixture"], cwd=repo, check=True, capture_output=True)
@@ -376,37 +310,34 @@ esac
             subprocess.run(["git", "branch", "-D", "feature/pr"], cwd=repo, check=True, capture_output=True)
 
             env = {
-                **os.environ,
+                **{k: v for k, v in os.environ.items() if not k.startswith("HERDR_")},
                 "HOME": str(home),
                 "PATH": f"{bin_dir}:/opt/homebrew/bin:/usr/bin:/bin",
                 "COMMA_W_PRUNE": "0",
-                "OUTER_TMUX_SOCKET": str(root / "outer.sock"),
-                "TMUX_SESSION_FILE": str(tmux_session),
-                "TMUX_FAIL_ONCE_FILE": str(fail_once),
+                "XDG_CACHE_HOME": str(root / "cache"),
+                "HERDR_SOCKET_PATH": str(root / "herdr.sock"),
+                "HERDR_DB": str(herdr_db),
+                "HERDR_FAKE_CREATE_FAILS_ONCE": str(fail_once),
             }
-            env.pop("TMUX", None)
-            env.pop("TMUX_PANE", None)
             fail_once.write_text("fail\n")
 
-            first = subprocess.run(
-                [modern_bash(), str(w_dir / "prs.sh"), "-q", "123"],
-                cwd=repo,
-                env=env,
-                capture_output=True,
-                text=True,
-            )
-            assert first.returncode != 0, first.stderr
-            assert not tmux_session.exists(), "failed PR new-session was reported as success"
+            def prs():
+                return subprocess.run(
+                    [modern_bash(), str(w_dir / "prs.sh"), "-q", "123"],
+                    cwd=repo,
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    timeout=15,
+                )
 
-            retry = subprocess.run(
-                [modern_bash(), str(w_dir / "prs.sh"), "-q", "123"],
-                cwd=repo,
-                env=env,
-                capture_output=True,
-                text=True,
-            )
-            assert retry.returncode == 0, retry.stderr
-            assert tmux_session.exists(), "existing PR worktree did not retry session creation"
+            first = prs()
+            self.assertNotEqual(first.returncode, 0, first.stderr)
+            self.assertEqual(herdr_db.read_text(), "", "failed PR workspace create was reported as success")
+
+            retry = prs()
+            self.assertEqual(retry.returncode, 0, retry.stderr)
+            self.assertNotEqual(herdr_db.read_text(), "", "existing PR worktree did not retry workspace creation")
 
             original_worktrees = subprocess.check_output(
                 ["git", "worktree", "list", "--porcelain"], cwd=repo, text=True
@@ -422,16 +353,9 @@ esac
             subprocess.run(
                 ["git", "worktree", "move", str(feature), str(legacy)], cwd=repo, check=True, capture_output=True
             )
-            tmux_session.unlink()
+            herdr_db.write_text("")
 
-            migrated = subprocess.run(
-                [modern_bash(), str(w_dir / "prs.sh"), "-q", "123"],
-                cwd=repo,
-                env=env,
-                capture_output=True,
-                text=True,
-                timeout=15,
-            )
+            migrated = prs()
             self.assertEqual(migrated.returncode, 0, migrated.stderr)
             self.assertFalse(legacy.exists())
             self.assertEqual((feature / "keep-local-change").read_text(), "uncommitted work\n")
@@ -439,7 +363,7 @@ esac
                 subprocess.check_output(["git", "worktree", "list", "--porcelain"], cwd=repo, text=True),
                 original_worktrees,
             )
-            self.assertTrue(tmux_session.exists())
+            self.assertNotEqual(herdr_db.read_text(), "")
 
 
 if __name__ == "__main__":

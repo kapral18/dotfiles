@@ -48,27 +48,9 @@ Removing a key stops managing it but leaves its last value in `~/.claude.json`.
 
 ### Agent status summaries
 
-Fish and POSIX shell startup export `BUN_OPTIONS` with the managed
-[`no-agent-summary.cjs`](../../../../home/dot_claude/readonly_no-agent-summary.cjs) preload.
-Repeated startup keeps one copy and preserves inherited Bun options.
-The preload suppresses `setTimeout` and `setInterval` callbacks containing Claude's
-`[AgentSummary] Timer fired` or `agent_summary` anchors in compiled Bun executables.
-Other timers and ordinary Bun scripts keep their behavior. Background agents still run;
-their generated status summaries stop updating.
-
-Adapted from [Flamerix AI's MIT-licensed gist, revision 2fe2241](https://gist.github.com/flamerix-ai/c3905705cc4205e5de3011fa2e74efce/2fe224167473e3185c104a5dbff7a788ab025b3b).
-The [license](../../../../home/dot_claude/readonly_no-agent-summary.LICENSE) ships beside the preload.
-This version always suppresses matching timers and omits upstream diagnostic modes and file logging.
-The locally installed Claude Code 2.1.308 native binary contains both anchors.
-Isolated compiled Bun fixtures verify suppression, cancellation, normal timers and promisification;
-they do not establish a percentage of token savings.
-
-New shell-launched Claude processes inherit the preload. Already-running processes and daemons
-keep their original environment; restart them from a new shell to activate it.
-Finder-launched Claude Desktop Code sessions do not inherit arbitrary shell variables,
-so these shell exports do not cover that launch path.
-An update that changes the callback anchors or timer API can silently restore summaries.
-No installed Claude binary is patched.
+`settings.json` `env` sets `CLAUDE_CODE_DISABLE_AGENT_PROGRESS_SUMMARIES=1`, an undocumented Claude Code switch.
+From 2.1.318, the summary timer returns before it sends any `agent_summary` request, so background agents run without generated status lines.
+Claude Desktop runs its own bundled Claude Code; bundles older than 2.1.318 ignore the variable.
 
 ### Mods
 
@@ -89,8 +71,8 @@ Sources live in [`home/dot_claude/exact_mods/`](../../../../home/dot_claude/exac
 | --------------------------------------------------------------------------------------------- | ---------------- | -------------------------------------------------------------------------------------- |
 | Edit of a chezmoi-managed target (symlinks resolved)                                          | `~/AGENTS.md` §6 | always; names the source path                                                          |
 | Common literal secret-output commands (`pass`, `security`, `op`, `gh auth token`, `cat .env`) | `~/AGENTS.md` §5 | listed direct forms only; this is an accident detector, not a confidentiality boundary |
-| Bare `tmux kill-server`                                                                       | `k-tmux`         | always, unless `-S` or `-L`                                                            |
-| A default-server tmux change (`send-keys`, `source-file`, `attach`, …)                        | `k-tmux`         | once per subcommand per session                                                        |
+| `herdr server stop` without `--session`                                                       | `k-herdr`        | always                                                                                 |
+| A default-session herdr teardown (`workspace close`, `pane close`, `session stop`, …)         | `k-herdr`        | once per subcommand per session                                                        |
 
 This repo also has a project plugin, [`.claude/skills/dotfiles-guard/`](../../../../.claude/skills/dotfiles-guard/), which loads only in sessions started in this repo.
 It refuses `make check-full`, `make test`, `bin/check --full` (repo `AGENTS.md`), `scripts/test_runner.py`, and `scripts/check.py --full` (user request).
@@ -131,7 +113,7 @@ The secret detector matches documented common direct forms: `pass` entry lookup,
 
 Reference workflows such as `TOKEN=$(pass show work/token)`, `pass show work/token | consumer`, and `curl -H "Authorization: $(pass show work/token)" URL` remain available because compound shell syntax is not analyzed. The detector does not prove that a receiver, redirect or external command keeps a credential out of the transcript. Prefer purpose-specific commands that resolve their own credential and return a limited result, such as an image path. Arbitrary Bash retains the user's credential access; actual credential isolation requires a separate execution boundary.
 
-Direct literal tmux commands retain the default-server reminder and bare `kill-server` refusal; explicit `-S` or `-L` identifies an isolated server. Command sequences inside tmux arguments are not interpreted. Bash refusal logs contain rule identifiers and limited command metadata, not the raw command or its arguments.
+Direct literal herdr commands retain the teardown reminder and the `server stop` refusal; `--session <name>` identifies an isolated server. Command sequences inside herdr arguments are not interpreted. Bash refusal logs contain rule identifiers and limited command metadata, not the raw command or its arguments.
 
 The structured file check resolves the target before testing HOME and source-repository membership, so aliases inside the repo or outside HOME cannot hide an existing managed target. It sees only managed files: a new file written into an `exact_` target directory passes, and the next `chezmoi apply` deletes it.
 Test a mod with `claude plugin test ~/.claude/mods/<mod>`; `claude plugin validate` checks what it hooks.

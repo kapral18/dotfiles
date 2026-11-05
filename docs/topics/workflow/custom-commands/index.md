@@ -14,7 +14,7 @@ command -v ,w
 ,w --help
 ```
 
-The fastest visual entry point is the tmux command palette: `prefix` + `r`. It indexes comma commands, tmux bindings, git aliases, and optional drop-in entries.
+The fastest visual entry point is the herdr command palette: `prefix` + `r`. It indexes comma commands, herdr custom commands, git aliases, and optional drop-in entries.
 
 ## Command families
 
@@ -24,7 +24,7 @@ The fastest visual entry point is the tmux command palette: `prefix` + `r`. It i
 | AI and agents        | `,q`, `,artifact`, `,ai-kb`, `,task`, `,behavior-map`, provider wrappers                   | [Command catalog](./catalog.md), [AI & assistants](../../ai-assistants/index.md)        |
 | Worktrees and GitHub | `,w`, `,gh-worktree`, `,gh-prw`, `,gh-issuew`, `,gh-tfork`                                 | [High-leverage commands](./high-leverage.md), [Worktrees](../git-identity/worktrees.md) |
 | Patch/file transfer  | `,wh`, `,add-patch-to-prs`                                                                 | [High-leverage commands](./high-leverage.md)                                            |
-| tmux helpers         | `,tmux-run-all`, `,tmux-lowfi`                                                             | [High-leverage commands](./high-leverage.md), [Tmux](../tmux/index.md)                  |
+| herdr helpers        | `,herdr-run-all`, `,herdr-lowfi`                                                           | [High-leverage commands](./high-leverage.md), [herdr](../herdr/index.md)                |
 | Search and discovery | `,grepo`, `,fuzzy-brew-search`, `,search-gh-topic`, `,youtube-search`                      | [Command catalog](./catalog.md)                                                         |
 | Testing and analysis | `,jest-test-title-report`, `,get-risky-tests`, `,get-age-buckets`, `,generate-git-sandbox` | [Command catalog](./catalog.md)                                                         |
 | Utility / plumbing   | `,bat-preview`, `,fzf-*`, `,history-sync`, media helpers                                   | [Command catalog](./catalog.md)                                                         |

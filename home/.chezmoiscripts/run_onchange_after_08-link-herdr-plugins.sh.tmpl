@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# workspace-history manifest hash: {{ include "dot_config/herdr/exact_scripts/plugins/workspace-history/readonly_herdr-plugin.toml" | sha256sum }}
+# pickers manifest hash: {{ include "dot_config/herdr/exact_scripts/plugins/pickers/readonly_herdr-plugin.toml" | sha256sum }}
+
+set -euo pipefail
+
+command -v herdr >/dev/null 2>&1 || exit 0
+
+for plugin in workspace-history pickers; do
+  herdr plugin link "$HOME/.config/herdr/scripts/plugins/$plugin" >/dev/null
+done

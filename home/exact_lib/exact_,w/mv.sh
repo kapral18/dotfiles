@@ -10,7 +10,7 @@ show_usage() {
   cat << EOF
 Usage: ,w mv [-q|--quiet] [--focus] [--keep-path] [--path <new_path>] <from> <to>
 
-Move/rename a worktree as a unit (git worktree + tmux + zoxide).
+Move/rename a worktree as a unit (git worktree + herdr workspace + zoxide).
 
 Arguments:
   <from>             Worktree branch name or worktree path
@@ -20,7 +20,7 @@ Options:
   -q, --quiet        Suppress informational output
   --path <new_path>  Override the destination worktree path
   --keep-path        Do not move the directory (branch rename only)
-  --focus            Switch/attach to the resulting tmux session
+  --focus            Focus the resulting herdr workspace
   -h, --help         Show this help message
 EOF
 }
@@ -79,7 +79,7 @@ from="$1"
 to_branch="$2"
 
 parent_dir=$(_get_worktree_parent_dir)
-parent_name="$(_comma_w_tmux_parent_name_from_dir "$parent_dir")"
+parent_name="$(_comma_w_parent_name_from_dir "$parent_dir")"
 
 _comma_w_prune_stale_worktrees "$quiet_mode"
 
@@ -161,7 +161,7 @@ if [ "$keep_path" -eq 0 ] && [ "$from_path" != "$new_path" ] && [ -e "$new_path"
   exit 1
 fi
 
-old_session="$(_comma_w_tmux_session_name "$parent_name" "$from_branch")"
+old_session="$(_comma_w_workspace_name "$parent_name" "$from_branch")"
 if [ "$keep_path" -eq 0 ] && [ "$from_path" != "$new_path" ]; then
   mkdir -p "$(dirname "$new_path")"
   git worktree move "$from_path" "$new_path"
@@ -177,15 +177,19 @@ if [ "$from_branch" != "$to_branch" ]; then
   fi
 fi
 
-new_session="$(_comma_w_tmux_session_name "$parent_name" "$to_branch")"
-# Same name at a new path: move the old session aside so a fresh one starts in the new directory.
-if { [ -n "${TMUX:-}" ] || [ -n "${OUTER_TMUX_SOCKET:-}" ]; } \
-  && [ "$old_session" = "$new_session" ] && [ "$old_path" != "$from_path" ] \
-  && _comma_w_tmux has-session -t "=$old_session" 2> /dev/null \
-  && _comma_w_tmux rename-session -t "=$old_session" "${old_session}~moved-$$" 2> /dev/null; then
-  old_session="${old_session}~moved-$$"
+new_session="$(_comma_w_workspace_name "$parent_name" "$to_branch")"
+old_ws_id=""
+if _comma_w_in_herdr; then
+  old_ws_id="$(_comma_w_workspace_id_by_label "$old_session")"
 fi
-_add_worktree_tmux_session "$quiet_mode" "$parent_name" "$to_branch" "$from_path"
+# Same folder: rename the workspace in place so its running processes survive.
+if [ -n "$old_ws_id" ] && [ "$old_path" = "$from_path" ]; then
+  _comma_w_herdr workspace rename "$old_ws_id" "$new_session" > /dev/null 2>&1 \
+    && _comma_w_record_workspace_path "$old_ws_id" "$new_session" "$from_path"
+else
+  [ -z "$old_ws_id" ] || _comma_w_herdr workspace rename "$old_ws_id" "${old_session}~moved-$$" > /dev/null 2>&1 || true
+  _add_worktree_workspace "$quiet_mode" "$parent_name" "$to_branch" "$from_path"
+fi
 
 if command -v zoxide &> /dev/null; then
   if [ "$old_path" != "$from_path" ]; then
@@ -195,19 +199,15 @@ if command -v zoxide &> /dev/null; then
 fi
 
 if [ "$focus_mode" -eq 1 ]; then
-  _comma_w_focus_tmux_session "$quiet_mode" "$new_session" "$from_path" || true
+  _comma_w_focus_workspace "$quiet_mode" "$new_session" "$from_path" || true
 fi
 
 if [ "$quiet_mode" -eq 0 ]; then
   printf '%s\t%s\n' "$to_branch" "$from_path"
 fi
 
-# Last: the old session may be the one running this script.
-if [ "$old_path" = "$from_path" ]; then
-  # The folder stays, so other sessions in it stay valid; only the old named session goes.
-  if [ "$old_session" != "$new_session" ] && { [ -n "${TMUX:-}" ] || [ -n "${OUTER_TMUX_SOCKET:-}" ]; }; then
-    _comma_w_tmux kill-session -t "=$old_session" 2> /dev/null || true
-  fi
-else
-  _remove_worktree_tmux_session "$quiet_mode" "$old_path" "$old_session" "$new_session"
+# Last: the old workspace may be the one running this script.
+if [ "$old_path" != "$from_path" ]; then
+  [ -z "$old_ws_id" ] || _comma_w_herdr workspace close "$old_ws_id" > /dev/null 2>&1 || true
+  _remove_worktree_workspace "$quiet_mode" "$old_path" "" "$(_comma_w_workspace_id_by_label "$new_session")"
 fi

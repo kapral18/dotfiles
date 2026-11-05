@@ -2,13 +2,13 @@
 
 This section is three related systems, not one blob:
 
-| System            | What it owns                                                     | Page                                      |
-| ----------------- | ---------------------------------------------------------------- | ----------------------------------------- |
-| Git defaults      | Global git behavior, aliases, signing config                     | [Git config](git-config.md)               |
-| Identity and keys | 1Password SSH agent, public-key selectors                        | [Identity and keys](identity-and-keys.md) |
-| Worktrees         | `,w`, `,gh-worktree`, branch/issue metadata, tmux session naming | [Worktrees](worktrees.md)                 |
+| System            | What it owns                                                        | Page                                      |
+| ----------------- | ------------------------------------------------------------------- | ----------------------------------------- |
+| Git defaults      | Global git behavior, aliases, signing config                        | [Git config](git-config.md)               |
+| Identity and keys | 1Password SSH agent, public-key selectors                           | [Identity and keys](identity-and-keys.md) |
+| Worktrees         | `,w`, `,gh-worktree`, branch/issue metadata, herdr workspace naming | [Worktrees](worktrees.md)                 |
 
-The systems connect at runtime: Git signs with the primary public-key selector, 1Password holds the private keys, worktree metadata helps pickers and helper commands resolve PRs/issues, and tmux gives each worktree a stable session.
+The systems connect at runtime: Git signs with the primary public-key selector, 1Password holds the private keys, worktree metadata helps pickers and helper commands resolve PRs/issues, and herdr gives each worktree a stable workspace.
 
 ## Quick checks
 
@@ -23,4 +23,4 @@ echo "$SSH_AUTH_SOCK"
 
 - [GitHub CLI extension management](gh-extension.md)
 - [Security and secrets](../../security/security-and-secrets.md)
-- [Session picker](../tmux/session-picker.md)
+- [Session picker](../herdr/session-picker.md)

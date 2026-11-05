@@ -10,12 +10,12 @@ show_usage() {
   cat << EOF
 Usage: ,w prune [-q|--quiet] [--apply] [--all]
 
-Prune stale worktree metadata and (optionally) kill stale tmux sessions.
+Prune stale worktree metadata and (optionally) close stale herdr workspaces.
 
 Options:
   -q, --quiet       Suppress informational output
   --apply           Apply changes (default is dry-run output only)
-  --all             Consider tmux sessions across all repos (not just this repo's ,w sessions)
+  --all             Consider herdr workspaces across all repos (not just this repo's ,w workspaces)
   -h, --help        Show this help message
 EOF
 }
@@ -66,13 +66,13 @@ fi
 parent_name=""
 if [ "$in_git_repo" -eq 1 ]; then
   parent_dir=$(_get_worktree_parent_dir)
-  parent_name="$(_comma_w_tmux_parent_name_from_dir "$parent_dir")"
-  session_prefix="$(_comma_w_tmux_session_name "$parent_name" "")"
+  parent_name="$(_comma_w_parent_name_from_dir "$parent_dir")"
+  session_prefix="$(_comma_w_workspace_name "$parent_name" "")"
   session_prefix="${session_prefix%|}"
 fi
 
 git_has_stale=0
-tmux_has_stale=0
+ws_has_stale=0
 
 if [ "$in_git_repo" -eq 1 ]; then
   dry_run_output="$(git worktree prune --dry-run 2>&1 || true)"
@@ -81,55 +81,25 @@ if [ "$in_git_repo" -eq 1 ]; then
   fi
 else
   if [ "$all_mode" -eq 0 ]; then
-    echo "Error: not inside a git work tree (use --all to run tmux-only pruning)." >&2
+    echo "Error: not inside a git work tree (use --all to run workspace-only pruning)." >&2
     exit 1
   fi
 fi
 
-if ! command -v tmux > /dev/null 2>&1; then
-  exit 0
+stale_ids=()
+stale_sessions=()
+if command -v herdr > /dev/null 2>&1; then
+  prune_prefix=""
+  [ "$all_mode" -eq 1 ] || prune_prefix="$session_prefix"
+  while IFS=$'\t' read -r ws_id ws_label; do
+    [ -n "$ws_id" ] || continue
+    stale_ids+=("$ws_id")
+    stale_sessions+=("$ws_label")
+  done < <(_comma_w_stale_workspaces "$prune_prefix")
 fi
 
-session_has_any_existing_pane_path() {
-  local session_name="$1"
-  local pane_path
-  local saw_any=0
-
-  while IFS= read -r pane_path; do
-    [ -z "$pane_path" ] && continue
-    saw_any=1
-    if [ -e "$pane_path" ]; then
-      return 0
-    fi
-  done < <(_comma_w_tmux list-panes -t "$session_name" -F '#{pane_current_path}' 2> /dev/null || true)
-
-  if [ "$saw_any" -eq 0 ]; then
-    return 0
-  fi
-
-  return 1
-}
-
-stale_sessions=()
-while IFS=$'\t' read -r session_name _; do
-  [ -z "$session_name" ] && continue
-
-  if [ "$all_mode" -eq 0 ]; then
-    case "$session_name" in
-      "${session_prefix}"\|*) ;;
-      *)
-        continue
-        ;;
-    esac
-  fi
-
-  if ! session_has_any_existing_pane_path "$session_name"; then
-    stale_sessions+=("$session_name")
-  fi
-done < <(_comma_w_tmux list-sessions -F $'#{session_name}\t#{session_path}' 2> /dev/null || true)
-
 if [ ${#stale_sessions[@]} -gt 0 ]; then
-  tmux_has_stale=1
+  ws_has_stale=1
 fi
 
 if [ "$apply_mode" -eq 0 ]; then
@@ -140,15 +110,15 @@ if [ "$apply_mode" -eq 0 ]; then
     printed_any=1
   fi
 
-  if [ "$tmux_has_stale" -eq 1 ]; then
+  if [ "$ws_has_stale" -eq 1 ]; then
     if [ "$quiet_mode" -eq 0 ]; then
       if [ "$printed_any" -eq 1 ]; then
         echo
       fi
       if [ "$all_mode" -eq 1 ]; then
-        echo "Stale tmux sessions (no existing pane paths; use --apply to kill):"
+        echo "Stale herdr workspaces (no existing pane paths; use --apply to close):"
       else
-        echo "Stale ,w tmux sessions for '$parent_name' (no existing pane paths; use --apply to kill):"
+        echo "Stale ,w workspaces for '$parent_name' (no existing pane paths; use --apply to close):"
       fi
       printf '  %s\n' "${stale_sessions[@]}"
     fi
@@ -169,9 +139,9 @@ if [ "$git_has_stale" -eq 1 ]; then
   did_any=1
 fi
 
-if [ "$tmux_has_stale" -eq 1 ]; then
-  for session_name in "${stale_sessions[@]}"; do
-    _comma_w_tmux kill-session -t "$session_name" 2> /dev/null || true
+if [ "$ws_has_stale" -eq 1 ]; then
+  for ws_id in "${stale_ids[@]+"${stale_ids[@]}"}"; do
+    _comma_w_herdr workspace close "$ws_id" > /dev/null 2>&1 || true
   done
   did_any=1
 fi

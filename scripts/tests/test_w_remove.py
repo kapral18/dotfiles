@@ -16,6 +16,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from _test_support import install_fake_herdr
+
 REPO = Path(__file__).resolve().parents[2]
 REMOVE_SRC = REPO / "home/exact_lib/exact_,w/remove.sh"
 SHARED_SRC = REPO / "home/exact_lib/exact_shared"
@@ -37,9 +39,7 @@ class _WRemoveCase(unittest.TestCase):
         self.remove_sh = self.w_dir / "remove.sh"
         self.bin_dir = self.root / "bin"
         self.bin_dir.mkdir()
-        tmux = self.bin_dir / "tmux"
-        tmux.write_text("#!/bin/sh\nexit 1\n")
-        tmux.chmod(0o755)
+        install_fake_herdr(self.bin_dir)
 
         self.main = self.root / "main"
         self.detached = self.root / "detached"
@@ -85,7 +85,8 @@ class _WRemoveCase(unittest.TestCase):
         Path(env["HOME"]).mkdir(exist_ok=True)
         env["GIT_CONFIG_GLOBAL"] = os.devnull
         env["GIT_CONFIG_SYSTEM"] = os.devnull
-        env.pop("TMUX", None)
+        for key in [k for k in env if k.startswith("HERDR_")]:
+            env.pop(key)
         env["PATH"] = f"{self.bin_dir}{os.pathsep}{os.environ['PATH']}"
         return subprocess.run(
             ["bash", str(self.remove_sh), *args],

@@ -13,10 +13,10 @@ Commands:
   prs [pr_numbers... | search]       Fetch PRs and create worktrees
   issue <issue_number|url>           Create/switch issue worktree
   ls|list                            List worktrees
-  switch                             Switch/attach to a worktree tmux session
-  open <branch|path>                 Focus a worktree tmux session
+  switch                             Focus a worktree's herdr workspace
+  open <branch|path>                 Focus a worktree herdr workspace
   mv <from> <to>                     Move/rename a worktree
-  prune                              Prune stale worktree metadata (and tmux)
+  prune                              Prune stale worktree metadata (and herdr workspaces)
   doctor                             Check dependencies and state
   remove                             Remove worktrees interactively
 

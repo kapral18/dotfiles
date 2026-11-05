@@ -13,7 +13,7 @@ Lualine renders native Neovim `LspProgress` events through a local plugin:
 - Implementation: [`plugins_local_src/lsp-progress.lua`](../../../../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/readonly_lsp-progress.lua)
 - Component wiring: [`plugins/lualine.lua`](../../../../../home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_lualine.lua)
 
-The statusline shows client name, spinner, latest title/message, optional server percentage, and a derived completed-token counter such as `(1/1) - done`. It replaces `lsp-progress.nvim` without emitting terminal/tmux OSC progress bars.
+The statusline shows client name, spinner, latest title/message, optional server percentage, and a derived completed-token counter such as `(1/1) - done`. It replaces `lsp-progress.nvim` without emitting terminal OSC progress bars.
 
 ## Formatting
 

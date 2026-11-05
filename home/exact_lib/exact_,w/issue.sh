@@ -29,7 +29,7 @@ This command:
 
 Options:
   -q, --quiet       Suppress informational output
-  --focus           Switch/attach to the worktree's tmux session
+  --focus           Focus the worktree's herdr workspace
   -b, --branch      Use the provided branch name instead of prompting
   -h, --help        Show this help message
 EOF
@@ -101,7 +101,7 @@ trim_whitespace() {
 normalize_branch_input() {
   local branch="$1"
   branch="$(trim_whitespace "$branch")"
-  # Users sometimes paste tmux session names (parent|branch) into this prompt.
+  # Users sometimes paste workspace names (parent|branch) into this prompt.
   # Branch names must be git-valid and our tooling uses '|' as a session separator,
   # so treat anything before the last '|' as a prefix and strip it.
   case "$branch" in
@@ -143,7 +143,7 @@ prompt_branch_name() {
   local prompt_prefix=""
   local hint=""
 
-  # Inside tmux display-popup -E, stdin might not be a standard tty,
+  # Inside a herdr popup, stdin might not be a standard tty,
   # but /dev/tty is available. We read from /dev/tty directly below.
 
   esc="$(printf '\033')"
@@ -215,7 +215,7 @@ if [ -n "$issue_repo" ] && [ "$(printf '%s' "$issue_repo" | tr '[:upper:]' '[:lo
   die "issue URL belongs to $issue_repo; current repository is $repo_name"
 fi
 parent_dir="$(_get_worktree_parent_dir)"
-parent_name="$(_comma_w_tmux_parent_name_from_dir "$parent_dir")"
+parent_name="$(_comma_w_parent_name_from_dir "$parent_dir")"
 
 _comma_w_prune_stale_worktrees "$quiet_mode"
 
@@ -230,7 +230,7 @@ if [ -n "$existing_path" ]; then
   _comma_w_issue_store_metadata "$existing_path" "$repo_name" "$issue_number" || die "failed to store issue metadata"
   existing_branch="$(git -C "$existing_path" branch --show-current 2> /dev/null || true)"
   [ -n "$existing_branch" ] || die "failed to determine branch for existing issue worktree: $existing_path"
-  _add_worktree_tmux_session "$quiet_mode" "$parent_name" "$existing_branch" "$existing_path"
+  _add_worktree_workspace "$quiet_mode" "$parent_name" "$existing_branch" "$existing_path"
   if [ "$focus_mode" -eq 1 ]; then
     bash "$(dirname "$0")/open.sh" -q "$existing_path"
   fi
@@ -261,7 +261,7 @@ if [ -n "$existing_path" ]; then
   require_issue_association "$existing_path"
   info "Found existing worktree for branch '$manual_branch' at: $existing_path"
   _comma_w_issue_store_metadata "$existing_path" "$repo_name" "$issue_number" || die "failed to store issue metadata"
-  _add_worktree_tmux_session "$quiet_mode" "$parent_name" "$manual_branch" "$existing_path"
+  _add_worktree_workspace "$quiet_mode" "$parent_name" "$manual_branch" "$existing_path"
   if [ "$focus_mode" -eq 1 ]; then
     bash "$(dirname "$0")/open.sh" -q "$existing_path"
   fi

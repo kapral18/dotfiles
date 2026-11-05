@@ -28,7 +28,7 @@ brew "hf"
 # https://github.com/agavra/tuicr
 brew "tuicr"
 
-# Terminal diff reviewer for agentic coding — live-updating diff in a tmux pane
+# Terminal diff reviewer for agentic coding — live-updating diff in a herdr pane
 # beside the agent, sends `path:line` references straight into the agent's input
 # https://github.com/kunkka19xx/lgtm
 tap "kunkka19xx/tap", trusted: true

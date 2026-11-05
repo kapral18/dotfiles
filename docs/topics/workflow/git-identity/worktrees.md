@@ -4,14 +4,14 @@ sidebar_position: 3
 
 # Git worktree workflow
 
-This setup uses `,w` to make branch isolation, PR checkout, issue work, and tmux session switching cheap.
+This setup uses `,w` to make branch isolation, PR checkout, issue work, and herdr workspace switching cheap.
 
 | Surface        | Source                                                                                                                                            |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | CLI entry      | [`home/exact_bin/executable_,w`](../../../../home/exact_bin/executable_,w)                                                                        |
 | Helpers        | [`home/exact_lib/exact_,w/`](../../../../home/exact_lib/exact_,w/) and [`home/exact_lib/exact_shared/`](../../../../home/exact_lib/exact_shared/) |
 | GitHub wrapper | [`home/exact_bin/executable_,gh-worktree`](../../../../home/exact_bin/executable_,gh-worktree)                                                    |
-| Visual picker  | [Session picker](../tmux/session-picker.md) and [GitHub picker](../tmux/github-picker.md)                                                         |
+| Visual picker  | [Session picker](../herdr/session-picker.md) and [GitHub picker](../herdr/github-picker.md)                                                       |
 
 ## Mental model
 
@@ -20,7 +20,7 @@ This setup uses `,w` to make branch isolation, PR checkout, issue work, and tmux
 | Create an isolated branch checkout | `,w add`                           |
 | Check out PRs locally              | `,w prs` or the GitHub picker      |
 | Start work from an issue           | `,w issue` or `,gh-worktree issue` |
-| Focus a worktree's tmux session    | `,w switch` / `,w open`            |
+| Focus a worktree's herdr workspace | `,w switch` / `,w open`            |
 | Rename/move branch + worktree      | `,w mv`                            |
 | Remove finished work               | `,w remove`                        |
 | Clean stale metadata               | `,w prune`                         |
@@ -46,7 +46,7 @@ This setup uses `,w` to make branch isolation, PR checkout, issue work, and tmux
 ## Details
 
 - [Worktree subcommands](worktree-subcommands.md) — exact flags and behavior for `add`, `prs`, `issue`, `ls`, `switch`, `open`, `mv`, `remove`, `prune`, and `doctor`.
-- [GitHub worktree integration](worktree-github-integration.md) — how `,gh-worktree`, the GitHub picker, repo bootstrap, Octo review, PR/issue metadata, and tmux sessions fit together.
+- [GitHub worktree integration](worktree-github-integration.md) — how `,gh-worktree`, the GitHub picker, repo bootstrap, Octo review, PR/issue metadata, and herdr workspaces fit together.
 
 ## Verification
 
@@ -55,7 +55,7 @@ This setup uses `,w` to make branch isolation, PR checkout, issue work, and tmux
 ,w doctor
 ```
 
-Confirm the expected worktree exists and tmux session switching works.
+Confirm the expected worktree exists and herdr workspace switching works.
 
 ## Rollback / undo
 
@@ -66,7 +66,7 @@ Confirm the expected worktree exists and tmux session switching works.
 
 ## Related
 
-- [Session picker](../tmux/session-picker.md)
-- [GitHub picker](../tmux/github-picker.md)
+- [Session picker](../herdr/session-picker.md)
+- [GitHub picker](../herdr/github-picker.md)
 - [Git config](git-config.md)
 - [Identity and keys](identity-and-keys.md)

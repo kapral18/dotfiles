@@ -6,9 +6,9 @@ hide_table_of_contents: true
 
 # kapral18/dotfiles
 
-These docs cover a macOS development environment built around Fish, tmux, Neovim, and CLI assistants. Use them to install the setup, learn its workflow, or adapt individual pieces.
+These docs cover a macOS development environment built around Fish, herdr, Neovim, and CLI assistants. Use them to install the setup, learn its workflow, or adapt individual pieces.
 
-Neovim and assistants run in neighboring tmux panes. Popups hold pickers and other temporary tools.
+Neovim and assistants run in neighboring herdr panes. Popups hold pickers and other temporary tools.
 
 ## Where to start
 
@@ -22,11 +22,11 @@ Neovim and assistants run in neighboring tmux panes. Popups hold pickers and oth
 
 ## Visual map
 
-| Surface                                                     | What it shows                                               |
-| ----------------------------------------------------------- | ----------------------------------------------------------- |
-| [Tmux](../topics/workflow/tmux/index.md)                    | Session layout, command palette, URL/session/GitHub popups  |
-| [Session picker](../topics/workflow/tmux/session-picker.md) | Sessions, worktrees, directories, dirty/PR/review/CI badges |
-| [Neovim](../topics/editor/neovim/index.md)                  | Inline editor workflow and `vim.pack` dashboard             |
+| Surface                                                      | What it shows                                               |
+| ------------------------------------------------------------ | ----------------------------------------------------------- |
+| [herdr](../topics/workflow/herdr/index.md)                   | Workspaces, command palette, URL/session/GitHub popups      |
+| [Session picker](../topics/workflow/herdr/session-picker.md) | Sessions, worktrees, directories, dirty/PR/review/CI badges |
+| [Neovim](../topics/editor/neovim/index.md)                   | Inline editor workflow and `vim.pack` dashboard             |
 
 ## How these docs are organised
 

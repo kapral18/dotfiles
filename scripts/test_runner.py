@@ -5,8 +5,9 @@ Each ``test_*.py`` file runs in its own subprocess (one per file, N workers),
 so files execute concurrently instead of in one serial ``unittest discover``
 process. ``make test`` calls this in place of ``unittest discover``.
 
-Each shard gets disposable working, home, XDG, temporary and tmux socket directories.
-Git and tmux selectors from the invoking shell are not passed to tests.
+Each shard gets disposable working, home, XDG and temporary directories; herdr's
+socket lives under XDG_CONFIG_HOME, so a shard can never reach the live herdr server.
+Git and herdr selectors from the invoking shell are not passed to tests.
 
 Usage:
     python3 scripts/test_runner.py            # run all shards, stream results
@@ -37,7 +38,6 @@ UNIT_SHARDED_FILES = frozenset(
         "tests/test_llama_cpp_lifecycle.py",
         "tests/test_plain_session_removal.py",
         "tests/test_session_github_cache.py",
-        "tests/test_tmux_handoff_lifecycle.py",
         "tests/test_wh.py",
         "tests/test_worktree_delete_boundaries.py",
     }
@@ -104,7 +104,6 @@ def run_shard(shard: Shard) -> tuple[Shard, int, float, str, str]:
             ("XDG_DATA_HOME", "data"),
             ("XDG_STATE_HOME", "state"),
             ("XDG_RUNTIME_DIR", "run"),
-            ("TMUX_TMPDIR", "tmux"),
         ):
             path = root / name
             path.mkdir(mode=0o700)

@@ -1,0 +1,141 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# shellcheck source=../lib/herdr_ws.sh
+. "$HOME/.config/herdr/scripts/pickers/lib/herdr_ws.sh"
+
+cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/herdr-pickers"
+ordered_file="${cache_dir}/pick_session_items_ordered.tsv"
+cache_file="${cache_dir}/pick_session_items.tsv"
+mutation_file="${cache_dir}/pick_session_mutations.tsv"
+pending_file="${cache_dir}/pick_session_pending.tsv"
+frecency_file="${cache_dir}/pick_session_frecency.tsv"
+items_cmd="$HOME/.config/herdr/scripts/pickers/session/items.sh"
+filter_cmd="$HOME/.config/herdr/scripts/pickers/session/filter.sh"
+ordered_update_cmd="$HOME/.config/herdr/scripts/pickers/session/ordered_cache_update.sh"
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+
+# PATH may prefer Homebrew coreutils gnubin/stat (GNU). Use GNU -c when it
+# works; otherwise fall back to BSD /usr/bin/stat -f. Bare `stat -f` under
+# gnubin treats -f as --file-system and writes a multi-line dump into meta.
+file_mtime_epoch() {
+  local f="$1"
+  if stat -c %Y "$f" > /dev/null 2>&1; then
+    stat -c %Y "$f"
+    return 0
+  fi
+  if [ -x /usr/bin/stat ]; then
+    /usr/bin/stat -f %m "$f"
+    return 0
+  fi
+  stat -f %m "$f"
+}
+
+file_size_bytes() {
+  local f="$1"
+  if stat -c %s "$f" > /dev/null 2>&1; then
+    stat -c %s "$f"
+    return 0
+  fi
+  if [ -x /usr/bin/stat ]; then
+    /usr/bin/stat -f %z "$f"
+    return 0
+  fi
+  stat -f %z "$f"
+}
+
+fixup_current_marker() {
+  local file="$1"
+  local cur=""
+  if [ -n "${HERDR_SOCKET_PATH:-}" ]; then
+    cur="$(hws_current)"
+  fi
+  if [ -z "$cur" ]; then
+    cat "$file"
+    return
+  fi
+
+  # Cache the "current-markered" ordered snapshot so repeated opens are instant.
+  # Recompute only when the active session changes or the ordered snapshot mtime changes.
+  local fixed_file="${cache_dir}/pick_session_items_ordered.current.tsv"
+  local meta_file="${fixed_file}.meta"
+  local src_mtime="" src_size=""
+  src_mtime="$(file_mtime_epoch "$file" 2> /dev/null || true)"
+  src_size="$(file_size_bytes "$file" 2> /dev/null || true)"
+  case "$src_mtime" in '' | *[!0-9]*) src_mtime="" ;; esac
+  case "$src_size" in '' | *[!0-9]*) src_size="" ;; esac
+
+  if [ -n "$src_mtime" ] && [ -n "$src_size" ] && [ -s "$fixed_file" ] && [ -s "$meta_file" ]; then
+    local meta_cur="" meta_mtime="" meta_size=""
+    meta_cur="$(awk 'NR==1{print; exit}' "$meta_file" 2> /dev/null || true)"
+    meta_mtime="$(awk 'NR==2{print; exit}' "$meta_file" 2> /dev/null || true)"
+    meta_size="$(awk 'NR==3{print; exit}' "$meta_file" 2> /dev/null || true)"
+    if [ "$meta_cur" = "$cur" ] && [ "$meta_mtime" = "$src_mtime" ] && [ "$meta_size" = "$src_size" ]; then
+      cat "$fixed_file"
+      return
+    fi
+  fi
+
+  local tmp_fixed="" tmp_meta=""
+  tmp_fixed="$(mktemp -t pick_session_items_ordered_current.XXXXXX 2> /dev/null || printf '%s\n' "/tmp/pick_session_items_ordered_current.$$")"
+  tmp_meta="$(mktemp -t pick_session_items_ordered_current_meta.XXXXXX 2> /dev/null || printf '%s\n' "/tmp/pick_session_items_ordered_current_meta.$$")"
+
+  if CURRENT="$cur" python3 -u "$script_dir/lib/fixup_current_marker.py" "$file" > "$tmp_fixed"; then
+    if [ -n "$src_mtime" ] && [ -n "$src_size" ]; then
+      printf '%s\n%s\n%s\n' "$cur" "$src_mtime" "$src_size" > "$tmp_meta" 2> /dev/null || true
+      mv -f "$tmp_meta" "$meta_file" 2> /dev/null || cat "$tmp_meta" > "$meta_file" 2> /dev/null || true
+    else
+      rm -f "$tmp_meta" "$meta_file" 2> /dev/null || true
+    fi
+    mv -f "$tmp_fixed" "$fixed_file" 2> /dev/null || cat "$tmp_fixed" > "$fixed_file" 2> /dev/null || true
+    cat "$fixed_file"
+  else
+    rm -f "$tmp_fixed" "$tmp_meta" 2> /dev/null || true
+    CURRENT="$cur" python3 -u "$script_dir/lib/fixup_current_marker.py" "$file"
+  fi
+}
+
+ordered_has_session_rows() {
+  local f="$1"
+  [ -f "$f" ] || return 1
+  awk -F $'\t' 'NF >= 2 && $2 == "session" { found=1; exit } END { exit(found?0:1) }' "$f" 2> /dev/null
+}
+
+# Fast path: precomputed ordered snapshot exists and is not invalidated by
+# recent mutations (ctrl-x kill / alt-x remove) or pending items.
+if [ -s "$ordered_file" ]; then
+  stale=0
+  # If the underlying cache changed, treat the ordered snapshot as stale so we
+  # don't reopen with an out-of-date list (e.g. after ctrl-r refresh).
+  [ -s "$cache_file" ] && [ "$cache_file" -nt "$ordered_file" ] && stale=1
+  [ -s "$mutation_file" ] && [ "$mutation_file" -nt "$ordered_file" ] && stale=1
+  [ -s "$pending_file" ] && [ "$pending_file" -nt "$ordered_file" ] && stale=1
+  # A session switch since the snapshot was built changes frecency ordering;
+  # treat the snapshot as stale so the next open reflects updated usage.
+  [ -s "$frecency_file" ] && [ "$frecency_file" -nt "$ordered_file" ] && stale=1
+  if [ "$stale" -eq 0 ]; then
+    fixup_current_marker "$ordered_file"
+    exit 0
+  fi
+fi
+
+# Ordered file missing or stale. Prefer filter.sh so the fallback open uses the
+# same grouped ordering as the snapshot path; otherwise a stale-snapshot open
+# would serve raw cache order (sessions injected at the top by pick_session.sh,
+# build_cache_refreshing_sessions_preserving_others merges, etc.) and the
+# subsequent snapshot-backed open would reshuffle the list.
+# Note: --force-order BYPASSES filter.sh's @pick_session_filter_passthrough_rows
+# escape (gated on force_order != 1 in both filter.sh:72 and filter_main.py:60),
+# so this fallback pays the full grouping cost regardless of cache size. The
+# tradeoff is intentional: consistency with the snapshot path wins over latency
+# during the brief stale window before the background snapshot regen lands.
+if [ -x "$filter_cmd" ]; then
+  [ -x "$ordered_update_cmd" ] && "$ordered_update_cmd" --quiet > /dev/null 2>&1 &
+  exec "$filter_cmd" --force-order
+fi
+
+if [ -x "$items_cmd" ]; then
+  [ -x "$ordered_update_cmd" ] && "$ordered_update_cmd" --quiet > /dev/null 2>&1 &
+  exec "$items_cmd"
+fi
+
+[ -f "$cache_file" ] && exec cat "$cache_file"

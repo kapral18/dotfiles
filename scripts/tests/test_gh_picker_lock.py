@@ -22,7 +22,7 @@ from unittest import mock
 
 from _test_support import REPO, modern_bash
 
-SCRIPT = REPO / "home/dot_config/exact_tmux/exact_scripts/pickers/github/executable_gh_items.sh"
+SCRIPT = REPO / "home/dot_config/herdr/exact_scripts/pickers/github/executable_gh_items.sh"
 
 
 def _find_dead_pid() -> int:
@@ -133,7 +133,7 @@ class TestLockLoopEndToEnd(unittest.TestCase):
         }
         env.pop("STUB_BLOCK", None)
 
-        cache_file = base / "cache" / "tmux" / "gh_picker.tsv"
+        cache_file = base / "cache" / "herdr-pickers" / "gh_picker.tsv"
         lock_dir = Path(f"{cache_file}.fetch.lock")
         return script_copy, env, counter_file, cache_file, lock_dir
 
@@ -145,7 +145,7 @@ class TestLockLoopEndToEnd(unittest.TestCase):
             with self.subTest(shell=shell), tempfile.TemporaryDirectory() as tmp:
                 base = Path(tmp)
                 script, env, counter, cache_file, lock_dir = self._make_env(base)
-                (base / "cache" / "tmux").mkdir(parents=True)
+                (base / "cache" / "herdr-pickers").mkdir(parents=True)
                 lock_dir.mkdir()
                 (lock_dir / "pid").write_text(f"{_find_dead_pid()}\n")
 
@@ -246,7 +246,7 @@ class TestLockLoopEndToEnd(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
             script, env, counter, cache_file, lock_dir = self._make_env(base)
-            (base / "cache" / "tmux").mkdir(parents=True)
+            (base / "cache" / "herdr-pickers").mkdir(parents=True)
             lock_dir.mkdir()
             past = time.time() - 3600
             os.utime(lock_dir, (past, past))
@@ -332,7 +332,7 @@ class TestLockLoopEndToEnd(unittest.TestCase):
             base = Path(tmp)
             script, env, counter, cache_file, lock_dir = self._make_env(base)
 
-            (base / "cache" / "tmux").mkdir(parents=True)
+            (base / "cache" / "herdr-pickers").mkdir(parents=True)
             cache_file.write_text("preexisting_row\n")
 
             # Simulate the tiny window between mkdir and pid publication:

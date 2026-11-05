@@ -16,7 +16,7 @@ src="$source_dir/dot_claude/settings.json"
 chezmoi_install_if_changed "$src" "$HOME/.claude/settings.json"
 chezmoi_record_artifact --id claude-settings \
   --producer 07-merge-claude-code-settings \
-  --target "$HOME/.claude/settings.json" --ownership-adapter whole-file \
+  --target "$HOME/.claude/settings.json" --ownership-adapter json-declared --baseline "$src" \
   --input "$src" \
   --transform "$source_dir/../scripts/chezmoi_lib.sh" \
   --transform "$source_dir/.chezmoiscripts/run_onchange_after_07-merge-claude-code-settings.sh.tmpl" \

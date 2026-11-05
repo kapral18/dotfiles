@@ -33,7 +33,7 @@ test('passes unsupported shell syntax without inspecting nested commands', async
     'pass show work/token | head -1',
     'echo "$(gh auth token)"',
     'env pass show work/token',
-    'true; tmux kill-server',
+    'true; herdr server stop',
     "bash -c 'pass show work/token'",
     'cat <<EOF\n$(pass show work/token)\nEOF',
   ]) {
@@ -44,12 +44,12 @@ test('passes unsupported shell syntax without inspecting nested commands', async
 test('records only fixed provider IDs for Bash refusals', async ($, on) => {
   const argv = engine(on)
   expect(await denied($.tool.call(bash('pass show private/fixture-token')))).toBeDefined()
-  expect(await denied($.tool.call(bash('tmux kill-server private-fixture')))).toBeDefined()
-  expect(await denied($.tool.call(bash('tmux send-keys private-fixture')))).toBeDefined()
+  expect(await denied($.tool.call(bash('herdr server stop')))).toBeDefined()
+  expect(await denied($.tool.call(bash('herdr pane close w1:p2')))).toBeDefined()
   expect(argv.filter(args => args[0] === ',task')).toEqual([
     [',task', 'guard', 'log', 'sop-guard:secret', '--harness', 'claude', '--session', 's1', '--detail', 'pass'],
-    [',task', 'guard', 'log', 'sop-guard:tmux-kill-server', '--harness', 'claude', '--session', 's1', '--detail', 'tmux'],
-    [',task', 'guard', 'log', 'sop-guard:tmux-default-server', '--harness', 'claude', '--session', 's1', '--detail', 'tmux'],
+    [',task', 'guard', 'log', 'sop-guard:herdr-server-stop', '--harness', 'claude', '--session', 's1', '--detail', 'herdr'],
+    [',task', 'guard', 'log', 'sop-guard:herdr-default-session', '--harness', 'claude', '--session', 's1', '--detail', 'herdr'],
   ])
 })
 
@@ -140,7 +140,7 @@ test('keeps quoted command text as data and excludes environment-file templates'
     String.raw`printf %s \$\(pass\ show\ work/token\)`,
     'cat .env.example',
     'cat .envrc',
-    'tmux display-message "tmux kill-server"',
+    'herdr notification show "herdr server stop"',
   ]) {
     expect(await denied($.tool.call(bash(command))), command).toBeUndefined()
   }
@@ -159,24 +159,26 @@ test('keeps secret-by-reference workflows available', async ($, on) => {
   }
 })
 
-test('refuses direct default-server kill-server every time and passes literal isolation', async ($, on) => {
+test('refuses default-session stop every time and passes named-session isolation', async ($, on) => {
   engine(on)
-  expect(await denied($.tool.call(bash('tmux kill-server')))).toMatch(/never run bare tmux kill-server/)
-  expect(await denied($.tool.call(bash('tmux kill-server')))).toMatch(/kill-server/)
-  expect(await denied($.tool.call(bash('tmux -L probe kill-server')))).toBeUndefined()
-  expect(await denied($.tool.call(bash('tmux -S /tmp/probe.sock kill-server')))).toBeUndefined()
-  expect(await denied($.tool.call(bash('tmux -L probe run-shell "tmux kill-server"')))).toBeUndefined()
+  for (const command of ['herdr server stop', 'herdr --session default server stop', 'herdr session stop default', 'herdr session stop --json default', 'herdr session delete -- default']) {
+    expect(await denied($.tool.call(bash(command))), command).toMatch(/never stop the default herdr session/)
+  }
+  expect(await denied($.tool.call(bash('herdr server stop')))).toMatch(/server stop/)
+  for (const command of ['herdr --session probe server stop', 'herdr --session=probe server stop', 'herdr server stop --session probe']) {
+    expect(await denied($.tool.call(bash(command))), command).toBeUndefined()
+  }
 })
 
-test('reminds once per default-server mutation and resets at session end', async ($, on) => {
+test('reminds once per default-session teardown and resets at session end', async ($, on) => {
   engine(on)
   on('session.end', () => ({ sessionId: 's1' }))
-  expect(await denied($.tool.call(bash('tmux send-keys -t 1 ls Enter')))).toMatch(/send-keys without -S or -L/)
-  expect(await denied($.tool.call(bash('tmux send-keys -t 1 ls Enter')))).toBeUndefined()
-  expect(await denied($.tool.call(bash('tmux -f /tmp/tmux.conf source-file fixture')))).toMatch(/source-file/)
-  expect(await denied($.tool.call(bash('tmux list-panes -a')))).toBeUndefined()
+  expect(await denied($.tool.call(bash('herdr workspace close w2')))).toMatch(/workspace close without --session/)
+  expect(await denied($.tool.call(bash('herdr workspace close w2')))).toBeUndefined()
+  expect(await denied($.tool.call(bash('herdr pane run w1:p1 ls')))).toBeUndefined()
+  expect(await denied($.tool.call(bash('herdr pane list')))).toBeUndefined()
   await $.session.end({ reason: 'clear', sessionId: 's1', resume: { id: 's1' } })
-  expect(await denied($.tool.call(bash('tmux send-keys -t 1 ls Enter')))).toMatch(/send-keys without -S or -L/)
+  expect(await denied($.tool.call(bash('herdr workspace close w2')))).toMatch(/workspace close without --session/)
 })
 
 test('refuses structured writes to chezmoi targets and names their source', async ($, on) => {

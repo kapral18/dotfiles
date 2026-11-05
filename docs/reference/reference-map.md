@@ -62,11 +62,11 @@ Each registry has a declarative list plus the hook that converges it. See [Packa
 
 ## Git
 
-| Component                     | Source path                                                                                                                                                              |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Git main config template      | [`home/private_readonly_dot_gitconfig.tmpl`](../../home/private_readonly_dot_gitconfig.tmpl)                                                                             |
-| Allowed signers (SSH signing) | [`home/private_dot_ssh/private_executable_allowed_signers.tmpl`](../../home/private_dot_ssh/private_executable_allowed_signers.tmpl)                                     |
-| gh picker config              | [`home/dot_config/exact_tmux/exact_scripts/pickers/github/readonly_gh-picker.yml`](../../home/dot_config/exact_tmux/exact_scripts/pickers/github/readonly_gh-picker.yml) |
+| Component                     | Source path                                                                                                                                                    |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Git main config template      | [`home/private_readonly_dot_gitconfig.tmpl`](../../home/private_readonly_dot_gitconfig.tmpl)                                                                   |
+| Allowed signers (SSH signing) | [`home/private_dot_ssh/private_executable_allowed_signers.tmpl`](../../home/private_dot_ssh/private_executable_allowed_signers.tmpl)                           |
+| gh picker config              | [`home/dot_config/herdr/exact_scripts/pickers/github/readonly_gh-picker.yml`](../../home/dot_config/herdr/exact_scripts/pickers/github/readonly_gh-picker.yml) |
 
 ## Identity and keys
 
@@ -86,7 +86,7 @@ Each registry has a declarative list plus the hook that converges it. See [Packa
 
 | Component       | Source path                                                                                            |
 | --------------- | ------------------------------------------------------------------------------------------------------ |
-| tmux            | [`home/dot_config/exact_tmux/readonly_tmux.conf`](../../home/dot_config/exact_tmux/readonly_tmux.conf) |
+| herdr           | [`home/dot_config/herdr/readonly_config.toml`](../../home/dot_config/herdr/readonly_config.toml)       |
 | Ghostty         | [`home/dot_config/exact_ghostty/readonly_config`](../../home/dot_config/exact_ghostty/readonly_config) |
 | bat             | [`home/dot_config/exact_bat/readonly_config`](../../home/dot_config/exact_bat/readonly_config)         |
 | Yazi (file mgr) | [`home/dot_config/yazi/`](../../home/dot_config/yazi/)                                                 |
@@ -146,11 +146,12 @@ Helper scripts called by hooks and commands (stdlib-only by convention).
 
 ## Maintenance / cleanup hooks
 
-Idempotent housekeeping that removes orphaned generated state on apply.
+Idempotent post-apply hooks: housekeeping that removes orphaned generated state, and herdr plugin and integration installs.
 
-| Hook                                                                                                                                                              | Purpose                                    |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
-| [`run_onchange_after_08-cleanup-orphaned-tmux-pick_session.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_08-cleanup-orphaned-tmux-pick_session.sh.tmpl) | Remove stale tmux `pick_session` artifacts |
+| Hook                                                                                                                              | Purpose                                              |
+| --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| [`run_onchange_after_08-link-herdr-plugins.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_08-link-herdr-plugins.sh.tmpl) | Link the local herdr plugins                         |
+| [`run_after_10-install-herdr-integrations.sh`](../../home/.chezmoiscripts/run_after_10-install-herdr-integrations.sh)             | Install herdr's agent integrations after every apply |
 
 ## Formatting
 

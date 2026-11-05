@@ -13,7 +13,7 @@ bootstrap when the repository is missing locally.
 
 Options:
   --repo-path <path>   Optional repo path hint (for gh-dash repoPaths mapping)
-  --focus              Focus the tmux session after checkout
+  --focus              Focus the herdr workspace after checkout
   --quiet              Pass quiet mode to ,w commands
   --branch <name>      Issue mode only: branch base name passed to ,w issue -b
   --create-bg          PR mode only: run checkout in background (no focus)
@@ -36,7 +36,7 @@ expand_tilde() {
   local p="$1"
   case "$p" in
     "~") printf '%s\n' "$HOME" ;;
-    "~/"*) printf '%s\n' "$HOME/${p#~/}" ;;
+    "~/"*) printf '%s\n' "$HOME/${p#\~/}" ;;
     *) printf '%s\n' "$p" ;;
   esac
 }
@@ -255,9 +255,9 @@ case "$kind" in
       mkdir -p "$log_dir"
       log="${log_dir}/w_prs_${number}.log"
       if [ "$quiet_mode" -eq 1 ]; then
-        nohup ,w prs -q "$number" > "$log" 2>&1 &
+        "$HOME/lib/shared/detach.sh" ,w prs -q "$number" < /dev/null > "$log" 2>&1 &
       else
-        nohup ,w prs "$number" > "$log" 2>&1 &
+        "$HOME/lib/shared/detach.sh" ,w prs "$number" < /dev/null > "$log" 2>&1 &
       fi
       exit 0
     fi

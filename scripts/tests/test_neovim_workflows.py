@@ -64,7 +64,7 @@ class NeovimWorkflowTests(unittest.TestCase):
 
         from _test_support import modern_bash
 
-        source = REPO / "home/dot_config/exact_tmux/exact_scripts/pickers/github"
+        source = REPO / "home/dot_config/herdr/exact_scripts/pickers/github"
         with tempfile.TemporaryDirectory(prefix="batch-terminal-") as temporary:
             directory = Path(temporary)
             github = directory / "github"
@@ -72,7 +72,7 @@ class NeovimWorkflowTests(unittest.TestCase):
             script = github / "gh_batch_worktree.sh"
             shutil.copyfile(source / "executable_gh_batch_worktree.sh", script)
             shutil.copyfile(source / "readonly_gh_batch_branch_prompt.txt", github / "gh_batch_branch_prompt.txt")
-            selected_targets = directory / "home/.config/tmux/scripts/pickers/github/lib/gh_selected_targets.py"
+            selected_targets = directory / "home/.config/herdr/scripts/pickers/github/lib/gh_selected_targets.py"
             selected_targets.parent.mkdir(parents=True)
             shutil.copyfile(source / "lib/gh_selected_targets.py", selected_targets)
             binary = directory / "bin"
@@ -80,13 +80,16 @@ class NeovimWorkflowTests(unittest.TestCase):
             (binary / "python3").symlink_to(sys.executable)
             stubs = {
                 "gh": "#!/bin/sh\nprintf 'Fixture issue\\n'\n",
-                "nohup": "#!/bin/sh\nexit 0\n",
                 "nvim": '#!/bin/sh\nwhile [ "$#" -gt 0 ]; do\nif [ "$1" = -c ]; then shift; printf \'%s\\n\' "$1" >> "$CAPTURE_LUA"; fi\nshift\ndone\n',
             }
             for name, content in stubs.items():
                 target = binary / name
                 target.write_text(content)
                 target.chmod(0o700)
+            detach = directory / "home/lib/shared/detach.sh"
+            detach.parent.mkdir(parents=True)
+            detach.write_text("#!/bin/sh\nexit 0\n")
+            detach.chmod(0o700)
             capture = directory / "editor-lua"
             selection = directory / "selection.tsv"
             selection.write_text("Issue42\tissue\towner/repo\t42\thttps://example.test/issues/42\n")

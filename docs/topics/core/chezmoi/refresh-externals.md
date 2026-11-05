@@ -4,7 +4,7 @@ sidebar_position: 2
 
 # Refreshing Externals
 
-This setup uses `chezmoi` externals for a few third-party assets (TPM, bat themes, Hammerspoon spoons, lowfi tracklists).
+This setup uses `chezmoi` externals for a few third-party assets (bat themes, Hammerspoon spoons, lowfi tracklists).
 
 Externals are defined in:
 

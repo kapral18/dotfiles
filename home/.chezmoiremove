@@ -14,17 +14,6 @@ lib/,palantir
 .config/fish/completions/,ralph.fish
 .config/fish/completions/,palantir.fish
 .config/fish/completions/,handoff.fish
-.config/tmux/conf.d/44-ralph.conf
-.config/tmux/conf.d/4x-fleet.conf
-.config/tmux/conf.d/45-palantir.conf
-.config/tmux/palette.d/ralph.tsv
-.config/tmux/palette.d/palantir.tsv
-.config/tmux/scripts/pickers/lib/handoff_to_ralph_pin.sh
-.config/tmux/scripts/pickers/lib/handoff_to_ralph_apply.sh
-.config/tmux/scripts/pickers/lib/handoff_to_palantir_pin.sh
-.config/tmux/scripts/pickers/lib/handoff_to_palantir_apply.sh
-.config/tmux/scripts/pickers/github/lib/gh_ralph_handoff_context.py
-.config/tmux/scripts/pickers/github/lib/gh_palantir_handoff_context.py
 .agents/skills/fleet-afk
 .agents/skills/fleet-yolo
 .agents/skills/ralph
@@ -109,7 +98,6 @@ lib/,mcp-token
 .agents/hooks
 .agents/references
 .codex/agents
-.codex/hooks.json
 .config/ai
 .gemini/config/hooks.json
 .config/fish/completions/,agent-memory.fish
@@ -132,11 +120,10 @@ work/.gitconfig
 .ssh/secondary_public_key.pub
 .config/fish/completions/,kbn-pr-audit.fish
 .config/fish/completions/,kbn-stack.fish
-.config/tmux/scripts/pickers/github/gh-picker-home.yml
-.config/tmux/scripts/pickers/github/gh-picker-work.yml
-.config/tmux/scripts/pickers/github/gh_dashboard.sh
-.config/tmux/scripts/pickers/github/lib/gh_picker_toggle.sh
 # Retired gitui config
 .config/gitui
 # dug moved from a custom release binary to Homebrew; the old copy shadows it in PATH
 .local/bin/dug
+.config/tmux
+.config/fish/completions/,tmux-lowfi.fish
+.config/fish/completions/,tmux-run-all.fish

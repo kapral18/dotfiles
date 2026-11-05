@@ -63,7 +63,7 @@ class TestArtifactCommand(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "cache with spaces"
-            contexts = [root / "sessions" / "tmux" / name for name in ("one", "two")]
+            contexts = [root / "sessions" / "w1" / name for name in ("one", "two")]
             for index, sdir in enumerate(contexts):
                 (sdir / "pollers").mkdir(parents=True)
                 (sdir / "server.json").write_text(json.dumps({"pid": 100 + index, "process_started_at": "owned"}))
@@ -123,8 +123,8 @@ class TestArtifactCommand(unittest.TestCase):
                 tempfile.TemporaryDirectory() as tmp,
             ):
                 root = Path(tmp)
-                owned = root / "sessions" / "tmux" / "a-owned"
-                uncertain = root / "sessions" / "tmux" / "z-uncertain"
+                owned = root / "sessions" / "w1" / "a-owned"
+                uncertain = root / "sessions" / "w1" / "z-uncertain"
                 owned.mkdir(parents=True)
                 uncertain.mkdir()
                 (owned / "server.json").write_text(json.dumps({"pid": 100, "process_started_at": "owned"}))
@@ -175,7 +175,7 @@ class TestArtifactCommand(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            sdir = root / "sessions" / "tmux" / "context"
+            sdir = root / "sessions" / "w1" / "context"
             (sdir / "pollers").mkdir(parents=True)
             (sdir / "server.json").write_text(json.dumps({"pid": 100}))
             (sdir / "pollers" / "demo.html.json").write_text(json.dumps({"pid": 200, "artifact": "demo.html"}))
@@ -627,7 +627,7 @@ class TestArtifactLifecycle(unittest.TestCase):
             return child.stdout.readline().decode().strip()
 
         with tempfile.TemporaryDirectory() as tmp:
-            env = {**os.environ, "XDG_CACHE_HOME": tmp, "TMUX": ""}
+            env = {**os.environ, "XDG_CACHE_HOME": tmp, "HERDR_WORKSPACE_ID": ""}
             try:
                 for role, name in (("first", "demo name"), ("second", "demo-name")):
                     child = subprocess.Popen(
@@ -669,7 +669,7 @@ class TestArtifactLifecycle(unittest.TestCase):
         import argparse
 
         with tempfile.TemporaryDirectory() as tmp:
-            sdir = Path(tmp) / "agent-artifacts" / "sessions" / "tmux" / "context"
+            sdir = Path(tmp) / "agent-artifacts" / "sessions" / "w1" / "context"
             sdir.mkdir(parents=True)
             state_path = sdir / "server.json"
             state_path.write_text(json.dumps({"pid": os.getpid()}))
@@ -780,7 +780,7 @@ class TestArtifactLifecycle(unittest.TestCase):
                 errors.append(error)
 
         with tempfile.TemporaryDirectory() as tmp:
-            sdir = Path(tmp) / "agent-artifacts" / "sessions" / "tmux" / "context"
+            sdir = Path(tmp) / "agent-artifacts" / "sessions" / "w1" / "context"
             sdir.mkdir(parents=True)
             with (
                 mock.patch.dict(os.environ, {"XDG_CACHE_HOME": tmp}),
@@ -864,7 +864,7 @@ class TestArtifactLifecycle(unittest.TestCase):
 
         with (
             tempfile.TemporaryDirectory() as tmp,
-            mock.patch.dict(os.environ, {"XDG_CACHE_HOME": tmp, "TMUX": ""}),
+            mock.patch.dict(os.environ, {"XDG_CACHE_HOME": tmp, "HERDR_WORKSPACE_ID": ""}),
             mock.patch.object(artifact_feedback.os, "getpid", side_effect=getpid),
             mock.patch.object(artifact_feedback.os, "kill", side_effect=kill),
             mock.patch.object(artifact_feedback, "process_started_at", side_effect=lambda pid: f"start-{pid}"),
@@ -943,7 +943,7 @@ class TestArtifactLifecycle(unittest.TestCase):
                 alive.discard(pid)
 
         with tempfile.TemporaryDirectory() as tmp:
-            sdir = Path(tmp) / "agent-artifacts" / "sessions" / "tmux" / "context"
+            sdir = Path(tmp) / "agent-artifacts" / "sessions" / "w1" / "context"
             with (
                 mock.patch.dict(os.environ, {"XDG_CACHE_HOME": tmp}),
                 mock.patch.object(artifact_server.os, "getpid", side_effect=getpid),

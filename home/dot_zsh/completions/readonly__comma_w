@@ -95,14 +95,14 @@ _comma_w() {
         prs)
           _arguments \
             '(-q --quiet)'{-q,--quiet}'[Suppress informational output]' \
-            '--focus[Switch/attach to tmux session]' \
+            '--focus[Focus herdr workspace]' \
             '--awaiting[Awaiting my/team review (autocomplete: last 7 days)]' \
             '*:pr number or search term:_comma_w_prs_candidates'
           ;;
         issue)
           _arguments \
             '(-q --quiet)'{-q,--quiet}'[Suppress informational output]' \
-            '--focus[Switch/attach to tmux session]' \
+            '--focus[Focus herdr workspace]' \
             '(-b --branch)'{-b,--branch}'[Use explicit branch name]:branch name:_comma_w_branches' \
             '1:issue number or url:_comma_w_issues_candidates'
           ;;
@@ -130,7 +130,7 @@ _comma_w() {
         mv)
           _arguments \
             '(-q --quiet)'{-q,--quiet}'[Suppress informational output]' \
-            '--focus[Switch/attach to tmux session]' \
+            '--focus[Focus herdr workspace]' \
             '--keep-path[Do not move directory]' \
             '--path[Override destination path]:path:_files -/' \
             '1:from branch:_comma_w_worktree_branches' \
@@ -140,7 +140,7 @@ _comma_w() {
           _arguments \
             '(-q --quiet)'{-q,--quiet}'[Suppress informational output]' \
             '--apply[Apply pruning actions]' \
-            '--all[Prune tmux sessions across repos]'
+            '--all[Prune herdr workspaces across repos]'
           ;;
         doctor)
           _arguments

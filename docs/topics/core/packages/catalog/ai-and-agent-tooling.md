@@ -23,15 +23,15 @@ The AI package set spans casks, Homebrew formulae, pnpm globals, uv tools, custo
 
 ## Agent extensions and support packages
 
-| Tool                                                                        | Source                      | Why it is here                                                |
-| --------------------------------------------------------------------------- | --------------------------- | ------------------------------------------------------------- |
-| [`pi-subagents`](https://github.com/nicobailon/pi-subagents)                | `pnpm`                      | subagent delegation extension for Pi child contexts           |
-| [`tuicr`](https://github.com/agavra/tuicr)                                  | `brew`                      | terminal review UI used around agent diff review flows        |
-| [`lgtm`](https://github.com/kunkka19xx/lgtm)                                | `brew` tap `kunkka19xx/tap` | live terminal diff reviewer that runs beside an agent in tmux |
-| [`llmfit`](https://github.com/AlexsJones/llmfit)                            | `brew`                      | AI/model utility in the local toolbox                         |
-| [`k-letsfg`](https://github.com/LetsFG/LetsFG)                              | `uv`                        | local flight search CLI exposed through the `k-letsfg` skill  |
-| [`lexy`](https://github.com/antoniorodr/lexy)                               | `uv git+`                   | data/RAG pipeline tool used as a local AI utility             |
-| [`terminaltexteffects`](https://github.com/ChrisBuilds/terminaltexteffects) | `uv`                        | terminal text effects for generated/presentation output       |
+| Tool                                                                        | Source                      | Why it is here                                                 |
+| --------------------------------------------------------------------------- | --------------------------- | -------------------------------------------------------------- |
+| [`pi-subagents`](https://github.com/nicobailon/pi-subagents)                | `pnpm`                      | subagent delegation extension for Pi child contexts            |
+| [`tuicr`](https://github.com/agavra/tuicr)                                  | `brew`                      | terminal review UI used around agent diff review flows         |
+| [`lgtm`](https://github.com/kunkka19xx/lgtm)                                | `brew` tap `kunkka19xx/tap` | live terminal diff reviewer that runs beside an agent in herdr |
+| [`llmfit`](https://github.com/AlexsJones/llmfit)                            | `brew`                      | AI/model utility in the local toolbox                          |
+| [`k-letsfg`](https://github.com/LetsFG/LetsFG)                              | `uv`                        | local flight search CLI exposed through the `k-letsfg` skill   |
+| [`lexy`](https://github.com/antoniorodr/lexy)                               | `uv git+`                   | data/RAG pipeline tool used as a local AI utility              |
+| [`terminaltexteffects`](https://github.com/ChrisBuilds/terminaltexteffects) | `uv`                        | terminal text effects for generated/presentation output        |
 
 ## Local inference and model assets
 

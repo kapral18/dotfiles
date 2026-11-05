@@ -26,7 +26,7 @@ This repo ships workflow-specific Lua plugins under:
 - Loaders: [`plugins_local/`](../../../../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local)
 - Load list: [`core/init.lua`](../../../../../home/dot_config/exact_nvim/exact_lua/exact_core/readonly_init.lua)
 
-They cover testing, commit summarization, ownership/CODEOWNERS search, TypeScript export moves, tmux bridge, source/test toggling, code screenshots, quickfix, and window ergonomics.
+They cover testing, commit summarization, ownership/CODEOWNERS search, TypeScript export moves, pane bridge, source/test toggling, code screenshots, quickfix, and window ergonomics.
 
 Details: [Neovim local plugins](../local-plugins/index.md).
 

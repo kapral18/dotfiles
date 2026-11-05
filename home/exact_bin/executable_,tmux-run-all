@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-set -euo pipefail
-
-exec bash "$HOME/lib/,tmux-run-all/main.sh" "$@"

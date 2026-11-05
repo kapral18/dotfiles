@@ -3,7 +3,7 @@ name: k-worktrees
 description: "Use for worktrees with ,w or ,gh-worktree: create, switch, open, list, prune, remove, PR checkout."
 ---
 
-# ,w Worktree Skill (Worktrees + tmux)
+# ,w Worktree Skill (Worktrees + herdr workspaces)
 
 Primary goal:
 
@@ -31,11 +31,11 @@ Non-negotiables:
 
 - do not create/switch worktrees unless the user explicitly asked for it
 - prefer `,w` subcommands over `git worktree`
-- do not auto-focus/attach tmux sessions unless the user asked to focus/attach
+- do not focus herdr workspaces unless the user asked to focus them
 
 Common patterns:
 
-- Cross-repo GitHub entrypoint (shared with tmux/gh-dash flows):
+- Cross-repo GitHub entrypoint (shared with picker/gh-dash flows):
   - `,gh-worktree pr <owner/repo> <pr_number> [--focus] [--quiet]`
   - `,gh-worktree issue <owner/repo> <issue_number> [--focus] [--quiet] [--branch <name>]`
   - in non-interactive agent contexts, use `,gh-worktree issue ... --branch <name>` for GitHub issues by default
@@ -57,7 +57,7 @@ Common patterns:
 - List worktrees:
   - `,w ls`
 
-- Switch between worktree tmux sessions:
+- Switch between worktree workspaces:
   - `,w switch [query...]`
 
 - Focus an existing worktree session by branch/path:
@@ -71,10 +71,10 @@ Common patterns:
 Examples:
 
 ```bash
-# Create a PR worktree (no tmux focus by default):
+# Create a PR worktree (no workspace focus by default):
 ,w prs 252693
 
-# Create and focus the tmux session (only when asked):
+# Create and focus the herdr workspace (only when asked):
 ,w prs --focus 252693
 
 # "Current PR" -> worktree:
@@ -92,5 +92,5 @@ issue="$(,gh-issuew --number)"
 
 Output:
 
-- Report the resulting worktree path/branch and whether tmux focus changed.
+- Report the resulting worktree path/branch and whether workspace focus changed.
 - For prune/remove flows, state exactly what was removed.

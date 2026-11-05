@@ -6,7 +6,7 @@ sidebar_position: 5
 
 An unrestricted `chezmoi apply` applies the configured files and install hooks. You can keep using your IDE while learning the installed terminal tools one at a time.
 
-If you use VSCode or JetBrains, start with Git and Fish in the integrated terminal, then try tmux and Neovim.
+If you use VSCode or JetBrains, start with Git and Fish in the integrated terminal, then try herdr and Neovim.
 
 ## 1. Git and identity
 
@@ -35,25 +35,25 @@ Where to read:
 
 - [Shell: Fish](../topics/workflow/shell-fish.md)
 
-## 3. Tmux and CLI tools
+## 3. herdr and CLI tools
 
-Move out of the IDE's integrated terminal and into a dedicated terminal app (like Ghostty, Alacritty, or iTerm) running `tmux`.
+Move out of the IDE's integrated terminal and into a dedicated terminal app (like Ghostty, Alacritty, or iTerm) running `herdr`.
 
 What to focus on:
 
-- tmux sessions + keybindings
+- herdr workspaces + keybindings
 - Isolate work with git worktrees (`,w` commands)
 - custom CLI tools under `~/bin`
 
 Where to read:
 
 - [Terminals](../topics/workflow/terminals.md)
-- [Tmux](../topics/workflow/tmux/index.md)
+- [herdr](../topics/workflow/herdr/index.md)
 - [Custom commands](../topics/workflow/custom-commands/index.md)
 
 ## 4. Neovim (optional)
 
-Try Neovim in a tmux pane when you want to explore its editing workflow.
+Try Neovim in a herdr pane when you want to explore its editing workflow.
 
 What to focus on:
 

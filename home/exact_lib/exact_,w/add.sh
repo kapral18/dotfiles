@@ -132,7 +132,7 @@ elif [ $# -eq 1 ]; then
 fi
 
 parent_dir=$(_get_worktree_parent_dir)
-parent_name="$(_comma_w_tmux_parent_name_from_dir "$parent_dir")"
+parent_name="$(_comma_w_parent_name_from_dir "$parent_dir")"
 
 _comma_w_prune_stale_worktrees "$quiet_mode"
 
@@ -186,14 +186,14 @@ if [ "$is_base_branch_specified" -eq 0 ]; then
     if git show-ref --verify --quiet "refs/heads/$local_branch"; then
       info "Branch '$local_branch' already exists locally. Reusing it."
       git_worktree_add "$worktree_path" "$local_branch"
-      _add_worktree_tmux_session "$quiet_mode" "$parent_name" "$local_branch" "$worktree_path"
+      _add_worktree_workspace "$quiet_mode" "$parent_name" "$local_branch" "$worktree_path"
       print_local_worktree_message "$local_branch" "$worktree_path"
       if [[ "$local_branch" == *__* ]] && ! _comma_w_remote_is_first_party "$input_remote"; then
         _comma_w_configure_prefixed_branch_push_routing "$worktree_path" "$local_branch" "$input_remote" "$input_remote_branch" "$quiet_mode" || true
       fi
     else
       git_worktree_add "$worktree_path" -b "$local_branch" "${input_remote}/${input_remote_branch}"
-      _add_worktree_tmux_session "$quiet_mode" "$parent_name" "$local_branch" "$worktree_path"
+      _add_worktree_workspace "$quiet_mode" "$parent_name" "$local_branch" "$worktree_path"
       _print_created_worktree_message "$quiet_mode" "$local_branch" "$worktree_path" "${input_remote}/${input_remote_branch}"
 
       if [[ "$local_branch" != *__* ]]; then
@@ -215,19 +215,19 @@ if [ "$is_base_branch_specified" -eq 0 ]; then
     if git show-ref --verify --quiet "refs/heads/$branch_name"; then
       info "Branch '$branch_name' already exists locally. Reusing it."
       git_worktree_add "$worktree_path" "$branch_name"
-      _add_worktree_tmux_session "$quiet_mode" "$parent_name" "$branch_name" "$worktree_path"
+      _add_worktree_workspace "$quiet_mode" "$parent_name" "$branch_name" "$worktree_path"
       print_local_worktree_message "$branch_name" "$worktree_path"
     elif git show-ref --verify --quiet "refs/remotes/origin/$branch_name"; then
       git_worktree_add "$worktree_path" -b "$branch_name" "origin/$branch_name"
-      _add_worktree_tmux_session "$quiet_mode" "$parent_name" "$branch_name" "$worktree_path"
+      _add_worktree_workspace "$quiet_mode" "$parent_name" "$branch_name" "$worktree_path"
       _print_created_worktree_message "$quiet_mode" "$branch_name" "$worktree_path" "origin/$branch_name"
     elif git show-ref --verify --quiet "refs/remotes/upstream/$branch_name"; then
       git_worktree_add "$worktree_path" -b "$branch_name" "upstream/$branch_name"
-      _add_worktree_tmux_session "$quiet_mode" "$parent_name" "$branch_name" "$worktree_path"
+      _add_worktree_workspace "$quiet_mode" "$parent_name" "$branch_name" "$worktree_path"
       _print_created_worktree_message "$quiet_mode" "$branch_name" "$worktree_path" "upstream/$branch_name"
     else
       git_worktree_add "$worktree_path" -b "$branch_name"
-      _add_worktree_tmux_session "$quiet_mode" "$parent_name" "$branch_name" "$worktree_path"
+      _add_worktree_workspace "$quiet_mode" "$parent_name" "$branch_name" "$worktree_path"
       _print_created_worktree_message "$quiet_mode" "$branch_name" "$worktree_path"
     fi
   fi
@@ -326,7 +326,7 @@ else
   fi
 
   git_worktree_add "$worktree_path" --no-track -b "$target_branch" "$base_ref"
-  _add_worktree_tmux_session "$quiet_mode" "$parent_name" "$target_branch" "$worktree_path"
+  _add_worktree_workspace "$quiet_mode" "$parent_name" "$target_branch" "$worktree_path"
   _print_created_worktree_message "$quiet_mode" "$target_branch" "$worktree_path" "$base_ref"
 
   if [[ "$target_branch" == *__* ]] && [ -n "$base_remote" ] && ! _comma_w_remote_is_first_party "$base_remote"; then

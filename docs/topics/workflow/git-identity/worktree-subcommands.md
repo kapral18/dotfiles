@@ -31,17 +31,17 @@ Detailed reference for the `,w` command family.
 ```
 
 - No arguments opens an interactive fzf multi-select picker.
-- `--focus` switches/attaches to the created worktree's tmux session.
+- `--focus` focuses the created worktree's herdr workspace.
 - `--awaiting` lists PRs awaiting your review; `COMMA_W_AWAITING_DAYS` tunes the lookback.
 - Contributor forks are added as remotes when needed.
 - Existing remotes are resolved through the shared worktree parser, which accepts `git@host:owner/repo`, `ssh://git@host/owner/repo`, and HTTP(S) URLs, with or without a `.git` suffix.
 - First-party PRs use plain branch names; third-party forks use `<remote>__<branch>` and write per-worktree push routing.
 - Upstream tracking prefers canonical refs (`origin/<branch>`, then `upstream/<branch>`).
-- The tmux session picker highlights PR-review worktree rows in standout magenta when the PR author is not your configured/authenticated GitHub login. If login cannot be resolved, review coloring is skipped rather than mislabeling.
+- The session picker highlights PR-review worktree rows in standout magenta when the PR author is not your configured/authenticated GitHub login. If login cannot be resolved, review coloring is skipped rather than mislabeling.
 
 Login resolution order:
 
-1. `PICK_SESSION_GITHUB_LOGIN` / `@pick_session_github_login`
+1. `PICK_SESSION_GITHUB_LOGIN`
 2. `GITHUB_USER`
 3. 7-day cached `gh api user`
 
@@ -58,7 +58,7 @@ Login resolution order:
 - Issue URLs must identify the current GitHub repository. A URL for another repository fails before pruning, creating a worktree, or updating issue metadata.
 - Prompts for a branch name when creating new work; branch is created as `<name>-<issue_number>`.
 - `-b` / `--branch` supplies the branch non-interactively.
-- `--focus` switches/attaches to the tmux session.
+- `--focus` focuses the herdr workspace.
 - Existing local branches with no unique commits relative to default branch are fast-forwarded before worktree creation.
 - If you already created a matching branch manually, entering that exact branch links issue metadata without renaming.
 
@@ -72,7 +72,7 @@ Login resolution order:
 ,w ls --sort path --no-header
 ```
 
-- Default table: `CUR`, `BRANCH`, `PATH`, `UPSTREAM`, `TMUX`, `STATE`.
+- Default table: `CUR`, `BRANCH`, `PATH`, `UPSTREAM`, `HERDR`, `STATE`.
 - `--long` adds ahead/behind columns.
 - `--dirty` computes dirty state, which can be slower in large repos.
 - `--porcelain` prints raw `git worktree list --porcelain`.
@@ -89,7 +89,7 @@ Login resolution order:
 
 - Opens an fzf picker over selectable worktrees.
 - Exact branch/path arguments switch directly without fzf.
-- Creates a tmux session for the worktree if one does not exist.
+- Creates a herdr workspace for the worktree if one does not exist.
 
 ## `open` — focus a worktree by name/path
 
@@ -98,7 +98,7 @@ Login resolution order:
 ,w open /path/to/worktree
 ```
 
-Accepts a branch name or absolute path, creates a tmux session if needed, and switches/attaches to it.
+Accepts a branch name or absolute path, creates a herdr workspace if needed, and focuses it.
 
 ## `mv` — move/rename a worktree
 
@@ -110,21 +110,21 @@ Accepts a branch name or absolute path, creates a tmux session if needed, and sw
 ```
 
 - Renames the branch and moves the worktree directory as a unit.
-- Updates tmux session name and zoxide entries.
+- Renames the herdr workspace (in place when the folder stays) and updates zoxide entries.
 - `--keep-path` renames only the branch.
 - `--path <dir>` overrides destination.
-- `--focus` switches to the resulting tmux session.
+- `--focus` focuses the resulting herdr workspace.
 
 ## `remove` — clean up worktrees
 
 ```bash
 ,w remove
 ,w remove --paths /path/to/wt1 /path/to/wt2
-,w remove --tmux-notify
+,w remove --notify
 ```
 
 - Interactive fzf multi-select by default.
-- Removes directory, deletes local branch, removes unused fork remotes, cleans empty parent dirs, purges from zoxide, and kills the tmux session.
+- Removes directory, deletes local branch, removes unused fork remotes, cleans empty parent dirs, purges from zoxide, and closes the herdr workspaces at that path.
 - Protects the repository's actual default branch.
 - Non-forced removal refuses registered submodules and populated submodule administration stores, including deinitialized stores. This also applies to clean, pushed submodules: use the existing `--force` override only when discarding their local repositories is intended.
 - Never offers or deletes the main worktree (the first `git worktree list` entry, including separate-git-dir clones), whatever branch it is on, even with `--force` or `--paths`.
@@ -132,7 +132,7 @@ Accepts a branch name or absolute path, creates a tmux session if needed, and sw
 - Bags leftover files in parents below the repository wrapper under `../.bag/worktree_remove/<wrapper>/<timestamp>/...`, preserving exact filenames, including embedded newlines. An occupied archive destination gets a unique sibling directory, preserving earlier payloads even when removals share a timestamp. Cleanup stops before any parent containing another repository or worktree at any depth, or if that parent cannot be fully inspected. Parents outside the wrapper are left in place.
 - `--paths` skips the picker and allows removing detached worktrees.
 - Root preflight requires every checkout HEAD and every local ref, including stashes and Git notes, to be reachable from remote-tracking refs. It does not retain arbitrary reflog-only or unreachable objects.
-- `--tmux-notify` shows progress via tmux messages.
+- `--notify` also shows progress as herdr notifications.
 
 ## `prune` — clean stale metadata
 
@@ -143,8 +143,8 @@ Accepts a branch name or absolute path, creates a tmux session if needed, and sw
 ```
 
 - Default is dry-run.
-- `--apply` runs `git worktree prune` and kills stale tmux sessions.
-- `--all` considers tmux sessions across all repos.
+- `--apply` runs `git worktree prune` and closes stale herdr workspaces.
+- `--all` considers herdr workspaces across all repos.
 
 ## `doctor` — check dependencies and state
 
@@ -152,4 +152,4 @@ Accepts a branch name or absolute path, creates a tmux session if needed, and sw
 ,w doctor
 ```
 
-Checks for `git`, `fzf`, `gh`, `tmux`, `zoxide`, and `bat`; reports stale worktree paths and stale tmux sessions; suggests `,w prune --apply` when issues are found.
+Checks for `git`, `fzf`, `gh`, `herdr`, `jq`, `zoxide`, and `bat`; reports stale worktree paths and stale herdr workspaces; suggests `,w prune --apply` when issues are found.

@@ -10,7 +10,7 @@ show_usage() {
   cat << EOF
 Usage: ,w open [-q|--quiet] <branch|path>
 
-Focus a worktree by switching/attaching to its tmux session.
+Focus a worktree by focusing (or creating) its herdr workspace.
 
 Options:
   -q, --quiet       Suppress informational output
@@ -52,7 +52,7 @@ fi
 target="$1"
 
 parent_dir=$(_get_worktree_parent_dir)
-parent_name="$(_comma_w_tmux_parent_name_from_dir "$parent_dir")"
+parent_name="$(_comma_w_parent_name_from_dir "$parent_dir")"
 
 find_branch_for_worktree_path() {
   local needle_path="$1"
@@ -107,10 +107,10 @@ else
   exit 1
 fi
 
-_add_worktree_tmux_session "$quiet_mode" "$parent_name" "$branch" "$worktree_path"
-session_name="$(_comma_w_tmux_session_name "$parent_name" "$branch")"
+_add_worktree_workspace "$quiet_mode" "$parent_name" "$branch" "$worktree_path"
+session_name="$(_comma_w_workspace_name "$parent_name" "$branch")"
 
-if ! _comma_w_focus_tmux_session "$quiet_mode" "$session_name" "$worktree_path"; then
+if ! _comma_w_focus_workspace "$quiet_mode" "$session_name" "$worktree_path"; then
   if [ "$quiet_mode" -eq 0 ]; then
     echo "$worktree_path"
   fi

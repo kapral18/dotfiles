@@ -5,10 +5,9 @@ import { base, literalInvocation } from './shell'
 const PASS_COMMANDS = new Set(['find', 'search', 'insert', 'add', 'edit', 'rm', 'remove', 'delete', 'mv', 'rename', 'cp', 'copy', 'git', 'init', 'help', 'version'])
 const PASS_OUTPUT_COMMANDS = new Set(['show', 'ls', 'list', 'otp', 'grep', 'generate'])
 const ENV_FILE = /^\.env(\.(?!(example|sample|template|dist)$)[\w-]+)*$/
-const TMUX_MUTATIONS = new Set([
-  'new-session', 'new', 'kill-session', 'source-file', 'source', 'set-option', 'set', 'run-shell', 'run',
-  'display-popup', 'popup', 'switch-client', 'switchc', 'attach-session', 'attach', 'a', 'at',
-  'detach-client', 'detach', 'send-keys', 'send',
+const HERDR_TEARDOWNS = new Set([
+  'session stop', 'session delete', 'workspace close', 'tab close', 'pane close', 'worktree remove',
+  'server reload-config', 'config reset-keys', 'plugin unlink', 'plugin uninstall', 'plugin disable',
 ])
 
 const passOutput = (args: string[]) => {
@@ -57,15 +56,20 @@ const secretProvider = (name: string, args: string[]): string | undefined => {
   return undefined
 }
 
-const tmuxSubcommand = (args: string[]) => {
-  let i = 0
-  for (; i < args.length && args[i]?.startsWith('-'); i++) {
+// herdr removes `--session <name>` from anywhere in argv; `default` names the
+// user's own session. Returns the command words and whether the call targets
+// an isolated (non-default) session.
+const herdrCall = (args: string[]) => {
+  let session = ''
+  const words: string[] = []
+  for (let i = 0; i < args.length; i++) {
     const arg = args[i] ?? ''
-    if (/^-[SL].+/.test(arg) || ['-S', '-L'].includes(arg) && args[i + 1] !== undefined) return undefined
-    if (['-f', '-c', '-T'].includes(arg) && args[i + 1] !== undefined) i++
-    else if (!['-2', '-u', '-v'].includes(arg)) return undefined
+    if (arg.startsWith('--session=')) session = arg.slice('--session='.length)
+    else if (arg === '--session') session = args[++i] ?? ''
+    else if (['--machine', '--remote'].includes(arg)) i++
+    else words.push(arg)
   }
-  return args[i]
+  return { words, isolated: session !== '' && session !== 'default' }
 }
 
 let chezmoiRoot: Promise<string | undefined> | undefined
@@ -112,14 +116,17 @@ export const register: Register = on => {
       await logFire($, 'sop-guard:secret', provider)
       return { deny: `${name}: this matches a common secret-output command (~/AGENTS.md §5); use a secret reference, a consuming command, or pass -c. This is an accident-prevention check, not a security guarantee.` }
     }
-    const sub = base(word) === 'tmux' ? tmuxSubcommand(args) : undefined
-    if (sub === 'kill-server') {
-      await logFire($, 'sop-guard:tmux-kill-server', 'tmux')
-      return { deny: `${name}: never run bare tmux kill-server (k-tmux). Use an isolated -S or -L server you created.` }
+    const call = base(word) === 'herdr' ? herdrCall(args) : undefined
+    const sub = call && !call.isolated && call.words.length >= 2 ? `${call.words[0]} ${call.words[1]}` : undefined
+    const stopsDefault = call !== undefined && ['session stop', 'session delete'].includes(`${call.words[0]} ${call.words[1]}`)
+      && call.words.slice(2).includes('default')
+    if (sub === 'server stop' || stopsDefault) {
+      await logFire($, 'sop-guard:herdr-server-stop', 'herdr')
+      return { deny: `${name}: never stop the default herdr session (k-herdr server stop, session stop/delete default); it ends every pane the user has. Stop only a named --session server you created.` }
     }
-    if (sub && TMUX_MUTATIONS.has(sub) && stopOnce(`tmux\0${sub}`)) {
-      await logFire($, 'sop-guard:tmux-default-server', 'tmux')
-      return { deny: `${name}: tmux ${sub} without -S or -L changes the default server (k-tmux). Use an isolated server. Retry only if the user asked to change the current tmux environment and you verified the target.` }
+    if (sub && HERDR_TEARDOWNS.has(sub) && stopOnce(`herdr\0${sub}`)) {
+      await logFire($, 'sop-guard:herdr-default-session', 'herdr')
+      return { deny: `${name}: herdr ${sub} without --session tears down the user's live session state (k-herdr). Retry only for a target you created or the user named, after verifying it.` }
     }
     return next(e)
   }).catch(($, e, next) => next(e))

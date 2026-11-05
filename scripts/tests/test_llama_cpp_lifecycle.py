@@ -150,7 +150,7 @@ class TestLlamaCppLifecycle(unittest.TestCase):
         self.assertFalse(_router_reachable(port))
 
     def test_SHOULD_release_the_lease_and_stop_the_router_on_SIGHUP(self) -> None:
-        # A closed terminal (tmux kill-session) delivers SIGHUP; the lease must still be released.
+        # A closed terminal (a closed herdr pane) delivers SIGHUP; the lease must still be released.
         port = _free_port()
         ready = self.root / "consumer-ready"
         consumer = (

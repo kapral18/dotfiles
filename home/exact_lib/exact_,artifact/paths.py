@@ -65,27 +65,33 @@ def canonical_context_path(cwd: Path) -> Path:
     return Path(git_root).resolve() if git_root else cwd.resolve()
 
 
-def tmux_identity() -> tuple[str, str]:
-    if not os.environ.get("TMUX"):
-        return "no-tmux", "no-tmux"
-    raw_id = run_text(["tmux", "display-message", "-p", "#{session_id}"]) or "tmux"
-    name = run_text(["tmux", "display-message", "-p", "#S"]) or raw_id
-    key = NAME_RE.sub("-", raw_id.strip("$") or "tmux").strip("-") or "tmux"
+def workspace_identity() -> tuple[str, str]:
+    raw_id = os.environ.get("HERDR_WORKSPACE_ID", "")
+    if not raw_id:
+        return "no-herdr", "no-herdr"
+    name = raw_id
+    workspace = run_text(["herdr", "workspace", "get", raw_id])
+    if workspace:
+        try:
+            name = json.loads(workspace)["result"]["workspace"]["label"] or raw_id
+        except (ValueError, KeyError, TypeError):
+            pass
+    key = NAME_RE.sub("-", raw_id).strip("-") or "herdr"
     return key, name
 
 
 def context() -> dict[str, str]:
     cwd = Path.cwd().resolve()
     root = canonical_context_path(cwd)
-    tmux_key, tmux_name = tmux_identity()
+    workspace_key, workspace_name = workspace_identity()
     root_hash = hashlib.sha256(str(root).encode()).hexdigest()[:16]
-    session_dir = cache_root() / "sessions" / tmux_key / root_hash
+    session_dir = cache_root() / "sessions" / workspace_key / root_hash
     return {
         "cwd": str(cwd),
         "root": str(root),
         "root_hash": root_hash,
-        "tmux_key": tmux_key,
-        "tmux_name": tmux_name,
+        "workspace_key": workspace_key,
+        "workspace_name": workspace_name,
         "session_dir": str(session_dir),
     }
 

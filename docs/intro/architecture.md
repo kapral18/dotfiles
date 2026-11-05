@@ -123,7 +123,6 @@ Current externals:
 
 | External           | Purpose                     |
 | ------------------ | --------------------------- |
-| `tpm`              | tmux plugin manager         |
 | `EmmyLua.spoon`    | Hammerspoon Lua annotations |
 | `lowfi` data files | Background music tracklists |
 | `bat` themes       | Syntax highlighting themes  |

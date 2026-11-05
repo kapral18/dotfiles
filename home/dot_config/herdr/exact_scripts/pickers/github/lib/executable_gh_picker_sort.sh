@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# Cycle the GitHub picker sort key and reload the cache.
+# Called by the alt-S fzf transform binding; outputs fzf actions.
+#
+# Args: <scope_file> <items_cmd>
+#
+# Sort cycle: created-desc -> updated-desc -> age-asc -> repo-asc -> back.
+# State persisted at ~/.cache/herdr-pickers/gh_picker_sort; consumed by
+# `gh_items_main.py` when filtering and re-sorting cache lines for emit.
+set -euo pipefail
+
+scope_file="${1:-}"
+items_cmd="${2:-}"
+
+if [ -z "$scope_file" ] || [ -z "$items_cmd" ]; then
+  exit 0
+fi
+
+scope="$(cat "$scope_file" 2> /dev/null || echo all)"
+cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/herdr-pickers"
+sort_file="${cache_dir}/gh_picker_sort"
+mkdir -p "$cache_dir" 2> /dev/null || true
+
+current="$(cat "$sort_file" 2> /dev/null || echo created-desc)"
+case "$current" in
+  created-desc) next="updated-desc" ;;
+  updated-desc) next="age-asc" ;;
+  age-asc) next="repo-asc" ;;
+  repo-asc) next="created-desc" ;;
+  *) next="created-desc" ;;
+esac
+
+printf '%s' "$next" > "$sort_file"
+
+printf 'execute-silent(herdr notification show gh-picker --body "sort: %s" >/dev/null 2>&1 || true)+reload(GH_PICKER_SCOPE=%s %s --cache-only 2>/dev/null)' \
+  "$next" "$scope" "$items_cmd"

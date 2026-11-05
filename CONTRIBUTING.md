@@ -17,18 +17,18 @@ make fmt
 make check
 ```
 
-`make check` runs [`bin/check`](bin/check): affected formatting lint, Python import lint, verify gates, and tests for paths dirty vs `HEAD` (plus untracked). Affected tests are the union of filename convention (`scripts/foo.sh` → `test_foo.py`), one-hop Python imports among `scripts/*.py`, and the prefix map in [`scripts/check.py`](scripts/check.py). Slow picker shards run only when tmux sources (or those shards) change. Humans may run the full suite with `make check-full` (`CHECK_FULL=1 bin/check --full`). Agents must not. Pre-commit never runs the full suite. `make test` is also human-only.
+`make check` runs [`bin/check`](bin/check): affected formatting lint, Python import lint, verify gates, and tests for paths dirty vs `HEAD` (plus untracked). Affected tests are the union of filename convention (`scripts/foo.sh` → `test_foo.py`), one-hop Python imports among `scripts/*.py`, and the prefix map in [`scripts/check.py`](scripts/check.py). Slow picker shards run only when picker sources (or those shards) change. Humans may run the full suite with `make check-full` (`CHECK_FULL=1 bin/check --full`). Agents must not. Pre-commit never runs the full suite. `make test` is also human-only.
 
 Website search changes also run isolated React component tests. Install their dependencies with `pnpm --dir website install --frozen-lockfile`; `make docs` installs the same dependencies.
 
-Affected Python tests run in parallel via [`scripts/test_runner.py`](scripts/test_runner.py), usually one subprocess per selected file; the runner splits a few slow files into individual cases. Each shard gets disposable working, home, XDG, temporary, and tmux socket directories. Only `PATH`, locale variables, `TERM`, and the explicit integration-test opt-in pass through from the shell—not credentials, Git selectors, or tmux state. `scripts/test_runner.py` itself is not a shard.
+Affected Python tests run in parallel via [`scripts/test_runner.py`](scripts/test_runner.py), usually one subprocess per selected file; the runner splits a few slow files into individual cases. Each shard gets disposable working, home, XDG, and temporary directories; herdr's socket lives under `XDG_CONFIG_HOME`, so shards cannot reach the live server. Only `PATH`, locale variables, `TERM`, and the explicit integration-test opt-in pass through from the shell—not credentials, Git selectors, or herdr state. `scripts/test_runner.py` itself is not a shard.
 
 ### Test quality and isolation
 
 - Keep tests that catch a consumer-visible regression: wrong results, lost data, unsafe side effects, broken transitions, or errors. Fewer useful cases beat more assertions.
 - Do not pin prose, source snippets, helper names, or mock responses against themselves. Exercise the real implementation and assert returned values or resulting state. Validate declarative configuration against its consumer's contract, not incidental spelling.
 - Create fixtures outside the checkout with `TemporaryDirectory` or the runtime's equivalent. Treat source files as read-only; copy them into a disposable repository before testing writers, generators, formatting, hooks, or deletion.
-- Give subprocesses temporary `HOME` and XDG paths. Clear inherited Git repository selectors. Use a private tmux socket and stop it in cleanup; never address the user's default server.
+- Give subprocesses temporary `HOME` and XDG paths. Clear inherited Git and `HERDR_*` selectors, and put a fake `herdr` on `PATH` (`scripts/_test_support.py`); never address the user's live herdr server.
 - Stub external side effects at the boundary. Default checks must not deploy dotfiles, install software, contact live services, or mutate the user's files.
 - Register cleanup as soon as resources are created, including failed setup and failed assertions. Avoid fixed temporary names, sleeps as synchronization, and shared mutable fixtures.
 

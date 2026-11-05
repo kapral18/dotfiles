@@ -1,0 +1,140 @@
+#!/usr/bin/env bash
+# Create an issue or epic from the GitHub picker (global, non-cursor action).
+#
+# Usage: gh_create.sh <issue|epic> <default_repo> <scope_file> <items_cmd>
+#
+# Wired to alt-i (issue) and alt-E (epic). Resolves a target repo (defaulting to
+# the cursor row's repo), composes title/body in $EDITOR, creates via
+# gh_create.py, then offers to create a worktree + focus its herdr workspace.
+set -euo pipefail
+# shellcheck source=../lib/herdr_ws.sh
+. "$HOME/.config/herdr/scripts/pickers/lib/herdr_ws.sh"
+
+die() {
+  if [ -n "${HERDR_SOCKET_PATH:-}" ]; then
+    picker_notify "gh_create: $*"
+  fi
+  printf 'gh_create: %s\n' "$*" >&2
+  exit 1
+}
+
+show_loader() {
+  local message="$1"
+  if [ -n "${HERDR_SOCKET_PATH:-}" ]; then
+    picker_notify "gh-create: Loading... ${message}"
+  fi
+  if [ -t 2 ]; then
+    printf '\033[2;38;5;244m  Loading... %s\033[0m\n' "$message" >&2
+  fi
+}
+
+kind="${1:-}"
+default_repo="${2:-}"
+scope_file="${3:-}"
+items_cmd="${4:-}"
+
+case "$kind" in
+  issue | epic) ;;
+  *) die "kind must be issue or epic (got: ${kind:-empty})" ;;
+esac
+[ -n "$items_cmd" ] || die "missing items command"
+
+EDITOR="${EDITOR:-nvim}"
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+create_py="$script_dir/lib/gh_create.py"
+[ -f "$create_py" ] || die "missing helper: $create_py"
+handoff_namespace="$HOME/.config/herdr/scripts/pickers/lib/handoff_namespace.py"
+
+cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/herdr-pickers"
+mkdir -p "$cache_dir" 2> /dev/null || true
+
+scope="$(cat "$scope_file" 2> /dev/null || echo all)"
+items_cache="${cache_dir}/gh_picker.tsv"
+
+repo_valid() {
+  printf '%s' "$1" | grep -qE '^[^/[:space:]]+/[^/[:space:]]+$'
+}
+
+default_candidate=""
+if repo_valid "$default_repo"; then
+  default_candidate="$default_repo"
+fi
+
+candidates="$(python3 "$create_py" repo-candidates --cache-file "$items_cache" 2> /dev/null || true)"
+
+repo="$(printf '%s' "$candidates" | fzf \
+  --prompt "  target repo > " \
+  --height=40% \
+  --reverse \
+  --print-query \
+  --query "$default_candidate" \
+  --header "enter=use repo  ·  type owner/repo to override  ·  esc=cancel" \
+  --color "prompt:111,query:223,header:244,pointer:81" \
+  || true)"
+repo="$(printf '%s\n' "$repo" | tail -1 | tr -d '[:space:]')"
+
+[ -n "$repo" ] || exit 0
+repo_valid "$repo" || die "invalid repo (expected owner/repo): $repo"
+
+tmpfile="$(mktemp "/tmp/gh_create_${kind}_XXXXXX.md")"
+trap 'rm -f "$tmpfile"' EXIT
+
+if [ "$kind" = "issue" ]; then
+  {
+    printf '<!-- New issue in %s — first non-empty line is the title, the rest is the body. -->\n' "$repo"
+    printf '<!-- Save with content to create; save empty to cancel. -->\n\n'
+  } > "$tmpfile"
+else
+  {
+    printf '<!-- New epic in %s. -->\n' "$repo"
+    printf '<!-- First section is the PARENT issue (first line = title, rest = body). -->\n'
+    printf '<!-- Separate each child issue with a line containing only: --- -->\n'
+    printf '<!-- The first line of each child section is its title. Save empty to cancel. -->\n\n'
+  } > "$tmpfile"
+fi
+
+$EDITOR "$tmpfile"
+
+# Cancel if nothing but instruction comments / whitespace remains.
+remaining="$(sed 's/<!--.*-->//g' "$tmpfile" | tr -d '[:space:]')"
+if [ -z "$remaining" ]; then
+  echo "gh_create: empty, cancelled." >&2
+  exit 0
+fi
+
+show_loader "creating ${kind} in ${repo}"
+result="$(python3 "$create_py" create --repo "$repo" --kind "$kind" --file "$tmpfile")" \
+  || die "failed to create $kind in $repo"
+
+IFS=$'\t' read -r num url <<< "$result"
+[ -n "$num" ] || die "no issue number returned"
+
+if [ -n "${HERDR_SOCKET_PATH:-}" ]; then
+  picker_notify "gh_create: created ${repo}#${num}"
+fi
+
+printf '\n' > /dev/tty 2> /dev/null || true
+printf 'Created %s#%s. Create worktree + focus session now? (y/N) ' "$repo" "$num" > /dev/tty 2> /dev/null || true
+answer=""
+IFS= read -r answer < /dev/tty 2> /dev/null || answer=""
+
+case "$answer" in
+  y | Y | yes | YES | Yes)
+    # Hand off to gh_picker.sh's post-exit checkout (interactive branch prompt +
+    # ,gh-worktree issue ... --focus). The binding's transform aborts the picker
+    # once this file exists. The create pin resolves through the inherited
+    # handoff token into the invocation namespace; fail closed rather than write
+    # any global path.
+    create_pin_file="$("$handoff_namespace" path gh_picker_create_pin)" \
+      || die "handoff namespace unavailable for create hand-off"
+    printf 'issue\t%s\t%s\t%s\n' "$repo" "$num" "$url" > "$create_pin_file"
+    ;;
+  *)
+    if [ -n "${FZF_SOCK:-}" ]; then
+      reload_cmd="GH_PICKER_SCOPE=$(printf %q "$scope") $(printf %q "$items_cmd") --refresh"
+      curl -q -s --max-time 5 --unix-socket "$FZF_SOCK" -XPOST http://localhost -d "reload(${reload_cmd})+track" > /dev/null 2>&1 || true
+    fi
+    ;;
+esac
+
+exit 0

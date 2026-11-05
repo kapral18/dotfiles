@@ -9,7 +9,7 @@ These are the commands most likely to change how you work day to day.
 ## System health: `,doctor`
 
 - Source: [`home/exact_bin/executable_,doctor`](../../../../home/exact_bin/executable_,doctor)
-- Checks: chezmoi state, Homebrew, shell, tmux+TPM, git+signing, SSH agent, pass/GPG, editors, AI tools, key CLIs, `~/bin` wrapper integrity, and worktrees. Missing AI configs are reported only when their actual consumer command is installed.
+- Checks: chezmoi state, Homebrew, shell, herdr (config, server, plugins), git+signing, SSH agent, pass/GPG, editors, AI tools, key CLIs, `~/bin` wrapper integrity, and worktrees. Missing AI configs are reported only when their actual consumer command is installed.
 - Pi runtime: `~/lib/,doctor/pi_runtime.py` reads the `pi` pnpm shim's `cmd-shim-target`, warns when that install directory was pruned by a later `pnpm add -g` (the state that makes every pi-subagents background launch fail with "does not provide @earendil-works/pi-agent-core …"), and warns when the live install lacks a peer that pi-subagents aliases. The hint is the reinstall command plus a restart of running Pi sessions.
 - AI effective state: `,doctor ai` traces each generated AI config from source declaration and transforms through owned target projection, runtime consumer, and an optional local liveness probe.
 
@@ -46,7 +46,7 @@ For the full workflow, see [Git worktrees](../git-identity/worktrees.md).
 | `,gh-prw`      | Resolve/open the current branch's PR; can print number or URL            |
 | `,gh-issuew`   | Resolve/open the issue from branch suffix, worktree metadata, or PR body |
 | `,gh-worktree` | Create or reuse local PR/issue worktrees from GitHub context             |
-| `,gh-tfork`    | Fork/clone a repo and create a tmux session                              |
+| `,gh-tfork`    | Fork/clone a repo and create a herdr workspace                           |
 
 Sources live under [`home/exact_bin/`](../../../../home/exact_bin/).
 
@@ -113,17 +113,17 @@ cmd | ,wh send -         # send piped stdin
 | `,install-pnpm-pkgs` | Reconcile global pnpm packages against `~/.default-pnpm-pkgs`; `name@x.y.z` entries pin an exact version (upgrades skip pinned packages); reports pnpm errors and refreshes `~/.local/share/pnpm-global-links` even after a partial sync |
 | `,apply-app-icons`   | Apply app icon mappings from `home/app_icons/readonly_icon_mapping.yaml`, refreshing Dock/Finder by signaling only the current user's own numeric PIDs (no `killall`/`pkill`)                                                            |
 
-## tmux helpers
+## herdr helpers
 
-| Command         | Purpose                                         |
-| --------------- | ----------------------------------------------- |
-| `,tmux-run-all` | Run one command across matching tmux sessions   |
-| `,tmux-lowfi`   | Start/control lowfi in a dedicated tmux session |
+| Command          | Purpose                                          |
+| ---------------- | ------------------------------------------------ |
+| `,herdr-run-all` | Run one command across matching herdr workspaces |
+| `,herdr-lowfi`   | Start/control lowfi in a dedicated workspace     |
 
 ```bash
-,tmux-run-all "work-*" "git status"
-,tmux-run-all --all "work-*" "pnpm run test -- --watch=false"
-,tmux-lowfi p
-,tmux-lowfi nt
-,tmux-lowfi q
+,herdr-run-all "work*" "git status"
+,herdr-run-all --all "work*" "pnpm run test -- --watch=false"
+,herdr-lowfi p
+,herdr-lowfi nt
+,herdr-lowfi q
 ```

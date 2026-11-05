@@ -81,7 +81,7 @@ worktree_branch_in_use() {
 
 show_usage() {
   cat << 'EOF'
-Usage: ,w remove [--tmux-notify] [--paths <path...>]
+Usage: ,w remove [--notify] [--paths <path...>]
 
 Interactively remove git worktrees.
 
@@ -90,7 +90,7 @@ Options:
   --paths           Remove specific worktree path(s) (skip interactive picker)
   --force           Bypass unsaved-work and submodule-history safeguards
   --preflight       With --paths: only print paths that would be skipped, remove nothing
-  --tmux-notify     If running inside tmux, show progress via tmux messages
+  --notify          Inside herdr, also show progress as herdr notifications
 
 Description:
   Opens an interactive fzf selector to choose worktrees to remove.
@@ -100,7 +100,7 @@ Description:
   - Removes unused fork remotes
   - Cleans up empty parent directories
   - Removes path from zoxide database
-  - Kills associated tmux session
+  - Closes associated herdr workspaces
 
 Notes:
   - The default branch (main/master) cannot be removed
@@ -109,7 +109,7 @@ Notes:
 EOF
 }
 
-tmux_notify=0
+herdr_notify=0
 paths_mode=0
 force_remove=0
 preflight_mode=0
@@ -121,8 +121,8 @@ while [ $# -gt 0 ]; do
       show_usage
       exit 0
       ;;
-    --tmux-notify)
-      tmux_notify=1
+    --notify)
+      herdr_notify=1
       shift
       ;;
     --force)
@@ -163,8 +163,8 @@ done
 notify() {
   local msg="$1"
   echo "$msg"
-  if [ "$tmux_notify" -eq 1 ] && [ -n "${TMUX:-}" ] && command -v tmux > /dev/null 2>&1; then
-    tmux display-message -d 6000 "$msg" 2> /dev/null || true
+  if [ "$herdr_notify" -eq 1 ] && _comma_w_in_herdr; then
+    herdr notification show ",w remove" --body "$msg" > /dev/null 2>&1 || true
   fi
 }
 
@@ -209,9 +209,9 @@ _check_worktree_safe_to_remove() {
   return 0
 }
 
-# --preflight: report-only mode for callers (e.g. the tmux picker) that need to
+# --preflight: report-only mode for callers (e.g. the session picker) that need to
 # know which paths would be skipped BEFORE they take their own destructive
-# steps (killing sessions, tombstoning picker rows). Prints each unsafe input
+# steps (closing workspaces, tombstoning picker rows). Prints each unsafe input
 # path to stdout, one per line, and exits without removing anything. Runs
 # before any repo-context detection so it works from any cwd.
 if [ "$preflight_mode" -eq 1 ]; then
@@ -231,7 +231,7 @@ fi
 default_branch="$(_comma_w_detect_default_branch)"
 
 parent_dir=$(_get_worktree_parent_dir)
-parent_name="$(_comma_w_tmux_parent_name_from_dir "$parent_dir")"
+parent_name="$(_comma_w_parent_name_from_dir "$parent_dir")"
 
 main_worktree="$(list_worktrees_porcelain | awk -F'\t' 'NR == 1 { print $1 }')"
 main_worktree_rp="$(realpath "$main_worktree" 2> /dev/null || printf '%s' "$main_worktree")"
@@ -423,7 +423,7 @@ for worktree in "${worktrees[@]}"; do
   fi
 
   if [ -n "${worktree_detached:-}" ] && [ "$worktree_detached" = "1" ]; then
-    _remove_worktree_tmux_session 0 "$worktree_path" ""
+    _remove_worktree_workspace 0 "$worktree_path" ""
   else
     remote="$(_get_branch_upstream_remote "$worktree_branch")"
     if [ -z "$remote" ]; then
@@ -439,7 +439,7 @@ for worktree in "${worktrees[@]}"; do
       git branch -D "$worktree_branch"
     fi
 
-    _remove_worktree_tmux_session 0 "$worktree_path" "$(_comma_w_tmux_session_name "$parent_name" "$worktree_branch")"
+    _remove_worktree_workspace 0 "$worktree_path" "$(_comma_w_workspace_name "$parent_name" "$worktree_branch")"
   fi
 
   _bag_and_rmdir_upwards_ignoring_ds_store "$(dirname "$worktree_path")" "$parent_dir"

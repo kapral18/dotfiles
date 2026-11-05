@@ -10,6 +10,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from _test_support import install_fake_herdr
+
 REPO = Path(__file__).resolve().parents[2]
 W_SRC = REPO / "home/exact_lib/exact_,w"
 SHARED_SRC = REPO / "home/exact_lib/exact_shared"
@@ -26,15 +28,16 @@ class _WCase(unittest.TestCase):
         self.w = lib / ",w"
         self.bin = self.root / "bin"
         self.bin.mkdir()
-        self.tmux_log = self.root / "tmux.log"
+        self.herdr_log = self.root / "herdr.log"
+        self.db = self.root / "workspaces.tsv"
         self.stub("zoxide", "exit 0")
-        self.stub(
-            "tmux",
-            f'echo "$*" >> {self.tmux_log}\ncase "$1" in has-session|list-sessions|display-message) exit 1;; esac\nexit 0',
-        )
+        install_fake_herdr(self.bin)
         self.env = {
-            **os.environ,
+            **{k: v for k, v in os.environ.items() if not k.startswith("HERDR_")},
             "HOME": str(self.root / "home"),
+            "XDG_CACHE_HOME": str(self.root / "cache"),
+            "HERDR_LOG": str(self.herdr_log),
+            "HERDR_DB": str(self.db),
             "PATH": f"{self.bin}{os.pathsep}{os.environ['PATH']}",
             "GIT_CONFIG_GLOBAL": "/dev/null",
             "GIT_AUTHOR_NAME": "t",
@@ -42,7 +45,6 @@ class _WCase(unittest.TestCase):
             "GIT_COMMITTER_NAME": "t",
             "GIT_COMMITTER_EMAIL": "t@example.invalid",
         }
-        self.env.pop("TMUX", None)
         (self.root / "home").mkdir()
 
     def stub(self, name: str, body: str) -> None:
@@ -127,69 +129,46 @@ class WIssueMatchTests(_WCase):
 class WMvTests(_WCase):
     """WHEN ,w mv is refused because the destination branch already exists."""
 
-    def test_refused_move_keeps_the_tmux_session(self) -> None:
+    def test_refused_move_keeps_the_workspace(self) -> None:
         main = self.root / "repo" / "main"
         main.mkdir(parents=True)
         self.git(main, "init", "-q", "-b", "main")
         self.commit(main, "base")
         self.git(main, "branch", "taken")
-        self.git(main, "worktree", "add", "-q", "-b", "old", str(self.root / "repo" / "old"))
         old = self.root / "repo" / "old"
-        self.stub(
-            "tmux",
-            f'echo "$*" >> {self.tmux_log}\ncase "$1" in has-session) exit 0;; display-message) echo {old};; esac\nexit 0',
-        )
+        self.git(main, "worktree", "add", "-q", "-b", "old", str(old))
+        self.db.write_text(f"w1\trepo|old\t{old}\n")
 
-        result = self.run_w("mv.sh", main, "old", "taken", TMUX="/tmp/fake,1,0")
+        result = self.run_w("mv.sh", main, "old", "taken", HERDR_SOCKET_PATH="/tmp/fake.sock")
 
         self.assertNotEqual(result.returncode, 0)
-        log = self.tmux_log.read_text() if self.tmux_log.exists() else ""
-        self.assertNotIn("kill-session", log)
-        self.assertTrue((self.root / "repo" / "old").is_dir())
+        self.assertNotIn("workspace close", self.herdr_log.read_text() if self.herdr_log.exists() else "")
+        self.assertTrue(old.is_dir())
 
 
 class WMvSelfKillTests(_WCase):
-    """WHEN ,w mv runs inside the session it renames, so killing that session kills the script."""
+    """WHEN ,w mv runs inside the workspace it replaces, so closing that workspace ends the script."""
 
-    def test_move_finishes_before_the_old_session_dies(self) -> None:
+    def test_move_finishes_before_the_old_workspace_closes(self) -> None:
         main = self.root / "repo" / "main"
         main.mkdir(parents=True)
         self.git(main, "init", "-q", "-b", "main")
         self.commit(main, "base")
         old = self.root / "repo" / "old"
         self.git(main, "worktree", "add", "-q", "-b", "old", str(old))
-        self.stub(
-            "tmux",
-            f'echo "$*" >> {self.tmux_log}\n'
-            f'case "$1" in has-session) exit 0;; display-message) echo {old};; kill-session) kill -TERM $PPID;; esac\nexit 0',
-        )
+        self.db.write_text(f"w1\trepo|old\t{old}\n")
 
-        result = self.run_w("mv.sh", main, "old", "renamed", TMUX="/tmp/fake,1,0")
+        result = self.run_w(
+            "mv.sh", main, "old", "renamed", HERDR_SOCKET_PATH="/tmp/fake.sock", HERDR_FAKE_CLOSE_KILLS="1"
+        )
         self.assertEqual(result.returncode, -15, result.stderr)
 
         self.assertTrue((self.root / "repo" / "renamed").is_dir())
         self.assertEqual(self.git(self.root / "repo" / "renamed", "branch", "--show-current"), "renamed")
 
 
-STATEFUL_TMUX = r"""#!/usr/bin/env bash
-db="$TMUX_DB"
-name() { local t="${1#=}"; printf '%s' "${t%:}"; }
-target() { while [ $# -gt 0 ]; do [ "$1" = -t ] && { name "$2"; return; }; shift; done; }
-case "$1" in
-  has-session) grep -q "^$(target "$@")	" "$db"; exit ;;
-  display-message) n="$(target "$@")"; awk -F'\t' -v n="$n" '$1 == n { print $2 }' "$db" ;;
-  list-sessions) cat "$db" ;;
-  new-session) shift; while [ $# -gt 0 ]; do case "$1" in -s) s="$2"; shift ;; -c) c="$2"; shift ;; esac; shift; done
-    printf '%s\t%s\n' "$s" "$c" >> "$db" ;;
-  rename-session) grep -q "^${!#}	" "$db" && exit 1; n="$(target "$@")"; awk -F'\t' -v OFS='\t' -v n="$n" -v m="${!#}" '$1 == n { $1 = m } 1' "$db" > "$db.new"; mv "$db.new" "$db" ;;
-  kill-session) n="$(target "$@")"; grep -v "^$n	" "$db" > "$db.new" || true; mv "$db.new" "$db" ;;
-esac
-exit 0
-"""
-
-
 class WMvSessionTests(_WCase):
-    """WHEN ,w mv replaces a worktree's session while tmux tracks which sessions exist."""
+    """WHEN ,w mv replaces a worktree's workspace while herdr tracks which workspaces exist."""
 
     def setUp(self) -> None:
         super().setUp()
@@ -199,89 +178,141 @@ class WMvSessionTests(_WCase):
         self.commit(self.main, "base")
         self.old = self.root / "repo" / "old"
         self.git(self.main, "worktree", "add", "-q", "-b", "old", str(self.old))
-        self.db = self.root / "sessions.tsv"
-        self.db.write_text(f"repo|old\t{self.old}\n")
-        (self.bin / "tmux").write_text(STATEFUL_TMUX)
+        self.db.write_text(f"w1\trepo|old\t{self.old}\n")
 
-    def sessions(self, *args: str, tmux: str = "/tmp/fake,1,0") -> list[list[str]]:
-        result = self.run_w("mv.sh", self.main, *args, TMUX=tmux, TMUX_DB=str(self.db))
-        self.assertEqual(result.returncode, 0, result.stderr)
-        return sorted(line.split("\t") for line in self.db.read_text().splitlines())
-
-    def test_keep_path_rename_replaces_only_the_old_named_session(self) -> None:
+    def add(self, label: str, path: Path) -> None:
         with self.db.open("a") as db:
-            db.write(f"scratch\t{self.old}\n")
+            db.write(f"w{len(self.db.read_text().splitlines()) + 1}\t{label}\t{path}\n")
+
+    def workspaces(self) -> list[list[str]]:
+        return sorted(line.split("\t")[1:] for line in self.db.read_text().splitlines())
+
+    def move(self, *args: str, inside: bool = True) -> list[list[str]]:
+        env = {"HERDR_SOCKET_PATH": "/tmp/fake.sock"} if inside else {}
+        result = self.run_w("mv.sh", self.main, *args, **env)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return self.workspaces()
+
+    def test_keep_path_rename_renames_only_the_old_named_workspace(self) -> None:
+        self.add("scratch", self.old)
         self.assertEqual(
-            self.sessions("--keep-path", "old", "renamed"),
+            self.move("--keep-path", "old", "renamed"),
             [["repo|renamed", str(self.old)], ["scratch", str(self.old)]],
         )
 
-    def test_same_branch_path_move_restarts_its_session_in_the_new_directory(self) -> None:
+    def test_same_branch_path_move_reopens_its_workspace_in_the_new_directory(self) -> None:
         moved = self.root / "repo" / "moved"
-        self.assertEqual(self.sessions("--path", str(moved), "old", "old"), [["repo|old", str(moved)]])
+        self.assertEqual(self.move("--path", str(moved), "old", "old"), [["repo|old", str(moved)]])
 
-    def test_same_branch_move_ignores_a_leftover_aside_session(self) -> None:
-        with self.db.open("a") as db:
-            db.write(f"repo|old~moved\t{self.root / 'gone'}\n")
+    def test_same_branch_move_ignores_a_leftover_aside_workspace(self) -> None:
+        self.add("repo|old~moved", self.root / "gone")
         moved = self.root / "repo" / "moved"
-        self.assertIn(["repo|old", str(moved)], self.sessions("--path", str(moved), "old", "old"))
+        self.assertIn(["repo|old", str(moved)], self.move("--path", str(moved), "old", "old"))
 
     def test_failed_branch_rename_moves_the_worktree_back(self) -> None:
         git_dir = Path(self.git(self.main, "rev-parse", "--absolute-git-dir"))
         (git_dir / "refs/heads/renamed.lock").write_text("")
-        result = self.run_w("mv.sh", self.main, "old", "renamed", TMUX="/tmp/fake,1,0", TMUX_DB=str(self.db))
+        result = self.run_w("mv.sh", self.main, "old", "renamed", HERDR_SOCKET_PATH="/tmp/fake.sock")
         self.assertNotEqual(result.returncode, 0)
         self.assertTrue(self.old.is_dir())
         self.assertFalse((self.root / "repo" / "renamed").exists())
-        self.assertEqual(self.db.read_text(), f"repo|old\t{self.old}\n")
+        self.assertEqual(self.workspaces(), [["repo|old", str(self.old)]])
 
-    def test_move_outside_tmux_leaves_sessions_alone(self) -> None:
+    def test_move_outside_herdr_leaves_workspaces_alone(self) -> None:
         moved = self.root / "repo" / "moved"
-        self.assertEqual(self.sessions("--path", str(moved), "old", "old", tmux=""), [["repo|old", str(self.old)]])
+        self.assertEqual(self.move("--path", str(moved), "old", "old", inside=False), [["repo|old", str(self.old)]])
 
     def test_existing_destination_is_refused_before_any_change(self) -> None:
         taken = self.root / "repo" / "taken"
         taken.mkdir()
-        result = self.run_w(
-            "mv.sh", self.main, "--path", str(taken), "old", "new", TMUX="/tmp/fake,1,0", TMUX_DB=str(self.db)
-        )
+        result = self.run_w("mv.sh", self.main, "--path", str(taken), "old", "new", HERDR_SOCKET_PATH="/tmp/fake.sock")
         self.assertNotEqual(result.returncode, 0)
-        self.assertEqual(self.db.read_text(), f"repo|old\t{self.old}\n")
+        self.assertEqual(self.workspaces(), [["repo|old", str(self.old)]])
         self.assertTrue(self.old.is_dir())
         self.assertEqual(self.git(self.old, "branch", "--show-current"), "old")
 
 
 class WSessionHintTests(_WCase):
-    """WHEN a removed worktree's session is looked up by its hinted name."""
+    """WHEN a removed worktree's workspace is looked up by its hinted name."""
 
-    def remove_session(self, session_path: Path | str, cwd: Path | None = None) -> str:
+    def remove_workspace(self, workspace_path: Path | str, cwd: Path | None = None) -> str:
         real = self.root / "real"
         real.mkdir(exist_ok=True)
         (self.root / "link").symlink_to(real)
         # Like macOS realpath, and unlike GNU's, fail on a path whose last component is gone.
         self.stub("realpath", '[ -d "$1" ] || exit 1; cd "$1" && pwd -P')
-        self.stub(
-            "tmux",
-            f'echo "$*" >> {self.tmux_log}\ncase "$1" in has-session) exit 0;; display-message) echo {session_path};; list-sessions) exit 0;; esac\nexit 0',
-        )
-        script = (
-            f'source "{self.w}/../shared/worktree_lib.sh"; _remove_worktree_tmux_session 1 "{self.root}/link/wt" wt'
-        )
+        self.db.write_text(f"w1\twt\t{workspace_path}\n")
+        script = f'source "{self.w}/../shared/worktree_lib.sh"; _remove_worktree_workspace 1 "{self.root}/link/wt" wt'
         subprocess.run(
-            ["bash", "-c", script], cwd=cwd, env={**self.env, "TMUX": "/tmp/fake,1,0"}, text=True, capture_output=True
+            ["bash", "-c", script],
+            cwd=cwd,
+            env={**self.env, "HERDR_SOCKET_PATH": "/tmp/fake.sock"},
+            text=True,
+            capture_output=True,
         )
-        return self.tmux_log.read_text()
+        return self.herdr_log.read_text()
 
-    def test_session_at_the_real_path_is_killed(self) -> None:
-        self.assertIn("kill-session -t =wt", self.remove_session(self.root / "real/wt"))
+    def test_workspace_at_the_real_path_is_closed(self) -> None:
+        self.assertIn("workspace close w1", self.remove_workspace(self.root / "real/wt"))
 
-    def test_session_elsewhere_is_kept(self) -> None:
-        self.assertNotIn("kill-session", self.remove_session(self.root / "other"))
+    def test_workspace_elsewhere_is_kept(self) -> None:
+        self.assertNotIn("workspace close", self.remove_workspace(self.root / "other"))
 
-    def test_failed_path_lookup_keeps_the_session(self) -> None:
+    def test_failed_path_lookup_keeps_the_workspace(self) -> None:
         inside = self.root / "real/wt/sub"
         inside.mkdir(parents=True)
-        self.assertNotIn("kill-session", self.remove_session("", cwd=inside))
+        self.assertNotIn("workspace close", self.remove_workspace("", cwd=inside))
+
+
+class WorkspaceRegistryTests(_WCase):
+    """WHEN a workspace's panes cd away from the directory it was opened for."""
+
+    def lib(self, snippet: str) -> str:
+        return subprocess.run(
+            ["bash", "-c", f'source "{self.w.parent}/shared/worktree_lib.sh"; {snippet}'],
+            env={**self.env, "HERDR_SOCKET_PATH": str(self.root / "sock")},
+            check=True,
+            text=True,
+            capture_output=True,
+        ).stdout
+
+    def test_path_stays_the_opened_directory_only_while_the_label_matches(self) -> None:
+        wt, other = self.root / "wt", self.root / "other"
+        self.db.write_text("")
+        self.lib(f"_comma_w_create_workspace 'repo|wt' '{wt}'; _comma_w_create_workspace other '{other}'")
+        self.db.write_text(self.db.read_text().replace(str(wt), str(other)))
+
+        self.assertIn(f"repo|wt\t{wt}\t", self.lib("_comma_w_workspace_list"))
+        self.assertEqual(self.lib(f"_comma_w_workspace_ids_at_path '{wt}'").split(), ["w1"])
+
+        self.db.write_text(self.db.read_text().replace("repo|wt", "renamed"))
+        self.assertEqual(self.lib(f"_comma_w_workspace_ids_at_path '{wt}'"), "")
+        self.assertIn(f"renamed\t{other}\t", self.lib("_comma_w_workspace_list"))
+
+    def test_a_rename_keeps_the_opened_directory(self) -> None:
+        wt, other = self.root / "wt", self.root / "other"
+        self.db.write_text("")
+        self.lib(f"_comma_w_create_workspace 'repo|wt' '{wt}'")
+        self.db.write_text(f"w1\trenamed\t{other}\n")
+        self.lib("_comma_w_relabel_workspace w1")
+
+        self.assertIn(f"renamed\t{wt}\tw1", self.lib("_comma_w_workspace_list"))
+
+    def test_concurrent_writers_keep_every_row(self) -> None:
+        self.db.write_text("".join(f"w{i}\tl{i}\t/x\n" for i in range(1, 21)))
+        self.lib('for i in $(seq 1 20); do _comma_w_record_workspace_path "w$i" "l$i" "/d$i" & done; wait')
+
+        self.assertEqual(len(self.lib("_comma_w_workspace_list registered").splitlines()), 20)
+
+    def test_a_reissued_id_does_not_inherit_a_closed_workspace_directory(self) -> None:
+        wt, other = self.root / "wt", self.root / "other"
+        self.db.write_text("")
+        self.lib(f"_comma_w_create_workspace 'repo|wt' '{wt}'")
+        self.db.write_text("")
+        self.lib("_comma_w_prune_workspace_registry")
+        self.db.write_text(f"w1\trepo|wt\t{other}\n")
+
+        self.assertEqual(self.lib(f"_comma_w_workspace_ids_at_path '{wt}'"), "")
 
 
 class WHelpTests(_WCase):

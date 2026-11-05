@@ -3,11 +3,6 @@
 # (verified 2026-07-09) while codeload — the backend it redirects to —
 # serves the identical <repo>-<branch>/ tarball.
 
-[".config/tmux/plugins/tpm"]
-type = "git-repo"
-url = "https://github.com/tmux-plugins/tpm"
-refreshPeriod = "168h"
-
 [".hammerspoon/Spoons"]
 type = "archive"
 url = "https://codeload.github.com/Hammerspoon/Spoons/tar.gz/refs/heads/master"

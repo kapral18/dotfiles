@@ -12,8 +12,8 @@ Usage:
 Behavior:
   - Forks <owner/repo> using GitHub CLI.
   - Clones into ~/code/<repo>/<default-branch>.
-  - Creates (or focuses) a tmux session named <wrapper/repo>|<default-branch>.
-  - Session layout: 2 windows, each with 2 panes split vertically.
+  - Creates (or focuses) a herdr workspace named <wrapper/repo>|<default-branch>.
+  - Workspace layout: 2 tabs, each with 2 panes side by side.
 EOF
 }
 
@@ -157,8 +157,8 @@ detect_branch_name() {
 branch_name="$(detect_branch_name "$repo_name")"
 clone_dir="${repo_name}/${branch_name}"
 clone_path="$(pwd -P)/${clone_dir}"
-parent_name="$(_comma_w_tmux_parent_name_from_dir "$repo_wrapper_path")"
-session_name="$(_comma_w_tmux_session_name "$parent_name" "$branch_name")"
+parent_name="$(_comma_w_parent_name_from_dir "$repo_wrapper_path")"
+session_name="$(_comma_w_workspace_name "$parent_name" "$branch_name")"
 
 if [[ -e "$clone_dir/.git" ]]; then
   :
@@ -172,23 +172,20 @@ else
   exit 1
 fi
 
-command -v tmux > /dev/null 2>&1 || {
-  echo "Warning: 'tmux' is not available; skipping session creation." >&2
+command -v herdr > /dev/null 2>&1 || {
+  echo "Warning: 'herdr' is not available; skipping workspace creation." >&2
   exit 0
 }
 
-if ! _comma_w_tmux has-session -t "$session_name" 2> /dev/null; then
-  _comma_w_tmux new-session -d -s "$session_name" -c "$clone_path" -n "$branch_name"
-  _comma_w_tmux split-window -h -t "${session_name}:1" -c "$clone_path"
+if _comma_w_herdr workspace list > /dev/null 2>&1 && [ -z "$(_comma_w_workspace_id_by_label "$session_name")" ]; then
+  created="$(_comma_w_herdr workspace create --cwd "$clone_path" --label "$session_name" --no-focus)"
+  ws_id="$(jq -r '.result.workspace.workspace_id' <<< "$created")"
+  _comma_w_record_workspace_path "$ws_id" "$session_name" "$clone_path"
+  _comma_w_herdr tab rename "$(jq -r '.result.tab.tab_id' <<< "$created")" "$branch_name" > /dev/null
+  _comma_w_herdr pane split "$(jq -r '.result.root_pane.pane_id' <<< "$created")" --direction right --cwd "$clone_path" --no-focus > /dev/null
 
-  _comma_w_tmux new-window -t "$session_name" -n shell -c "$clone_path"
-  _comma_w_tmux split-window -h -t "${session_name}:2" -c "$clone_path"
+  shell_tab="$(_comma_w_herdr tab create --workspace "$ws_id" --cwd "$clone_path" --label shell --no-focus)"
+  _comma_w_herdr pane split "$(jq -r '.result.root_pane.pane_id' <<< "$shell_tab")" --direction right --cwd "$clone_path" --no-focus > /dev/null
 fi
 
-if [ -n "${OUTER_TMUX_SOCKET:-}" ] && [ -n "${OUTER_TMUX_CLIENT:-}" ]; then
-  _comma_w_tmux switch-client -c "${OUTER_TMUX_CLIENT}" -t "$session_name" 2> /dev/null || true
-elif [[ -n "${TMUX:-}" ]]; then
-  _comma_w_tmux switch-client -t "$session_name"
-else
-  _comma_w_tmux attach-session -t "$session_name"
-fi
+_comma_w_focus_workspace 0 "$session_name" "$clone_path"

@@ -135,22 +135,6 @@ autocmd("FileType", {
   end,
 })
 
-autocmd({ "BufEnter" }, {
-  group = augroup("k18_tmux_syntax", { clear = true }),
-  pattern = { "*.tmux.conf", "tmux.conf" },
-  callback = function()
-    vim.cmd("syntax on")
-  end,
-})
-
-autocmd({ "BufLeave" }, {
-  group = augroup("k18_tmux_syntax", { clear = false }),
-  pattern = { "*.tmux.conf", "tmux.conf" },
-  callback = function()
-    vim.cmd("syntax off")
-  end,
-})
-
 autocmd("FileType", {
   group = augroup("k18_json_conceal", { clear = true }),
   pattern = { "json", "jsonc", "json5" },

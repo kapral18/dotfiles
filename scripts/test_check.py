@@ -28,7 +28,7 @@ class TestCheckPlan(unittest.TestCase):
             missing, [], "TEST_RULES maps to missing test files; a renamed test would silently stop running"
         )
 
-    def test_WHEN_only_nvim_lua_changes_SHOULD_skip_tmux_picker_shards(self):
+    def test_WHEN_only_nvim_lua_changes_SHOULD_skip_picker_shards(self):
         plan = plan_check(
             REPO,
             full=False,
@@ -36,7 +36,7 @@ class TestCheckPlan(unittest.TestCase):
         )
         assert plan.mode == "affected"
         assert "tests/test_invariants.py" in plan.tests
-        assert "tests/test_tmux_pickers.py" not in plan.tests
+        assert "tests/test_session_pickers.py" not in plan.tests
         assert "verify-templates" not in plan.gates
         assert plan.fmt_paths[-1].endswith("readonly_summarize-commit.lua")
 
@@ -59,7 +59,7 @@ class TestCheckPlan(unittest.TestCase):
     def test_WHEN_full_SHOULD_include_every_live_shard_and_gate(self):
         plan = plan_check(REPO, full=True, changed=())
         assert plan.mode == "full"
-        assert "tests/test_tmux_pickers.py" in plan.tests
+        assert "tests/test_session_pickers.py" in plan.tests
         assert "test_yaml_parser.py" in plan.tests
         assert "test_runner.py" not in plan.tests
         assert "verify-templates" in plan.gates
@@ -69,7 +69,7 @@ class TestCheckPlan(unittest.TestCase):
         plan = plan_check(REPO, full=False, changed=("scripts/check.py",))
         assert "test_check.py" in plan.tests
         assert "test_runner.py" not in plan.tests
-        assert "tests/test_tmux_pickers.py" not in plan.tests
+        assert "tests/test_session_pickers.py" not in plan.tests
 
     def test_WHEN_root_removal_changes_SHOULD_run_boundary_regressions(self):
         for script in ("executable_remove_all_worktrees.sh", "executable_action_remove_worktrees.sh"):
@@ -77,7 +77,7 @@ class TestCheckPlan(unittest.TestCase):
                 plan = plan_check(
                     REPO,
                     full=False,
-                    changed=(f"home/dot_config/exact_tmux/exact_scripts/pickers/session/{script}",),
+                    changed=(f"home/dot_config/herdr/exact_scripts/pickers/session/{script}",),
                 )
                 assert "tests/test_worktree_delete_boundaries.py" in plan.tests
 
@@ -89,13 +89,13 @@ class TestCheckPlan(unittest.TestCase):
     def test_WHEN_chezmoi_lib_shell_changes_SHOULD_run_test_chezmoi_lib(self):
         plan = plan_check(REPO, full=False, changed=("scripts/chezmoi_lib.sh",))
         assert "test_chezmoi_lib.py" in plan.tests
-        assert "tests/test_tmux_pickers.py" not in plan.tests
+        assert "tests/test_session_pickers.py" not in plan.tests
 
     def test_WHEN_yaml_parser_changes_SHOULD_run_direct_importer_tests(self):
         plan = plan_check(REPO, full=False, changed=("scripts/yaml_parser.py",))
         assert "test_yaml_parser.py" in plan.tests
         assert "test_mcp_registry.py" in plan.tests
-        assert "tests/test_tmux_pickers.py" not in plan.tests
+        assert "tests/test_session_pickers.py" not in plan.tests
 
     def test_WHEN_test_support_changes_SHOULD_run_cheap_shards_not_slow_pickers(self):
         plan = plan_check(REPO, full=False, changed=("scripts/_test_support.py",))
@@ -148,7 +148,7 @@ class TestTestRunnerIsolation(unittest.TestCase):
                         "tmp": tempfile.gettempdir(),
                         **{key: os.environ[key] for key in (
                             "XDG_CONFIG_HOME", "XDG_CACHE_HOME", "XDG_DATA_HOME",
-                            "XDG_STATE_HOME", "XDG_RUNTIME_DIR", "TMUX_TMPDIR",
+                            "XDG_STATE_HOME", "XDG_RUNTIME_DIR",
                         )},
                     }
                     for value in paths.values():
@@ -156,7 +156,7 @@ class TestTestRunnerIsolation(unittest.TestCase):
                     report = {
                         "paths": paths,
                         "selectors": sorted(key for key in os.environ
-                                            if key.startswith("GIT_") or key in ("TMUX", "TMUX_PANE", "LEAK_SENTINEL")),
+                                            if key.startswith(("GIT_", "HERDR_")) or key == "LEAK_SENTINEL"),
                     }
                     Path(REPORTS, __name__ + ".json").write_text(json.dumps(report))
                     self.assertFalse(FAIL, "deliberate shard failure")
@@ -171,8 +171,8 @@ class TestTestRunnerIsolation(unittest.TestCase):
             "GIT_DIR": str(ambient / ".git"),
             "GIT_WORK_TREE": str(ambient),
             "GIT_INDEX_FILE": str(ambient / "index"),
-            "TMUX": "live-session",
-            "TMUX_PANE": "%1",
+            "HERDR_SOCKET_PATH": "/live/herdr.sock",
+            "HERDR_PANE_ID": "w1:p1",
             "LEAK_SENTINEL": "private-fixture-value",
         }
         for key in (
@@ -181,7 +181,6 @@ class TestTestRunnerIsolation(unittest.TestCase):
             "XDG_DATA_HOME",
             "XDG_STATE_HOME",
             "XDG_RUNTIME_DIR",
-            "TMUX_TMPDIR",
         ):
             env[key] = str(ambient)
         env.pop("PYTHONDONTWRITEBYTECODE", None)

@@ -32,17 +32,17 @@ This slice covers source control, review/readiness tooling, build/test utilities
 
 ## Code quality and formatters
 
-| Tool                                                                                                              | Source | Why it is here                         |
-| ----------------------------------------------------------------------------------------------------------------- | ------ | -------------------------------------- |
-| [`shellcheck`](https://www.shellcheck.net/), [`shfmt`](https://github.com/mvdan/sh)                               | `brew` | shell lint/format gates                |
-| [`stylua`](https://github.com/JohnnyMorganz/StyLua)                                                               | `brew` | Lua formatting for Neovim/tmux helpers |
-| [`markdownlint-cli`](https://github.com/igorshubovych/markdownlint-cli), [`prettier`](https://prettier.io/)       | `brew` | docs and web formatting                |
-| [`ruff`](https://docs.astral.sh/ruff/)                                                                            | `brew` | Python lint/format                     |
-| [`gofumpt`](https://github.com/mvdan/gofumpt), [`goimports`](https://pkg.go.dev/golang.org/x/tools/cmd/goimports) | `brew` | Go formatting/import normalization     |
-| [`bats-core`](https://github.com/bats-core/bats-core)                                                             | `brew` | shell tests                            |
-| [`tokei`](https://github.com/XAMPPRocky/tokei)                                                                    | `brew` | code statistics                        |
-| [`feluda`](https://github.com/anistark/feluda)                                                                    | `brew` | code/search analysis utility           |
-| [`readmeroast`](https://github.com/princejain756/readmeroast)                                                     | `pnpm` | README checks for `k-readme`           |
+| Tool                                                                                                              | Source | Why it is here                     |
+| ----------------------------------------------------------------------------------------------------------------- | ------ | ---------------------------------- |
+| [`shellcheck`](https://www.shellcheck.net/), [`shfmt`](https://github.com/mvdan/sh)                               | `brew` | shell lint/format gates            |
+| [`stylua`](https://github.com/JohnnyMorganz/StyLua)                                                               | `brew` | Lua formatting for Neovim helpers  |
+| [`markdownlint-cli`](https://github.com/igorshubovych/markdownlint-cli), [`prettier`](https://prettier.io/)       | `brew` | docs and web formatting            |
+| [`ruff`](https://docs.astral.sh/ruff/)                                                                            | `brew` | Python lint/format                 |
+| [`gofumpt`](https://github.com/mvdan/gofumpt), [`goimports`](https://pkg.go.dev/golang.org/x/tools/cmd/goimports) | `brew` | Go formatting/import normalization |
+| [`bats-core`](https://github.com/bats-core/bats-core)                                                             | `brew` | shell tests                        |
+| [`tokei`](https://github.com/XAMPPRocky/tokei)                                                                    | `brew` | code statistics                    |
+| [`feluda`](https://github.com/anistark/feluda)                                                                    | `brew` | code/search analysis utility       |
+| [`readmeroast`](https://github.com/princejain756/readmeroast)                                                     | `pnpm` | README checks for `k-readme`       |
 
 ## Build, CI, containers, and VMs
 

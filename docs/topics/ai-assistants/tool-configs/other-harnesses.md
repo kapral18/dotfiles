@@ -135,7 +135,7 @@ These are actionable categories, not severity. Severity (`CRITICAL`/`HIGH`/`MEDI
 
 ## lgtm (live diff reviewer)
 
-[lgtm](https://github.com/kunkka19xx/lgtm) is a terminal diff reviewer that runs in a tmux pane beside the agent and sends `path:line` references into its input box. Its config is single-sourced and read-only.
+[lgtm](https://github.com/kunkka19xx/lgtm) is a terminal diff reviewer that runs in a herdr pane beside the agent and sends `path:line` references into its input box. Its config is single-sourced and read-only.
 
 | Surface | Path                                                                                                 | Target                       |
 | ------- | ---------------------------------------------------------------------------------------------------- | ---------------------------- |

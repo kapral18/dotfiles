@@ -142,7 +142,7 @@ Each turn that ends records what its session waits on, read from its card and fi
 OpenCode's stop event carries no final answer, so its sessions get `unfinished`, `ready` or `replied` from the card alone, never `question` or `blocked`.
 A session that typed a prompt after its last recorded turn, within the last six hours, shows as working; a session start without a prompt does not. A Stop that a hook sends back records nothing, since the turn goes on: intent-guard's own send-back records no status, and Claude's stop-review, which runs after intent-guard, runs `,task hook sentback` to drop the status it recorded, so the session shows as working again.
 `,task board` reads every worktree's store and lists `question`, `blocked`, `unfinished` and `ready` sessions under "Needs you", newest first within each status, then one line each for working and replied sessions.
-A session drops off two days after its last recorded turn, and six hours after a prompt that never ended a turn. `prefix + A` opens the board in a tmux popup.
+A session drops off two days after its last recorded turn, and six hours after a prompt that never ended a turn. `prefix + A` opens the board in a herdr popup.
 
 ## The guard ledger
 

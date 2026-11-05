@@ -151,31 +151,37 @@ check_shell() {
   fi
 }
 
-check_tmux() {
-  section "tmux"
+check_herdr() {
+  section "herdr"
 
-  if has_cmd tmux; then
-    pass "tmux installed"
+  if has_cmd herdr; then
+    pass "herdr installed"
   else
-    fail "tmux not installed" "brew install tmux"
+    fail "herdr not installed" "brew install herdr"
     return
   fi
 
-  local tpm_dir="$HOME/.config/tmux/plugins/tpm"
-  if [ -d "$tpm_dir" ]; then
-    pass "TPM installed"
+  if herdr config check > /dev/null 2>&1; then
+    pass "herdr config valid"
   else
-    fail "TPM not installed" "chezmoi apply --include=externals"
+    fail "herdr config has issues" "herdr config check"
   fi
 
-  if tmux info > /dev/null 2>&1; then
-    pass "tmux server running"
-    local sess_count
-    sess_count="$(tmux list-sessions 2> /dev/null | wc -l | tr -d ' ')"
-    pass "$sess_count active session(s)"
+  if herdr workspace list > /dev/null 2>&1; then
+    pass "herdr server running"
+    pass "$(herdr workspace list | jq '.result.workspaces | length') workspace(s)"
   else
-    warn "tmux server not running"
+    warn "herdr server not running"
   fi
+
+  local plugin
+  for plugin in k18.workspace-history k18.pickers; do
+    if herdr plugin list --json 2> /dev/null | jq -e --arg id "$plugin" '.result.plugins[] | select(.plugin_id == $id)' > /dev/null; then
+      pass "plugin $plugin linked"
+    else
+      fail "plugin $plugin not linked" "chezmoi apply"
+    fi
+  done
 
   if has_cmd fzf; then
     pass "fzf installed (picker dependency)"
@@ -793,7 +799,7 @@ fi
 
 check_core
 check_shell
-check_tmux
+check_herdr
 check_git
 check_security
 check_editors_ai

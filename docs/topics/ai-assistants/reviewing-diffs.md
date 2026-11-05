@@ -59,11 +59,11 @@ tuicr --stdout | ,codex exec
 tuicr --stdout > /tmp/review.md
 ```
 
-On export, tuicr copies markdown to the system clipboard (handling tmux/SSH OSC 52 propagation automatically). `.tuicrignore` (gitignore-style, repo-local) excludes generated files from the review surface; not managed by chezmoi.
+On export, tuicr copies markdown to the system clipboard (handling SSH OSC 52 propagation automatically). `.tuicrignore` (gitignore-style, repo-local) excludes generated files from the review surface; not managed by chezmoi.
 
 ## lgtm
 
-[`lgtm`](https://github.com/kunkka19xx/lgtm) reviews the diff while the agent is still writing it, in a tmux pane next to the agent.
+[`lgtm`](https://github.com/kunkka19xx/lgtm) reviews the diff while the agent is still writing it, in a herdr pane next to the agent.
 
 ### Install
 
@@ -80,7 +80,7 @@ A repo-local `.lgtm/config.toml` overrides the home config key by key, so a sing
 ### Loop
 
 ```bash
-# split a tmux pane beside the agent and run it there
+# split a herdr pane beside the agent and run it there
 lgtm                              # HEAD vs working tree, live
 lgtm --base main                  # whole branch incl. uncommitted, live
 lgtm --base main --target HEAD    # committed work only, static
@@ -100,7 +100,7 @@ Keys:
 
 State: `.lgtm/` holds comments, reviews, and read state and gitignores itself; snapshots live under `refs/lgtm/**`, invisible to `git branch`/`git status` but visible to `git log --all`. Neither is managed by chezmoi.
 
-Pane targeting: with exactly two panes `lgtm` infers the agent's pane and types into it with tmux `send-keys`. Otherwise it opens a pane picker, or take `--pane %N`.
+Pane targeting: with exactly two panes `lgtm` infers the agent's pane and types into it through herdr. Otherwise it opens a pane picker, or take `--pane w1:p1`.
 
 ## Related
 

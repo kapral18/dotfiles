@@ -510,7 +510,7 @@ def run(config: Config, command: list[str]) -> int:
         raise Terminated(signum)
 
     trapped = [signal.SIGTERM]
-    # SIGHUP arrives when the owning terminal closes (for example tmux kill-session); its default
+    # SIGHUP arrives when the owning terminal closes (for example a closed herdr pane); its default
     # action would skip the finally below and leak the lease, keeping the router alive. An
     # inherited ignore (nohup) stays in place so the command inherits it too.
     if signal.getsignal(signal.SIGHUP) is not signal.SIG_IGN:

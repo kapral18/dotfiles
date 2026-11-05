@@ -65,12 +65,13 @@ It rejects malformed JSON, an empty key set, and keys that are not plain identif
 
 `,doctor ai` evaluates generated artifact rows without changing anything.
 
-| Check                    | Rule                                                  |
-| ------------------------ | ----------------------------------------------------- |
-| whole-file outputs       | compare exact bytes                                   |
-| Claude MCP               | compare only `mcpServers`                             |
-| Claude global config     | compare only the declared `claude_global_config` keys |
-| Codex                    | ignore only its four explicit runtime-owned buckets   |
-| source/transform changes | report stale state until the matching hook runs again |
+| Check                    | Rule                                                                                                                                                                                                                         |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| whole-file outputs       | compare exact bytes                                                                                                                                                                                                          |
+| Claude MCP               | compare only `mcpServers`                                                                                                                                                                                                    |
+| Claude settings          | compare only the keys `home/dot_claude/settings.json` declares (herdr's `hooks` are not owned); the hook still installs the whole file, so a rerun drops undeclared keys until herdr's post-apply install restores its hooks |
+| Claude global config     | compare only the declared `claude_global_config` keys                                                                                                                                                                        |
+| Codex                    | ignore only its four explicit runtime-owned buckets                                                                                                                                                                          |
+| source/transform changes | report stale state until the matching hook runs again                                                                                                                                                                        |
 
 Default output is static. `,doctor ai --live` adds deduplicated local harness probes; it does not apply chezmoi, refresh credentials, or use the network.

@@ -18,7 +18,7 @@ SCRIPTS = Path(__file__).resolve().parents[1]
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
-from _test_support import TMUX_PICKERS, modern_bash
+from _test_support import PICKERS, herdr_home, modern_bash
 
 
 class TestGhPickerDispatchState(unittest.TestCase):
@@ -55,14 +55,14 @@ class TestGhPickerDispatchState(unittest.TestCase):
     def _setup_fixture(self, tmp_path: Path) -> dict[str, Path]:
         home = tmp_path / "home"
         cache_home = tmp_path / "cache"
-        cache_dir = cache_home / "tmux"
+        cache_dir = cache_home / "herdr-pickers"
         cache_dir.mkdir(parents=True)
         (home / "bin").mkdir(parents=True)
-        selected_targets = home / ".config/tmux/scripts/pickers/github/lib/gh_selected_targets.py"
+        selected_targets = home / ".config/herdr/scripts/pickers/github/lib/gh_selected_targets.py"
         selected_targets.parent.mkdir(parents=True)
-        selected_targets.write_bytes((TMUX_PICKERS / "github/lib/gh_selected_targets.py").read_bytes())
+        selected_targets.write_bytes((PICKERS / "github/lib/gh_selected_targets.py").read_bytes())
 
-        patcher = home / ".config/tmux/scripts/pickers/github/lib/gh_patch_picker_cache.py"
+        patcher = home / ".config/herdr/scripts/pickers/github/lib/gh_patch_picker_cache.py"
         self._write_executable(
             patcher,
             textwrap.dedent(
@@ -123,7 +123,7 @@ class TestGhPickerDispatchState(unittest.TestCase):
         }
 
     def test_background_completion_targets_origin_dispatch_not_latest_global_picker(self):
-        script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"
+        script = PICKERS / "github/executable_gh_batch_worktree.sh"
 
         with tempfile.TemporaryDirectory() as tmp:
             fixture = self._setup_fixture(Path(tmp))
@@ -133,7 +133,7 @@ class TestGhPickerDispatchState(unittest.TestCase):
 
             env = {
                 **os.environ,
-                "HOME": str(fixture["home"]),
+                "HOME": herdr_home(fixture["home"]),
                 "XDG_CACHE_HOME": str(fixture["cache_home"]),
                 "PATCH_LOG": str(fixture["patch_log"]),
                 "CURL_LOG": str(fixture["curl_log"]),
@@ -157,7 +157,7 @@ class TestGhPickerDispatchState(unittest.TestCase):
             assert "GH_PICKER_SCOPE=focus" not in curl_log
 
     def test_single_picker_fallback_still_uses_shared_global_state_when_dispatch_missing(self):
-        script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"
+        script = PICKERS / "github/executable_gh_batch_worktree.sh"
 
         with tempfile.TemporaryDirectory() as tmp:
             fixture = self._setup_fixture(Path(tmp))
@@ -167,7 +167,7 @@ class TestGhPickerDispatchState(unittest.TestCase):
 
             env = {
                 **os.environ,
-                "HOME": str(fixture["home"]),
+                "HOME": herdr_home(fixture["home"]),
                 "XDG_CACHE_HOME": str(fixture["cache_home"]),
                 "PATCH_LOG": str(fixture["patch_log"]),
                 "CURL_LOG": str(fixture["curl_log"]),
@@ -194,74 +194,8 @@ class TestGhPickerDispatchState(unittest.TestCase):
             assert "--unix-socket global.sock" in curl_log
             assert "GH_PICKER_SCOPE=focus" in curl_log
 
-    def test_foreground_dispatch_preserves_current_tmux_socket(self):
-        script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"
-
-        with tempfile.TemporaryDirectory() as tmp:
-            fixture = self._setup_fixture(Path(tmp))
-            nohup_log = Path(tmp) / "nohup.log"
-            self._write_executable(
-                fixture["home"] / "bin/nohup",
-                '#!/usr/bin/env bash\nprintf \'%s\\n\' "$*" > "$NOHUP_LOG.tmp"\nmv "$NOHUP_LOG.tmp" "$NOHUP_LOG"\n',
-            )
-            env = {
-                **os.environ,
-                "HOME": str(fixture["home"]),
-                "XDG_CACHE_HOME": str(fixture["cache_home"]),
-                "NOHUP_LOG": str(nohup_log),
-                "TMUX": "/private/tmp/tmux-fixture/default,123,0",
-                "PATH": f"{fixture['home'] / 'bin'}:{os.environ['PATH']}",
-            }
-            env.pop("OUTER_TMUX_SOCKET", None)
-
-            result = subprocess.run(
-                [modern_bash(), str(script), str(fixture["selection_file"])],
-                capture_output=True,
-                text=True,
-                env=env,
-            )
-            assert result.returncode == 0, result.stderr
-            deadline = time.monotonic() + 10
-            while time.monotonic() < deadline and not nohup_log.exists():
-                time.sleep(0.02)
-            assert nohup_log.exists(), "foreground dispatch never invoked nohup"
-            assert "OUTER_TMUX_SOCKET=/private/tmp/tmux-fixture/default" in nohup_log.read_text()
-
-    def test_foreground_dispatch_preserves_explicit_outer_tmux_socket(self):
-        script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"
-
-        with tempfile.TemporaryDirectory() as tmp:
-            fixture = self._setup_fixture(Path(tmp))
-            nohup_log = Path(tmp) / "nohup.log"
-            self._write_executable(
-                fixture["home"] / "bin/nohup",
-                '#!/usr/bin/env bash\nprintf \'%s\\n\' "$*" > "$NOHUP_LOG.tmp"\nmv "$NOHUP_LOG.tmp" "$NOHUP_LOG"\n',
-            )
-            env = {
-                **os.environ,
-                "HOME": str(fixture["home"]),
-                "XDG_CACHE_HOME": str(fixture["cache_home"]),
-                "NOHUP_LOG": str(nohup_log),
-                "TMUX": "/private/tmp/nested/default,123,0",
-                "OUTER_TMUX_SOCKET": "/private/tmp/outer/default",
-                "PATH": f"{fixture['home'] / 'bin'}:{os.environ['PATH']}",
-            }
-
-            result = subprocess.run(
-                [modern_bash(), str(script), str(fixture["selection_file"])],
-                capture_output=True,
-                text=True,
-                env=env,
-            )
-            assert result.returncode == 0, result.stderr
-            deadline = time.monotonic() + 10
-            while time.monotonic() < deadline and not nohup_log.exists():
-                time.sleep(0.02)
-            assert nohup_log.exists(), "foreground dispatch never invoked nohup"
-            assert "OUTER_TMUX_SOCKET=/private/tmp/outer/default" in nohup_log.read_text()
-
     def test_foreground_issue_editor_exit_dispatches_every_worktree(self):
-        script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"
+        script = PICKERS / "github/executable_gh_batch_worktree.sh"
 
         with tempfile.TemporaryDirectory() as tmp:
             fixture = self._setup_fixture(Path(tmp))
@@ -311,7 +245,7 @@ class TestGhPickerDispatchState(unittest.TestCase):
             )
             env = {
                 **os.environ,
-                "HOME": str(fixture["home"]),
+                "HOME": herdr_home(fixture["home"]),
                 "XDG_CACHE_HOME": str(fixture["cache_home"]),
                 "PATCH_LOG": str(fixture["patch_log"]),
                 "CURL_LOG": str(fixture["curl_log"]),
@@ -352,7 +286,7 @@ class TestGhPickerDispatchState(unittest.TestCase):
             assert all("--branch fix/test/generated" in call for call in calls), calls
 
     def test_background_serializes_worktree_creates(self):
-        script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"
+        script = PICKERS / "github/executable_gh_batch_worktree.sh"
 
         with tempfile.TemporaryDirectory() as tmp:
             fixture = self._setup_fixture(Path(tmp))
@@ -382,7 +316,7 @@ class TestGhPickerDispatchState(unittest.TestCase):
             )
             env = {
                 **os.environ,
-                "HOME": str(fixture["home"]),
+                "HOME": herdr_home(fixture["home"]),
                 "XDG_CACHE_HOME": str(fixture["cache_home"]),
                 "PATCH_LOG": str(fixture["patch_log"]),
                 "CURL_LOG": str(fixture["curl_log"]),
@@ -403,7 +337,7 @@ class TestGhPickerDispatchState(unittest.TestCase):
             assert [line.split()[0] for line in lines] == ["start", "end", "start", "end"], lines
 
     def test_background_reload_closes_cross_batch_lock_fd(self):
-        script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"
+        script = PICKERS / "github/executable_gh_batch_worktree.sh"
 
         with tempfile.TemporaryDirectory() as tmp:
             fixture = self._setup_fixture(Path(tmp))
@@ -424,7 +358,7 @@ class TestGhPickerDispatchState(unittest.TestCase):
             )
             env = {
                 **os.environ,
-                "HOME": str(fixture["home"]),
+                "HOME": herdr_home(fixture["home"]),
                 "XDG_CACHE_HOME": str(fixture["cache_home"]),
                 "PATCH_LOG": str(fixture["patch_log"]),
                 "CURL_LOG": str(fixture["curl_log"]),
@@ -449,12 +383,12 @@ class TestGhPickerDispatchState(unittest.TestCase):
             assert set(states) == {"fd-closed"}, states
 
     def test_loading_spinner_closes_cross_batch_lock_fd(self):
-        script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"
+        script = PICKERS / "github/executable_gh_batch_worktree.sh"
 
         with tempfile.TemporaryDirectory() as tmp:
             fixture = self._setup_fixture(Path(tmp))
             spinner_fd_log = Path(tmp) / "spinner-fd.log"
-            row_loader = fixture["home"] / ".config/tmux/scripts/pickers/github/lib/gh_row_loader.sh"
+            row_loader = fixture["home"] / ".config/herdr/scripts/pickers/github/lib/gh_row_loader.sh"
             self._write_executable(
                 row_loader,
                 textwrap.dedent(
@@ -480,7 +414,7 @@ class TestGhPickerDispatchState(unittest.TestCase):
             )
             env = {
                 **os.environ,
-                "HOME": str(fixture["home"]),
+                "HOME": herdr_home(fixture["home"]),
                 "XDG_CACHE_HOME": str(fixture["cache_home"]),
                 "PATCH_LOG": str(fixture["patch_log"]),
                 "CURL_LOG": str(fixture["curl_log"]),
@@ -496,7 +430,7 @@ class TestGhPickerDispatchState(unittest.TestCase):
             assert spinner_fd_log.read_text().splitlines() == ["fd-closed"]
 
     def test_background_serializes_issue_worktree_creates(self):
-        script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"
+        script = PICKERS / "github/executable_gh_batch_worktree.sh"
 
         with tempfile.TemporaryDirectory() as tmp:
             fixture = self._setup_fixture(Path(tmp))
@@ -528,7 +462,7 @@ class TestGhPickerDispatchState(unittest.TestCase):
             branches.write_text("owner/repo#1|fix/one\nowner/repo#2|fix/two\n")
             env = {
                 **os.environ,
-                "HOME": str(fixture["home"]),
+                "HOME": herdr_home(fixture["home"]),
                 "XDG_CACHE_HOME": str(fixture["cache_home"]),
                 "PATCH_LOG": str(fixture["patch_log"]),
                 "CURL_LOG": str(fixture["curl_log"]),
@@ -553,7 +487,7 @@ class TestGhPickerDispatchState(unittest.TestCase):
             ]
 
     def test_batch_launch_guard_rechecks_deadline(self):
-        script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"
+        script = PICKERS / "github/executable_gh_batch_worktree.sh"
         probe = r"""
 set -euo pipefail
 eval "$(sed -n '/^_batch_can_launch()/,/^}/p' "$1")"
@@ -575,7 +509,7 @@ fi
         assert result.stdout.strip() == "1"
 
     def test_pid_start_identity_fails_open_when_ps_is_unavailable(self):
-        script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"
+        script = PICKERS / "github/executable_gh_batch_worktree.sh"
         with tempfile.TemporaryDirectory() as tmp:
             fake_ps = Path(tmp) / "ps"
             self._write_executable(fake_ps, "#!/usr/bin/env bash\nexit 1\n")
@@ -595,7 +529,7 @@ printf 'survived\n'
         assert result.stdout.strip() == "survived"
 
     def test_active_ledger_records_process_start_identity(self):
-        script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"
+        script = PICKERS / "github/executable_gh_batch_worktree.sh"
 
         with tempfile.TemporaryDirectory() as tmp:
             fixture = self._setup_fixture(Path(tmp))
@@ -611,7 +545,7 @@ printf 'survived\n'
             )
             env = {
                 **os.environ,
-                "HOME": str(fixture["home"]),
+                "HOME": herdr_home(fixture["home"]),
                 "XDG_CACHE_HOME": str(fixture["cache_home"]),
                 "PATCH_LOG": str(fixture["patch_log"]),
                 "CURL_LOG": str(fixture["curl_log"]),
@@ -645,7 +579,7 @@ printf 'survived\n'
         assert fields[4] == "fixture-start", ledger_row
 
     def test_parent_death_during_ledger_publication_keeps_next_batch_locked(self):
-        script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"
+        script = PICKERS / "github/executable_gh_batch_worktree.sh"
 
         with tempfile.TemporaryDirectory() as tmp:
             fixture = self._setup_fixture(Path(tmp))
@@ -685,7 +619,7 @@ printf 'survived\n'
             second.write_text("PR 2\tpr\towner/repo\t2\thttps://example.test/2\n")
             env = {
                 **os.environ,
-                "HOME": str(fixture["home"]),
+                "HOME": herdr_home(fixture["home"]),
                 "XDG_CACHE_HOME": str(fixture["cache_home"]),
                 "PATCH_LOG": str(fixture["patch_log"]),
                 "CURL_LOG": str(fixture["curl_log"]),
@@ -742,7 +676,7 @@ printf 'survived\n'
                     second_proc.communicate(timeout=3)
 
     def test_parent_death_during_ledger_drop_keeps_next_batch_locked(self):
-        script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"
+        script = PICKERS / "github/executable_gh_batch_worktree.sh"
 
         with tempfile.TemporaryDirectory() as tmp:
             fixture = self._setup_fixture(Path(tmp))
@@ -779,7 +713,7 @@ printf 'survived\n'
             second.write_text("PR 2\tpr\towner/repo\t2\thttps://example.test/2\n")
             env = {
                 **os.environ,
-                "HOME": str(fixture["home"]),
+                "HOME": herdr_home(fixture["home"]),
                 "XDG_CACHE_HOME": str(fixture["cache_home"]),
                 "PATCH_LOG": str(fixture["patch_log"]),
                 "CURL_LOG": str(fixture["curl_log"]),
@@ -834,7 +768,7 @@ printf 'survived\n'
                     second_proc.communicate(timeout=3)
 
     def test_deadline_during_ledger_drop_releases_own_ledger_and_lock(self):
-        script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"
+        script = PICKERS / "github/executable_gh_batch_worktree.sh"
 
         with tempfile.TemporaryDirectory() as tmp:
             fixture = self._setup_fixture(Path(tmp))
@@ -888,7 +822,7 @@ printf 'survived\n'
             assert "owner/repo\t123\tclear" in fixture["patch_log"].read_text()
 
     def test_ledgerless_lockdir_for_reused_batch_pid_is_reaped(self):
-        script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"
+        script = PICKERS / "github/executable_gh_batch_worktree.sh"
 
         with tempfile.TemporaryDirectory() as tmp:
             fixture = self._setup_fixture(Path(tmp))
@@ -899,7 +833,7 @@ printf 'survived\n'
             )
             env = {
                 **os.environ,
-                "HOME": str(fixture["home"]),
+                "HOME": herdr_home(fixture["home"]),
                 "XDG_CACHE_HOME": str(fixture["cache_home"]),
                 "PATCH_LOG": str(fixture["patch_log"]),
                 "CURL_LOG": str(fixture["curl_log"]),
@@ -912,7 +846,7 @@ printf 'survived\n'
             launcher = "\n".join(
                 (
                     "set -euo pipefail",
-                    'ledger_dir="$XDG_CACHE_HOME/tmux/gh_batch_worktree_jobs"',
+                    'ledger_dir="$XDG_CACHE_HOME/herdr-pickers/gh_batch_worktree_jobs"',
                     'mkdir -p "$ledger_dir/$$.tsv.lockdir"',
                     f"exec {shlex.quote(modern_bash())} {shlex.quote(str(script))} "
                     f"{shlex.quote(str(fixture['selection_file']))} --background",
@@ -931,7 +865,7 @@ printf 'survived\n'
             assert not list(ledger_dir.glob("*.lockdir")), list(ledger_dir.glob("*.lockdir"))
 
     def test_separate_background_batches_share_one_create_lock(self):
-        script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"
+        script = PICKERS / "github/executable_gh_batch_worktree.sh"
 
         with tempfile.TemporaryDirectory() as tmp:
             fixture = self._setup_fixture(Path(tmp))
@@ -956,7 +890,7 @@ printf 'survived\n'
             second.write_text("PR 2\tpr\towner/repo\t2\thttps://example.test/2\n")
             env = {
                 **os.environ,
-                "HOME": str(fixture["home"]),
+                "HOME": herdr_home(fixture["home"]),
                 "XDG_CACHE_HOME": str(fixture["cache_home"]),
                 "PATCH_LOG": str(fixture["patch_log"]),
                 "CURL_LOG": str(fixture["curl_log"]),
@@ -992,7 +926,7 @@ printf 'survived\n'
             ]
 
     def test_queued_batch_wait_counts_against_total_deadline(self):
-        script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"
+        script = PICKERS / "github/executable_gh_batch_worktree.sh"
 
         with tempfile.TemporaryDirectory() as tmp:
             fixture = self._setup_fixture(Path(tmp))
@@ -1017,7 +951,7 @@ printf 'survived\n'
             second.write_text("PR 2\tpr\towner/repo\t2\thttps://example.test/2\n")
             env = {
                 **os.environ,
-                "HOME": str(fixture["home"]),
+                "HOME": herdr_home(fixture["home"]),
                 "XDG_CACHE_HOME": str(fixture["cache_home"]),
                 "PATCH_LOG": str(fixture["patch_log"]),
                 "CURL_LOG": str(fixture["curl_log"]),
@@ -1056,7 +990,7 @@ printf 'survived\n'
                 assert first_proc.returncode == 0, (first_stdout, first_stderr)
 
     def test_multiple_creates_never_clear_done_markers(self):
-        script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"
+        script = PICKERS / "github/executable_gh_batch_worktree.sh"
 
         with tempfile.TemporaryDirectory() as tmp:
             fixture = self._setup_fixture(Path(tmp))
@@ -1079,7 +1013,7 @@ printf 'survived\n'
             )
             env = {
                 **os.environ,
-                "HOME": str(fixture["home"]),
+                "HOME": herdr_home(fixture["home"]),
                 "XDG_CACHE_HOME": str(fixture["cache_home"]),
                 "PATCH_LOG": str(fixture["patch_log"]),
                 "CURL_LOG": str(fixture["curl_log"]),
@@ -1099,7 +1033,7 @@ printf 'survived\n'
             assert cleared == [], patch_log
 
     def test_failed_create_does_not_cancel_siblings_or_next_batch(self):
-        script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"
+        script = PICKERS / "github/executable_gh_batch_worktree.sh"
 
         with tempfile.TemporaryDirectory() as tmp:
             fixture = self._setup_fixture(Path(tmp))
@@ -1122,7 +1056,7 @@ printf 'survived\n'
             first.write_text("".join(f"PR {n}\tpr\towner/repo\t{n}\thttps://example.test/{n}\n" for n in range(1, 4)))
             env = {
                 **os.environ,
-                "HOME": str(fixture["home"]),
+                "HOME": herdr_home(fixture["home"]),
                 "XDG_CACHE_HOME": str(fixture["cache_home"]),
                 "PATCH_LOG": str(fixture["patch_log"]),
                 "CURL_LOG": str(fixture["curl_log"]),
@@ -1151,7 +1085,7 @@ printf 'survived\n'
     def _stale_ledger_env(self, fixture: dict[str, Path]) -> dict[str, str]:
         return {
             **os.environ,
-            "HOME": str(fixture["home"]),
+            "HOME": herdr_home(fixture["home"]),
             "XDG_CACHE_HOME": str(fixture["cache_home"]),
             "PATCH_LOG": str(fixture["patch_log"]),
             "CURL_LOG": str(fixture["curl_log"]),
@@ -1203,7 +1137,7 @@ printf 'survived\n'
         # A stale ledger outlives its batch, so a recorded pid may belong to an
         # unrelated process by reap time. The reap must clear the marker but
         # leave processes whose argv is not a detached batch alone.
-        script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"
+        script = PICKERS / "github/executable_gh_batch_worktree.sh"
 
         with tempfile.TemporaryDirectory() as tmp:
             fixture = self._setup_fixture(Path(tmp))
@@ -1224,7 +1158,7 @@ printf 'survived\n'
             assert "owner/repo\t123\tclear" in fixture["patch_log"].read_text()
 
     def test_live_innocent_pid_in_ledger_filename_does_not_suppress_reap(self):
-        script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"
+        script = PICKERS / "github/executable_gh_batch_worktree.sh"
 
         with tempfile.TemporaryDirectory() as tmp:
             fixture = self._setup_fixture(Path(tmp))
@@ -1247,7 +1181,7 @@ printf 'survived\n'
     def test_stale_ledger_kills_leftover_batch_lookalike(self):
         # The flip side: a live process that IS a detached batch subshell must
         # still be reaped, otherwise hung creates survive the recovery path.
-        script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"
+        script = PICKERS / "github/executable_gh_batch_worktree.sh"
 
         with tempfile.TemporaryDirectory() as tmp:
             fixture = self._setup_fixture(Path(tmp))
@@ -1272,7 +1206,7 @@ printf 'survived\n'
                     lookalike.wait(timeout=2)
 
     def test_stale_ledger_does_not_kill_matching_argv_with_different_start(self):
-        script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"
+        script = PICKERS / "github/executable_gh_batch_worktree.sh"
 
         with tempfile.TemporaryDirectory() as tmp:
             fixture = self._setup_fixture(Path(tmp))
@@ -1296,7 +1230,7 @@ printf 'survived\n'
             assert "owner/repo\t123\tclear" in fixture["patch_log"].read_text()
 
     def test_old_ledger_still_kills_identity_matching_leftover(self):
-        script = TMUX_PICKERS / "github/executable_gh_batch_worktree.sh"
+        script = PICKERS / "github/executable_gh_batch_worktree.sh"
 
         with tempfile.TemporaryDirectory() as tmp:
             fixture = self._setup_fixture(Path(tmp))

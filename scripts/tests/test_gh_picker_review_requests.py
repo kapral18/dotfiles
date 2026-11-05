@@ -14,7 +14,7 @@ from unittest import mock
 
 from _test_support import REPO
 
-MODULE = REPO / "home/dot_config/exact_tmux/exact_scripts/pickers/github/lib/gh_items_main.py"
+MODULE = REPO / "home/dot_config/herdr/exact_scripts/pickers/github/lib/gh_items_main.py"
 
 
 def _load_module():

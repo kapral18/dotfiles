@@ -4,47 +4,47 @@ sidebar_position: 4
 
 # A Day In The Life
 
-This page is for people coming from a traditional IDE workflow who want to see what "terminal-driven" can look like. The workbench is one **tmux** window: Neovim in a normal pane, an assistant or shell next to it, and focused popups only when a workflow needs a picker.
+This page is for people coming from a traditional IDE workflow who want to see what "terminal-driven" can look like. The workbench is one **herdr** window: Neovim in a normal pane, an assistant or shell next to it, and focused popups only when a workflow needs a picker.
 
 Two fzf popups do most of the navigation:
 
-- the **[session picker](../topics/workflow/tmux/session-picker.md)** (`prefix` + `T`) for navigating, creating, switching, and killing sessions
-- the **[GitHub picker](../topics/workflow/tmux/github-picker.md)** (`prefix` + `G`) for issues and PRs
+- the **[session picker](../topics/workflow/herdr/session-picker.md)** (`prefix` + `T`) for opening, closing, and acting on workspaces
+- the **[GitHub picker](../topics/workflow/herdr/github-picker.md)** (`prefix` + `G`) for issues and PRs
 
-Both wrap the lower-level comma commands (`,w`, `,gh-worktree`) so you rarely type them by hand — the pickers handle worktree creation, session naming, and linking for you. `prefix` is `Ctrl-Space`; tmux config is [`home/dot_config/exact_tmux/readonly_tmux.conf`](../../home/dot_config/exact_tmux/readonly_tmux.conf).
+Both wrap the lower-level comma commands (`,w`, `,gh-worktree`) so you rarely type them by hand — the pickers handle worktree creation, session naming, and linking for you. `prefix` is `Ctrl-Space`; herdr config is [`home/dot_config/herdr/readonly_config.toml`](../../home/dot_config/herdr/readonly_config.toml).
 
 ## Morning: Restore Context
 
-Open the session picker (`prefix` + `T`). It lists your tmux sessions, git worktrees, and recent directories in one place, with inline badges for dirty state, linked PRs/issues, and CI status. The preview pane shows the last screen of each session, so you can see where you left off and jump straight back in with `enter`.
+Open the session picker (`prefix` + `T`). It lists your herdr workspaces, git worktrees, and recent directories in one place, with inline badges for dirty state, linked PRs/issues, and CI status. The preview pane shows the last screen of each session, so you can see where you left off and jump straight back in with `enter`.
 
-## Navigate, Create, Switch, And Kill Sessions
+## Open, Switch, And Close Workspaces
 
 The session picker provides these actions:
 
 - `enter` — switch to a session, or create one for a worktree/directory row (it derives a canonical session name and attaches automatically)
 - `tab` — multi-select rows for batch actions
-- `ctrl-x` — kill the selected session(s)
+- `ctrl-x` — close the selected workspace(s)
 - `alt-x` — remove the selected worktree(s) (won't tear down your current session)
 - `ctrl-s` — send a command to the selected session(s) without switching
 - `alt-p` / `alt-i` — open the row's linked PR / issue in the browser
 
-Because it indexes worktrees on disk, the sessions you create with `,w` (or via the GitHub picker) show up here automatically. See [Session picker](../topics/workflow/tmux/session-picker.md) and [Worktrees](../topics/workflow/git-identity/worktrees.md).
+Because it indexes worktrees on disk, the sessions you create with `,w` (or via the GitHub picker) show up here automatically. See [Session picker](../topics/workflow/herdr/session-picker.md) and [Worktrees](../topics/workflow/git-identity/worktrees.md).
 
 ## Work The GitHub Dashboard
 
 Open the GitHub picker (`prefix` + `G`) for a PR/issue dashboard with review/CI badges, hierarchy (epics, backport families), and inline actions. Switch scope with `alt-1` (Focus: work you own or must act on) and `alt-2` (Explore: mentions and involvement).
 
-![GitHub picker popup over the tmux workbench, with safe demo rows for own PRs, external reviews, issues, epics, and pending backports](../topics/workflow/tmux/assets/github-picker-full.png)
+![GitHub picker popup over the terminal workbench, with safe demo rows for own PRs, external reviews, issues, epics, and pending backports](../topics/workflow/herdr/assets/github-picker-full.png)
 
 This demo shows an earlier picker layout. Use the current scopes and bindings described here; labels and shortcuts in the image may differ.
 
-From the dashboard, without leaving tmux:
+From the dashboard, without leaving herdr:
 
 - **Create tickets** — `alt-i` opens `$EDITOR` to file a new issue; `alt-E` files an epic (parent + sub-issues).
 - **Clone and check out** — `enter` on a PR/issue creates a worktree and focuses its session. If the repo isn't local yet, it's bootstrapped first (`,gh-tfork`), so cloning, worktree creation, session creation, and issue↔branch linking all happen in one step. `ctrl-t` batches this across marked rows.
 - **Act on PRs** — `alt-x` opens a command palette (approve, request-changes, merge, label, comment, request review); `alt-c` adds a comment; `alt-b` checks out and opens an Octo review; `alt-o` opens in the browser.
 
-`alt-g` switches between this dashboard and the session picker in place. See [GitHub picker](../topics/workflow/tmux/github-picker.md).
+`alt-g` switches between this dashboard and the session picker in place. See [GitHub picker](../topics/workflow/herdr/github-picker.md).
 
 ## Work with assistants
 
@@ -73,13 +73,13 @@ To continue a task in another session or harness, ask for "handoff X" and later 
 
 ## Code: Keep Your Editor
 
-You can run this whole workflow from VSCode/JetBrains using the integrated terminal — the pickers and assistants are just tmux popups and CLIs. Neovim is available if you want it, but it is optional.
+You can run this whole workflow from VSCode/JetBrains using the integrated terminal — the pickers and assistants are just herdr popups and CLIs. Neovim is available if you want it, but it is optional.
 
-When Neovim is the editor, it stays inline. Tool-specific UI, such as the `vim.pack` dashboard, opens inside Neovim rather than as a separate tmux popup.
+When Neovim is the editor, it stays inline. Tool-specific UI, such as the `vim.pack` dashboard, opens inside Neovim rather than as a separate herdr popup.
 
 ## Cleanup
 
-There's no separate teardown step: kill sessions with `ctrl-x` and remove finished worktrees with `alt-x` directly from the session picker as you go.
+There's no separate teardown step: close workspaces with `ctrl-x` and remove finished worktrees with `alt-x` directly from the session picker as you go.
 
 ## Maintenance
 

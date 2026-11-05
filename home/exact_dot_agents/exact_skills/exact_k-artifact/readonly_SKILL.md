@@ -8,7 +8,7 @@ description: "Use for cache-only HTML artifacts, visual reports/diagrams, or liv
 Use `,artifact` to create a local browser review surface without polluting the current worktree.
 
 Store artifacts and runtime state under `$XDG_CACHE_HOME/agent-artifacts` or `~/.cache/agent-artifacts`.
-Cwd/git root and tmux session are identity metadata only. Never store artifacts in a repo `.agent-artifacts/` or change `.gitignore`.
+Cwd/git root and herdr workspace are identity metadata only. Never store artifacts in a repo `.agent-artifacts/` or change `.gitignore`.
 
 ## Generated artifacts
 
@@ -53,12 +53,12 @@ Do not use:
 ## Poller Lifecycle
 
 Pollers are tracked per artifact session.
-A session is scoped by tmux session identity plus resolved worktree root, so parallel sessions/worktrees have independent poller registries.
+A session is scoped by herdr workspace id plus resolved worktree root, so parallel sessions/worktrees have independent poller registries.
 
 - Use `,artifact pollers` before cleanup if you need to see active pollers for the current session.
 - Use `,artifact poll-stop <name>` when the feedback loop for one artifact is done.
 - Use `,artifact stop` only when the whole current artifact session is done; it stops the current session's server and pollers.
-- Do not kill pollers from other worktrees or tmux sessions.
+- Do not kill pollers from other worktrees or herdr workspaces.
 - Prefer finite `--timeout` values when waiting opportunistically instead of actively expecting user feedback.
 
 ## Rules

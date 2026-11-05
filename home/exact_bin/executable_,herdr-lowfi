@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+LOWFI_CONFIG_DIR="$HOME/Library/Application Support/lowfi"
+SAVED_CURRENT_TRACKLIST_FILE="/tmp/herdr-lowfi-current-tracklist"
+
+TRACKLISTS=(
+  "chillhop.txt"
+  "lofigirl-new.txt"
+)
+
+DEFAULT_TRACKLIST="${TRACKLISTS[0]}"
+
+notify() {
+  herdr notification show lowfi --body "$1" >/dev/null 2>&1 || true
+}
+
+# Root pane of the "lowfi" workspace, empty when it does not exist.
+lowfi_pane() {
+  local ws_id
+  ws_id="$(herdr workspace list | jq -r 'first(.result.workspaces[] | select(.label == "lowfi") | .workspace_id) // empty')"
+  [ -n "$ws_id" ] || return 0
+  herdr pane list --workspace "$ws_id" | jq -r 'first(.result.panes[].pane_id) // empty'
+}
+
+create_lowfi_pane() {
+  herdr workspace create --label lowfi --cwd "$HOME" --no-focus | jq -r '.result.root_pane.pane_id'
+}
+
+lowfi_running() {
+  herdr pane process-info --pane "$1" | jq -e 'any(.result.process_info.foreground_processes[]?; .name == "lowfi")' >/dev/null
+}
+
+get_next_tracklist() {
+  local current_tracklist=""
+
+  if [ -f "$SAVED_CURRENT_TRACKLIST_FILE" ]; then
+    current_tracklist=$(cat "$SAVED_CURRENT_TRACKLIST_FILE")
+  fi
+
+  local next_index=0
+  for i in "${!TRACKLISTS[@]}"; do
+    if [ "${TRACKLISTS[$i]}" = "$current_tracklist" ]; then
+      next_index=$(((i + 1) % ${#TRACKLISTS[@]}))
+      break
+    fi
+  done
+
+  echo "${TRACKLISTS[$next_index]}"
+}
+
+# Send the key to lowfi, starting it with the default tracklist when it is not running.
+send_lowfi_command() {
+  if lowfi_running "$1"; then
+    herdr pane send-keys "$1" "$2" >/dev/null
+  else
+    start_lowfi_with_tracklist "$1" "$DEFAULT_TRACKLIST"
+  fi
+}
+
+start_lowfi_with_tracklist() {
+  echo "$2" >"$SAVED_CURRENT_TRACKLIST_FILE"
+  herdr pane run "$1" "lowfi -t ${2%.txt}" >/dev/null
+}
+
+restart_lowfi_with_tracklist() {
+  if lowfi_running "$1"; then
+    herdr pane send-keys "$1" q >/dev/null
+    sleep 0.5
+  fi
+  start_lowfi_with_tracklist "$1" "$2"
+}
+
+print_usage() {
+  echo "Usage: $(basename "$0") [p|play|pause|s|skip|q|quit|nt|next-tracklist]"
+  exit 1
+}
+
+main() {
+  local action key="" pane next_tracklist
+  action="$(printf '%s' "${1:-p}" | tr '[:upper:]' '[:lower:]')"
+  pane="$(lowfi_pane)"
+
+  case "$action" in
+  p | play | pause) key="p" ;;
+  s | skip) key="s" ;;
+  nt | next-tracklist)
+    next_tracklist="$(get_next_tracklist)"
+    if [ -n "$pane" ]; then
+      restart_lowfi_with_tracklist "$pane" "$next_tracklist"
+      notify "Switched to tracklist: ${next_tracklist%.txt}"
+    else
+      start_lowfi_with_tracklist "$(create_lowfi_pane)" "$next_tracklist"
+      notify "Started lowfi with tracklist: ${next_tracklist%.txt}"
+    fi
+    exit 0
+    ;;
+  q | quit)
+    if [ -n "$pane" ]; then
+      herdr workspace close "$(herdr pane get "$pane" | jq -r '.result.pane.workspace_id')" >/dev/null || true
+    fi
+    rm -f "$SAVED_CURRENT_TRACKLIST_FILE"
+    exit 0
+    ;;
+  *) print_usage ;;
+  esac
+
+  if [ -n "$pane" ]; then
+    send_lowfi_command "$pane" "$key"
+  else
+    start_lowfi_with_tracklist "$(create_lowfi_pane)" "$DEFAULT_TRACKLIST"
+  fi
+}
+
+main "$@"

@@ -159,10 +159,10 @@ complete -c ,w -n 'not __fish_seen_subcommand_from add prs issue ls list switch 
 complete -c ,w -n 'not __fish_seen_subcommand_from add prs issue ls list switch open mv prune doctor remove' -a issue -d 'Create/switch issue worktree'
 complete -c ,w -n 'not __fish_seen_subcommand_from add prs issue ls list switch open mv prune doctor remove' -a ls -d 'List worktrees'
 complete -c ,w -n 'not __fish_seen_subcommand_from add prs issue ls list switch open mv prune doctor remove' -a list -d 'List worktrees'
-complete -c ,w -n 'not __fish_seen_subcommand_from add prs issue ls list switch open mv prune doctor remove' -a switch -d 'Switch to a worktree tmux session'
-complete -c ,w -n 'not __fish_seen_subcommand_from add prs issue ls list switch open mv prune doctor remove' -a open -d 'Open a worktree tmux session'
+complete -c ,w -n 'not __fish_seen_subcommand_from add prs issue ls list switch open mv prune doctor remove' -a switch -d 'Focus a worktree herdr workspace'
+complete -c ,w -n 'not __fish_seen_subcommand_from add prs issue ls list switch open mv prune doctor remove' -a open -d 'Open a worktree herdr workspace'
 complete -c ,w -n 'not __fish_seen_subcommand_from add prs issue ls list switch open mv prune doctor remove' -a mv -d 'Move/rename a worktree'
-complete -c ,w -n 'not __fish_seen_subcommand_from add prs issue ls list switch open mv prune doctor remove' -a prune -d 'Prune stale worktree metadata/tmux'
+complete -c ,w -n 'not __fish_seen_subcommand_from add prs issue ls list switch open mv prune doctor remove' -a prune -d 'Prune stale worktree metadata/workspaces'
 complete -c ,w -n 'not __fish_seen_subcommand_from add prs issue ls list switch open mv prune doctor remove' -a doctor -d 'Check dependencies and state'
 complete -c ,w -n 'not __fish_seen_subcommand_from add prs issue ls list switch open mv prune doctor remove' -a remove -d 'Remove worktrees interactively'
 
@@ -171,12 +171,12 @@ complete -c ,w -n '__fish_seen_subcommand_from add; and set -l args (__comma_w_a
 complete -c ,w -n '__fish_seen_subcommand_from add; and set -l args (__comma_w_args_before_cursor); and test (count $args) -eq 2' -a '(__comma_w_complete_branches_and_remotes)' -d 'Base branch'
 
 complete -c ,w -n '__fish_seen_subcommand_from prs' -s q -l quiet -d 'Suppress informational output'
-complete -c ,w -n '__fish_seen_subcommand_from prs' -l focus -d 'Switch/attach to tmux session'
+complete -c ,w -n '__fish_seen_subcommand_from prs' -l focus -d 'Focus herdr workspace'
 complete -c ,w -n '__fish_seen_subcommand_from prs' -l awaiting -d 'Awaiting my/team review (autocomplete: last 7 days)'
 complete -c ,w -n '__fish_seen_subcommand_from prs; and set -l args (__comma_w_args_before_cursor); and test (count $args) -eq 1' -a '(__comma_w_prs_candidates)' -d 'PR number'
 
 complete -c ,w -n '__fish_seen_subcommand_from issue' -s q -l quiet -d 'Suppress informational output'
-complete -c ,w -n '__fish_seen_subcommand_from issue' -l focus -d 'Switch/attach to tmux session'
+complete -c ,w -n '__fish_seen_subcommand_from issue' -l focus -d 'Focus herdr workspace'
 complete -c ,w -n '__fish_seen_subcommand_from issue' -s b -l branch -x -a '(__comma_w_complete_branches)' -d 'Use explicit branch name'
 complete -c ,w -n '__fish_seen_subcommand_from issue; and set -l args (__comma_w_args_before_cursor); and test (count $args) -eq 1' -a '(__comma_w_issues_candidates)' -d 'Issue number'
 
@@ -197,7 +197,7 @@ complete -c ,w -n '__fish_seen_subcommand_from open; and set -l args (__comma_w_
 complete -c ,w -n '__fish_seen_subcommand_from open; and set -l args (__comma_w_args_before_cursor); and test (count $args) -eq 1' -a '(__comma_w_selectable_worktree_paths)' -d 'Worktree path'
 
 complete -c ,w -n '__fish_seen_subcommand_from mv' -s q -l quiet -d 'Suppress informational output'
-complete -c ,w -n '__fish_seen_subcommand_from mv' -l focus -d 'Switch/attach to tmux session'
+complete -c ,w -n '__fish_seen_subcommand_from mv' -l focus -d 'Focus herdr workspace'
 complete -c ,w -n '__fish_seen_subcommand_from mv' -l keep-path -d 'Do not move directory'
 complete -c ,w -n '__fish_seen_subcommand_from mv' -l path -x -d 'Override destination path'
 complete -c ,w -n '__fish_seen_subcommand_from mv; and set -l args (__comma_w_args_before_cursor); and test (count $args) -eq 1' -a '(__comma_w_selectable_worktree_branches)' -d 'From worktree branch'
@@ -206,7 +206,7 @@ complete -c ,w -n '__fish_seen_subcommand_from mv; and set -l args (__comma_w_ar
 
 complete -c ,w -n '__fish_seen_subcommand_from prune' -s q -l quiet -d 'Suppress informational output'
 complete -c ,w -n '__fish_seen_subcommand_from prune' -l apply -d 'Apply pruning actions'
-complete -c ,w -n '__fish_seen_subcommand_from prune' -l all -d 'Prune tmux sessions across repos'
+complete -c ,w -n '__fish_seen_subcommand_from prune' -l all -d 'Prune herdr workspaces across repos'
 
 complete -c ,w -n '__fish_seen_subcommand_from doctor' -d 'Check dependencies and state'
 

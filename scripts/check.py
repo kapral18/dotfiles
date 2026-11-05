@@ -119,14 +119,15 @@ GATES: tuple[Gate, ...] = (
 TEST_RULES: tuple[TestRule, ...] = (
     TestRule(
         prefixes=(
-            "home/dot_config/exact_tmux/exact_scripts/pickers/session/executable_remove_all_worktrees.sh",
-            "home/dot_config/exact_tmux/exact_scripts/pickers/session/executable_action_remove_worktrees.sh",
+            "home/dot_config/herdr/exact_scripts/pickers/session/executable_remove_all_worktrees.sh",
+            "home/dot_config/herdr/exact_scripts/pickers/session/executable_action_remove_worktrees.sh",
         ),
         tests=("tests/test_worktree_delete_boundaries.py",),
     ),
+    TestRule(prefixes=("home/exact_lib/exact_shared/executable_detach.sh",), tests=("tests/test_picker_safety.py",)),
     TestRule(
         prefixes=("home/exact_lib/exact_shared/worktree_nested_git.py",),
-        tests=("tests/test_w_remove.py", "tests/test_tmux_safety.py"),
+        tests=("tests/test_w_remove.py", "tests/test_picker_safety.py"),
     ),
     TestRule(
         prefixes=(
@@ -146,19 +147,18 @@ TEST_RULES: tuple[TestRule, ...] = (
         prefixes=(
             "home/dot_config/exact_nvim/",
             "scripts/tests/neovim_workflows.lua",
-            "home/dot_config/exact_tmux/exact_scripts/pickers/github/executable_gh_batch_worktree.sh",
+            "home/dot_config/herdr/exact_scripts/pickers/github/executable_gh_batch_worktree.sh",
         ),
         tests=("tests/test_neovim_workflows.py",),
     ),
     TestRule(
         prefixes=(
-            "home/dot_config/exact_tmux/exact_scripts/pickers/",
-            "home/dot_config/exact_tmux/exact_scripts/command_palette/",
-            "home/dot_config/exact_tmux/exact_scripts/gh_dash/",
-            "home/dot_config/exact_tmux/exact_scripts/gh_tfork/",
+            "home/dot_config/herdr/exact_scripts/pickers/",
+            "home/dot_config/herdr/exact_scripts/command_palette/",
+            "home/dot_config/herdr/exact_scripts/gh_tfork/",
             "home/exact_bin/executable_,set-default-mic",
         ),
-        tests=("tests/test_tmux_safety.py",),
+        tests=("tests/test_picker_safety.py",),
     ),
     TestRule(
         prefixes=("scripts/tests/artifact_client_harness.cjs",),
@@ -175,14 +175,6 @@ TEST_RULES: tuple[TestRule, ...] = (
             "home/.chezmoiscripts/run_onchange_after_07-generate-mcp-configs.sh.tmpl",
         ),
         tests=("tests/test_package_recovery.py",),
-    ),
-    TestRule(
-        prefixes=(
-            "home/dot_claude/readonly_no-agent-summary.cjs",
-            "home/readonly_dot_profile.tmpl",
-            "home/dot_config/fish/readonly_config.fish.tmpl",
-        ),
-        tests=("tests/test_claude_agent_summary.py",),
     ),
     TestRule(
         prefixes=("home/dot_config/exact_ghostty/",),
@@ -253,21 +245,18 @@ TEST_RULES: tuple[TestRule, ...] = (
     ),
     TestRule(
         prefixes=(
-            "home/dot_config/exact_tmux/exact_scripts/pickers/",
-            "home/dot_config/exact_tmux/exact_scripts/pick_url/",
-            "home/dot_config/exact_tmux/exact_conf.d/readonly_41-pickers.conf",
-            "home/dot_config/exact_tmux/exact_conf.d/readonly_90-plugins.conf",
+            "home/dot_config/herdr/exact_scripts/pickers/",
+            "home/dot_config/herdr/exact_scripts/pick_url/",
         ),
         tests=(
-            "tests/test_tmux_pickers.py",
+            "tests/test_session_pickers.py",
             "tests/test_gh_picker_dispatch_state.py",
             "tests/test_gh_picker_lock.py",
             "tests/test_gh_picker_review_requests.py",
-            "tests/test_tmux_handoff_lifecycle.py",
-            "tests/test_tmux_handoff_namespace.py",
+            "tests/test_picker_handoff_namespace.py",
             "tests/test_session_github_cache.py",
             "tests/test_plain_session_removal.py",
-            "tests/test_tmux_bag_preserve.py",
+            "tests/test_picker_bag_preserve.py",
         ),
     ),
     TestRule(prefixes=("home/dot_config/fish/completions/readonly_,q.fish",), tests=("tests/test_q.py",)),
@@ -352,7 +341,13 @@ TEST_RULES: tuple[TestRule, ...] = (
             "home/exact_lib/exact_shared/worktree_lib.sh",
             "home/exact_lib/exact_shared/bash_utils_lib.sh",
         ),
-        tests=("tests/test_w_remove.py", "tests/test_w_commands.py", "tests/test_worktree_delete_boundaries.py"),
+        tests=(
+            "tests/test_w_remove.py",
+            "tests/test_w_commands.py",
+            "tests/test_w_issue.py",
+            "tests/test_worktree_delete_boundaries.py",
+            "tests/test_plain_session_removal.py",
+        ),
     ),
     TestRule(prefixes=("home/exact_lib/exact_,wh/",), tests=("tests/test_wh.py",)),
     TestRule(
@@ -449,7 +444,7 @@ FULL_ALLOW_ENV = "CHECK_FULL"
 # only from TEST_RULES or from editing the shard itself, never from fan-out.
 SLOW_SHARDS = frozenset(
     {
-        "tests/test_tmux_pickers.py",
+        "tests/test_session_pickers.py",
         "tests/test_gh_picker_dispatch_state.py",
     }
 )

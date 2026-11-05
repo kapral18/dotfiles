@@ -39,10 +39,10 @@ if str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
 
 import _test_support  # noqa: E402,F401  (puts scripts/ on sys.path)
-from _test_support import TMUX_PICKERS, modern_bash  # noqa: E402
+from _test_support import PICKERS, deploy_herdr_libs, install_fake_herdr, modern_bash  # noqa: E402
 
-REMOVE_SCRIPT = TMUX_PICKERS / "session/executable_remove_all_worktrees.sh"
-ACTION_SCRIPT = TMUX_PICKERS / "session/executable_action_remove_worktrees.sh"
+REMOVE_SCRIPT = PICKERS / "session/executable_remove_all_worktrees.sh"
+ACTION_SCRIPT = PICKERS / "session/executable_action_remove_worktrees.sh"
 
 # The script's main entrypoint; the probe is spliced in just before it so all
 # function definitions and approved_roots setup have already run.
@@ -120,9 +120,11 @@ class TestWorktreeDeleteBoundaries(unittest.TestCase):
         if rm_log.exists():
             rm_log.unlink()
         _write_rm_shim(bin_dir, rm_log)
+        install_fake_herdr(bin_dir)
+        deploy_herdr_libs(home)
 
         env = {
-            **os.environ,
+            **{k: v for k, v in os.environ.items() if not k.startswith("HERDR_")},
             "PATH": f"{bin_dir}:{os.environ.get('PATH', '')}",
             "HOME": str(home),
         }
@@ -227,8 +229,8 @@ class TestWorktreeDeleteBoundaries(unittest.TestCase):
                     )
                 bin_dir = tmp / "bin"
                 bin_dir.mkdir()
-                (bin_dir / "tmux").write_text("#!/bin/sh\nexit 1\n")
-                (bin_dir / "tmux").chmod(0o755)
+                install_fake_herdr(bin_dir)
+                deploy_herdr_libs(home)
 
                 result = subprocess.run(
                     [modern_bash(), str(REMOVE_SCRIPT), str(root), "1"],
@@ -236,12 +238,11 @@ class TestWorktreeDeleteBoundaries(unittest.TestCase):
                     text=True,
                     timeout=10,
                     env={
-                        **os.environ,
+                        **{k: v for k, v in os.environ.items() if not k.startswith("HERDR_")},
                         "HOME": str(home),
                         "XDG_CACHE_HOME": str(home / ".cache"),
                         "PICK_SESSION_SCAN_ROOTS": str(scan_root),
                         "PATH": f"{bin_dir}:{os.environ['PATH']}",
-                        "TMUX": "",
                     },
                 )
 
@@ -318,7 +319,7 @@ class TestWorktreeDeleteBoundaries(unittest.TestCase):
             _run_git(["commit", "--allow-empty", "-m", "init"], cwd=root, home=home)
             _run_git(["worktree", "add", str(linked)], cwd=root, home=home)
 
-            deployed_dir = home / ".config/tmux/scripts/pickers/session"
+            deployed_dir = home / ".config/herdr/scripts/pickers/session"
             deployed_dir.mkdir(parents=True)
             scan_log = tmp / "scan_roots.log"
             completed = tmp / "remover-completed"
@@ -335,29 +336,10 @@ class TestWorktreeDeleteBoundaries(unittest.TestCase):
 
             mock_bin = tmp / "bin"
             mock_bin.mkdir()
-            tmux_mock = mock_bin / "tmux"
-            tmux_mock.write_text(
-                "#!/usr/bin/env bash\n"
-                'case "$1" in\n'
-                "  display-message)\n"
-                '    if [ "$2" = "-p" ]; then\n'
-                "      printf '%s\\n' \"${TMUX_SESSION_NAME:-current}\"\n"
-                "    fi\n"
-                "    exit 0\n"
-                "    ;;\n"
-                "  show-option)\n"
-                '    if [ "$2" = "-gqv" ] && [ "$3" = "@pick_session_worktree_scan_roots" ]; then\n'
-                "      printf '%s\\n' \"${TMUX_SCAN_ROOTS_RAW:-}\"\n"
-                "    fi\n"
-                "    exit 0\n"
-                "    ;;\n"
-                "  list-sessions)\n"
-                "    exit 0\n"
-                "    ;;\n"
-                "esac\n"
-                "exit 0\n"
-            )
-            tmux_mock.chmod(0o755)
+            install_fake_herdr(mock_bin)
+            deploy_herdr_libs(home)
+            herdr_db = tmp / "workspaces.tsv"
+            herdr_db.write_text(f"w1\tcurrent\t{home}\n")
 
             selection = tmp / "selection.tsv"
             selection.write_text(f"row\tworktree\t{root}\twt_root:repo\t{root}\n")
@@ -368,13 +350,14 @@ class TestWorktreeDeleteBoundaries(unittest.TestCase):
                 capture_output=True,
                 text=True,
                 env={
-                    **os.environ,
+                    **{k: v for k, v in os.environ.items() if not k.startswith("HERDR_")},
                     "HOME": str(home),
                     "XDG_CACHE_HOME": str(home / ".cache"),
                     "PATH": f"{mock_bin}:{os.environ.get('PATH', '')}",
-                    "TMUX": "mock,1,0",
-                    "TMUX_SESSION_NAME": "current",
-                    "TMUX_SCAN_ROOTS_RAW": scan_roots_raw,
+                    "HERDR_SOCKET_PATH": str(tmp / "herdr.sock"),
+                    "HERDR_DB": str(herdr_db),
+                    "HERDR_ACTIVE_WORKSPACE_ID": "w1",
+                    "PICK_SESSION_WORKTREE_SCAN_ROOTS": scan_roots_raw,
                 },
             )
             assert result.returncode == 0, result.stderr
@@ -416,20 +399,18 @@ class TestWorktreeDeleteBoundaries(unittest.TestCase):
             shim = bin_dir / "rm"
             shim.write_text(f'#!/usr/bin/env bash\nprintf \'%s\\n\' "$*" >> {rm_log}\nexec /bin/rm "$@"\n')
             shim.chmod(0o755)
-            tmux = bin_dir / "tmux"
-            tmux.write_text("#!/bin/sh\nexit 1\n")
-            tmux.chmod(0o755)
+            install_fake_herdr(bin_dir)
+            deploy_herdr_libs(home)
 
             result = subprocess.run(
                 [modern_bash(), str(REMOVE_SCRIPT), str(root), "1"],
                 capture_output=True,
                 text=True,
                 env={
-                    **os.environ,
+                    **{k: v for k, v in os.environ.items() if not k.startswith("HERDR_")},
                     "PATH": f"{bin_dir}:{os.environ.get('PATH', '')}",
                     "HOME": str(home),
                     "XDG_CACHE_HOME": str(home / ".cache"),
-                    "TMUX": "",
                 },
             )
 

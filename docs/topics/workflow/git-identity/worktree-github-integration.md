@@ -4,11 +4,11 @@ sidebar_position: 5
 
 # GitHub worktree integration
 
-The fzf-based GitHub picker (`prefix` + `G`) calls `,gh-worktree` for repo/bootstrap routing. `,gh-worktree` delegates to `,w` for worktree creation and tmux session management.
+The fzf-based GitHub picker (`prefix` + `G`) calls `,gh-worktree` for repo/bootstrap routing. `,gh-worktree` delegates to `,w` for worktree creation and herdr workspace management.
 
 ## Reusable CLI flow
 
-Use `,gh-worktree` when you want the same repo/bootstrap behavior outside tmux pickers, including from agent sessions.
+Use `,gh-worktree` when you want the same repo/bootstrap behavior outside the pickers, including from agent sessions.
 
 ```bash
 ,gh-worktree pr owner/repo 12345 --focus
@@ -36,7 +36,7 @@ Without `--branch`, issue creation may prompt for branch input.
 
 `,gh-issuew` preserves the repository in explicit issue URLs, absolute issue links in PR bodies, and worktree issue metadata. `--url` and browser actions keep that identity; `--number` prints only the number.
 
-`,w issue` skips worktrees associated with another repository or issue when matching a branch suffix. Explicit branch reuse refuses a conflicting association before changing metadata or focusing its tmux session. Legacy worktrees without issue metadata remain reusable.
+`,w issue` skips worktrees associated with another repository or issue when matching a branch suffix. Explicit branch reuse refuses a conflicting association before changing metadata or focusing its herdr workspace. Legacy worktrees without issue metadata remain reusable.
 
 `,add-patch-to-prs` resolves each PR's head repository, branch, and commit. It applies and commits the patch in a temporary checkout, then pushes explicitly to that head branch. Existing local branches with the same name stay unchanged. Tracked changes in the starting checkout cause an early refusal. A failed push retains the patch commit on a local `patch-pr-…` recovery branch and reports its name.
 
@@ -44,18 +44,18 @@ Without `--branch`, issue creation may prompt for branch input.
 
 ## PR shortcuts in the GitHub picker
 
-| Key                   | Behavior                                                                   |
-| --------------------- | -------------------------------------------------------------------------- |
-| `enter` with no marks | Create/switch to the PR worktree and focus its tmux session                |
-| `enter` with marks    | Batch worktree creation for all marked items                               |
-| `ctrl-t`              | Explicit batch worktree creation                                           |
-| `alt-b`               | Same as single enter, then open the PR in Octo review in a new tmux window |
-| `alt-o`               | Open the PR/issue in the browser                                           |
-| `alt-y`               | Copy URL to clipboard                                                      |
+| Key                   | Behavior                                                                 |
+| --------------------- | ------------------------------------------------------------------------ |
+| `enter` with no marks | Create/switch to the PR worktree and focus its herdr workspace           |
+| `enter` with marks    | Batch worktree creation for all marked items                             |
+| `ctrl-t`              | Explicit batch worktree creation                                         |
+| `alt-b`               | Same as single enter, then open the PR in Octo review in a new herdr tab |
+| `alt-o`               | Open the PR/issue in the browser                                         |
+| `alt-y`               | Copy URL to clipboard                                                    |
 
 ## Issue shortcuts
 
-`enter` with no marks creates/switches to the issue worktree and focuses its tmux session via `,gh-worktree issue ... --focus`. If the worktree does not exist yet, it presents a branch-name prompt.
+`enter` with no marks creates/switches to the issue worktree and focuses its herdr workspace via `,gh-worktree issue ... --focus`. If the worktree does not exist yet, it presents a branch-name prompt.
 
 ## Bootstrap locations
 

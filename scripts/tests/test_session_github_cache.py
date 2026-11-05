@@ -20,11 +20,11 @@ SCRIPTS = Path(__file__).resolve().parents[1]
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
-from _test_support import TMUX_PICKERS
+from _test_support import PICKERS
 
-INDEX_MAIN = TMUX_PICKERS / "session/lib/index_main.py"
+INDEX_MAIN = PICKERS / "session/lib/index_main.py"
 # The loader below copies index_main.py's imports but not its sys.path.insert, so add that dir here.
-sys.path.insert(0, str(TMUX_PICKERS / "lib"))
+sys.path.insert(0, str(PICKERS / "lib"))
 
 
 def _load_session_cache_symbols() -> dict[str, object]:
@@ -208,19 +208,24 @@ class TestSessionPickerPrStyling(unittest.TestCase):
     """WHEN quick session refresh finds PR metadata after session discovery."""
 
     @staticmethod
-    def _write_fake_tmux(fake_bin: Path) -> None:
-        tmux = fake_bin / "tmux"
-        tmux.write_text(
-            "#!/bin/sh\n"
-            'if [ "$1" = display-message ]; then\n'
-            "  printf '%s\\n' review-session\n"
-            'elif [ "$1" = list-sessions ]; then\n'
-            '  [ -n "${PICK_SESSION_TEST_WORKTREE:-}" ] && printf \'%s\\t%s\\n\' review-session "$PICK_SESSION_TEST_WORKTREE"\n'
-            "fi\n"
-            "exit 0\n",
+    def _write_fake_sessions(home: Path, body: str | None = None) -> None:
+        """Stand in for the picker's herdr session source (herdr_sessions.sh)."""
+        sessions = home / ".config/herdr/scripts/pickers/lib/herdr_sessions.sh"
+        sessions.parent.mkdir(parents=True, exist_ok=True)
+        sessions.write_text(
+            body
+            or (
+                "#!/bin/sh\n"
+                'if [ "$1" = current ]; then\n'
+                "  printf '%s\\n' review-session\n"
+                'elif [ "$1" = list ]; then\n'
+                '  [ -n "${PICK_SESSION_TEST_WORKTREE:-}" ] && printf \'%s\\t%s\\n\' review-session "$PICK_SESSION_TEST_WORKTREE"\n'
+                "fi\n"
+                "exit 0\n"
+            ),
             encoding="utf-8",
         )
-        tmux.chmod(0o755)
+        sessions.chmod(0o755)
 
     def _run_quick_session_index(
         self,
@@ -245,7 +250,7 @@ class TestSessionPickerPrStyling(unittest.TestCase):
             (worktree / ".git").write_text(f"gitdir: {gitdir}\n", encoding="utf-8")
             (gitdir / "HEAD").write_text("ref: refs/heads/review/branch\n", encoding="utf-8")
 
-            self._write_fake_tmux(fake_bin)
+            self._write_fake_sessions(home)
             git = fake_bin / "git"
             git.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
             gh = fake_bin / "gh"
@@ -266,7 +271,7 @@ class TestSessionPickerPrStyling(unittest.TestCase):
                 "closingIssuesReferences": [],
                 "author": {"login": author},
             }
-            gh_cache_file = cache_home / "tmux" / "pick_session_gh.json"
+            gh_cache_file = cache_home / "herdr-pickers" / "pick_session_gh.json"
             if seed_unrelated_cache_entry or cached_entry is not None:
                 entries = {}
                 if seed_unrelated_cache_entry:
@@ -323,7 +328,7 @@ class TestSessionPickerPrStyling(unittest.TestCase):
             fake_bin.mkdir()
             (worktree / ".git").write_text(f"gitdir: {gitdir}\n", encoding="utf-8")
             (gitdir / "HEAD").write_text("ref: refs/heads/review/branch\n", encoding="utf-8")
-            self._write_fake_tmux(fake_bin)
+            self._write_fake_sessions(home)
             for name, contents in {
                 "fd": "#!/bin/sh\nprintf '%s\\n' \"$PICK_SESSION_TEST_GIT_MARKER\"\n",
                 "git": "#!/bin/sh\nexit 0\n",
@@ -369,7 +374,7 @@ class TestSessionPickerPrStyling(unittest.TestCase):
             return next(line for line in result.stdout.splitlines() if "\tworktree\t" in line)
 
     def _run_full_rehydrate(self, *, state: str) -> str:
-        rehydrate = TMUX_PICKERS / "session/lib/items_full_rehydrate.py"
+        rehydrate = PICKERS / "session/lib/items_full_rehydrate.py"
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             home = root / "home"
@@ -382,7 +387,7 @@ class TestSessionPickerPrStyling(unittest.TestCase):
             fake_bin.mkdir()
             (worktree / ".git").write_text(f"gitdir: {gitdir}\n", encoding="utf-8")
             (gitdir / "HEAD").write_text("ref: refs/heads/review/branch\n", encoding="utf-8")
-            self._write_fake_tmux(fake_bin)
+            self._write_fake_sessions(home)
             cache_file.write_text(
                 "stale\tsession\t"
                 f"{worktree}\t"
@@ -512,17 +517,18 @@ class TestSessionPickerPrStyling(unittest.TestCase):
                 (worktree / ".git").write_text(f"gitdir: {gitdir}\n", encoding="utf-8")
                 (gitdir / "HEAD").write_text("ref: refs/heads/review/branch\n", encoding="utf-8")
 
+            self._write_fake_sessions(
+                home,
+                "#!/bin/sh\n"
+                'if [ "$1" = list ]; then\n'
+                "  printf 'review-session\\t%s\\n' \"$PICK_SESSION_TEST_WORKTREE\"\n"
+                '  if [ "$PICK_SESSION_QUICK" = 1 ]; then\n'
+                "    printf 'active-session\\t%s\\n' \"$PICK_SESSION_TEST_ACTIVE_WORKTREE\"\n"
+                "  fi\n"
+                "fi\n"
+                "exit 0\n",
+            )
             for name, contents in {
-                "tmux": (
-                    "#!/bin/sh\n"
-                    'if [ "$1" = list-sessions ]; then\n'
-                    "  printf 'review-session\\t%s\\n' \"$PICK_SESSION_TEST_WORKTREE\"\n"
-                    '  if [ "$PICK_SESSION_QUICK" = 1 ]; then\n'
-                    "    printf 'active-session\\t%s\\n' \"$PICK_SESSION_TEST_ACTIVE_WORKTREE\"\n"
-                    "  fi\n"
-                    "fi\n"
-                    "exit 0\n"
-                ),
                 "git": "#!/bin/sh\nexit 0\n",
                 "fd": "#!/bin/sh\nprintf '%s\\n' \"$PICK_SESSION_TEST_GIT_MARKERS\"\n",
                 "gh": (
@@ -553,7 +559,7 @@ class TestSessionPickerPrStyling(unittest.TestCase):
                 command.chmod(0o755)
 
             cache_home = root / "cache"
-            cache_file = cache_home / "tmux" / "pick_session_gh.json"
+            cache_file = cache_home / "herdr-pickers" / "pick_session_gh.json"
             cache_file.parent.mkdir(parents=True)
             cache_file.write_text(
                 json.dumps(

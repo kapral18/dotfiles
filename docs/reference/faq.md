@@ -13,7 +13,7 @@ chezmoi diff
 chezmoi apply --dry-run --verbose
 ```
 
-## Do I need to use Neovim/tmux to use this setup?
+## Do I need to use Neovim/herdr to use this setup?
 
 No. A full apply installs the configured tools, but you can keep using VSCode or JetBrains while learning the terminal workflow.
 

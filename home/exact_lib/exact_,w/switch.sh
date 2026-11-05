@@ -18,7 +18,7 @@ show_usage() {
   cat << EOF
 Usage: ,w switch [-q|--quiet] [query...]
 
-Interactively pick a worktree and switch/attach to its tmux session.
+Interactively pick a worktree and focus its herdr workspace.
 
 If a single argument exactly matches an existing selectable worktree branch or
 path, switch directly without opening fzf.
@@ -56,7 +56,7 @@ while [ $# -gt 0 ]; do
 done
 
 parent_dir=$(_get_worktree_parent_dir)
-parent_name="$(_comma_w_tmux_parent_name_from_dir "$parent_dir")"
+parent_name="$(_comma_w_parent_name_from_dir "$parent_dir")"
 
 query="$*"
 
@@ -91,10 +91,10 @@ direct_pick() {
 if [ -n "$query" ] && [ "$#" -eq 1 ]; then
   if selected="$(direct_pick "$query")"; then
     IFS=$'\t' read -r branch worktree_path <<< "$selected"
-    _add_worktree_tmux_session "$quiet_mode" "$parent_name" "$branch" "$worktree_path"
+    _add_worktree_workspace "$quiet_mode" "$parent_name" "$branch" "$worktree_path"
 
-    session_name="$(_comma_w_tmux_session_name "$parent_name" "$branch")"
-    if ! _comma_w_focus_tmux_session "$quiet_mode" "$session_name" "$worktree_path"; then
+    session_name="$(_comma_w_workspace_name "$parent_name" "$branch")"
+    if ! _comma_w_focus_workspace "$quiet_mode" "$session_name" "$worktree_path"; then
       if [ "$quiet_mode" -eq 0 ]; then
         echo "$worktree_path"
       fi
@@ -120,10 +120,10 @@ if [ -z "$branch" ] || [ -z "$worktree_path" ]; then
   exit 1
 fi
 
-_add_worktree_tmux_session "$quiet_mode" "$parent_name" "$branch" "$worktree_path"
+_add_worktree_workspace "$quiet_mode" "$parent_name" "$branch" "$worktree_path"
 
-session_name="$(_comma_w_tmux_session_name "$parent_name" "$branch")"
-if ! _comma_w_focus_tmux_session "$quiet_mode" "$session_name" "$worktree_path"; then
+session_name="$(_comma_w_workspace_name "$parent_name" "$branch")"
+if ! _comma_w_focus_workspace "$quiet_mode" "$session_name" "$worktree_path"; then
   if [ "$quiet_mode" -eq 0 ]; then
     echo "$worktree_path"
   fi

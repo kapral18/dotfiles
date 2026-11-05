@@ -1,0 +1,16 @@
+id = "k18.workspace-history"
+name = "Workspace history"
+version = "0.1.0"
+min_herdr_version = "0.9.5"
+description = "Jump back to the previously focused workspace"
+platforms = ["linux", "macos"]
+
+[[events]]
+on = "workspace.focused"
+command = ["bash", "history.sh", "record"]
+
+[[actions]]
+id = "last"
+title = "Last workspace"
+contexts = ["workspace"]
+command = ["bash", "history.sh", "last"]

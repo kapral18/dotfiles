@@ -101,7 +101,7 @@ Arguments:
 
 Options:
   -q, --quiet       Suppress informational output
-  --focus           Switch/attach to the created worktree's tmux session
+  --focus           Focus the created worktree's herdr workspace
   --awaiting        List PRs awaiting my/team review (autocomplete: last 7 days)
   -h, --help        Show this help message
 
@@ -407,7 +407,7 @@ fi
 base_remote="$(get_base_remote_name)"
 
 parent_dir=$(_get_worktree_parent_dir)
-parent_name="$(_comma_w_tmux_parent_name_from_dir "$parent_dir")"
+parent_name="$(_comma_w_parent_name_from_dir "$parent_dir")"
 
 _comma_w_prune_stale_worktrees "$quiet_mode"
 
@@ -488,9 +488,9 @@ for pr_number in "${pr_numbers[@]}"; do
     if [[ "$local_branch" == *__* ]] && ! _comma_w_remote_is_first_party "$remote_name"; then
       _comma_w_configure_prefixed_branch_push_routing "$existing_path" "$local_branch" "$remote_name" "$branch_name" "$quiet_mode" || true
     fi
-    _add_worktree_tmux_session "$quiet_mode" "$parent_name" "$local_branch" "$existing_path"
+    _add_worktree_workspace "$quiet_mode" "$parent_name" "$local_branch" "$existing_path"
     if [ "$focus_mode" -eq 1 ]; then
-      _comma_w_focus_tmux_session "$quiet_mode" "$(_comma_w_tmux_session_name "$parent_name" "$local_branch")" "$existing_path" || true
+      _comma_w_focus_workspace "$quiet_mode" "$(_comma_w_workspace_name "$parent_name" "$local_branch")" "$existing_path" || true
     fi
     _processed=$((_processed + 1))
     info "Completed PR #$pr_number worktree creation."
@@ -523,7 +523,7 @@ for pr_number in "${pr_numbers[@]}"; do
     continue
   fi
 
-  _add_worktree_tmux_session "$quiet_mode" "$parent_name" "$local_branch" "$worktree_path"
+  _add_worktree_workspace "$quiet_mode" "$parent_name" "$local_branch" "$worktree_path"
   _print_created_worktree_message "$quiet_mode" "$local_branch" "$worktree_path" "$base_ref"
 
   if [[ "$local_branch" != *__* ]]; then
@@ -539,7 +539,7 @@ for pr_number in "${pr_numbers[@]}"; do
   fi
 
   if [ "$focus_mode" -eq 1 ]; then
-    _comma_w_focus_tmux_session "$quiet_mode" "$(_comma_w_tmux_session_name "$parent_name" "$local_branch")" "$worktree_path" || true
+    _comma_w_focus_workspace "$quiet_mode" "$(_comma_w_workspace_name "$parent_name" "$local_branch")" "$worktree_path" || true
   fi
 
   _processed=$((_processed + 1))

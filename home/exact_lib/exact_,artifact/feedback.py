@@ -172,8 +172,8 @@ def register_poller(name: str, timeout: float | None) -> None:
                     "timeout": timeout,
                     "session_dir": ctx["session_dir"],
                     "root": ctx["root"],
-                    "tmux_key": ctx["tmux_key"],
-                    "tmux_name": ctx["tmux_name"],
+                    "workspace_key": ctx["workspace_key"],
+                    "workspace_name": ctx["workspace_name"],
                 },
                 sort_keys=True,
             )
