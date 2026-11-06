@@ -6,8 +6,7 @@
 # Marked-count is derived from {+f}: fzf writes the marked rows to that file,
 # falling back to the current row when nothing is marked. We treat >1 lines
 # as "the user marked items", which matches the documented "enter=checkout
-# (batch if marked)" contract advertised in the picker header, keyhelp, and
-# docs/topics/workflow/herdr/pickers.md.
+# (batch if marked)" contract advertised in the picker header and keyhelp.
 # Usage: gh_picker_enter.sh <kind> <selection_file> <batch_wt_cmd>
 #
 # Outputs an fzf action string to stdout (consumed by `--bind enter:transform`).

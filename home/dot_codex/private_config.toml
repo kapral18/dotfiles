@@ -19,8 +19,8 @@ status_line = ["model-with-reasoning", "current-dir", "context-remaining"]
 hooks = true
 multi_agent = true
 prevent_idle_sleep = true
-# ai-kb is the sole durable semantic store (see docs/topics/ai-assistants/memory-and-handoffs.md);
-# pin codex's experimental auto-memory off so a default flip can't create a second one.
+# ai-kb is the sole durable semantic store; pin codex's experimental auto-memory
+# off so a default flip can't create a second one.
 memories = false
 
 # intent-guard: the shared `,task` core keeps the session on the user's goal (~/AGENTS.md §3 step 0).

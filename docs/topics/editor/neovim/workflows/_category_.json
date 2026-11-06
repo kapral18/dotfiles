@@ -1,8 +1,0 @@
-{
-  "label": "Workflows",
-  "position": 4,
-  "link": {
-    "type": "doc",
-    "id": "topics/editor/neovim/workflows/index"
-  }
-}

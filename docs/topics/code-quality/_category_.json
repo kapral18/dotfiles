@@ -1,9 +1,0 @@
-{
-  "label": "Code Quality",
-  "position": 4,
-  "link": {
-    "type": "generated-index",
-    "title": "Code Quality",
-    "description": "Formatters and linters wired so editor-on-save and CLI agree on the same output."
-  }
-}

@@ -1,9 +1,0 @@
-{
-  "label": "Workflow",
-  "position": 3,
-  "link": {
-    "type": "generated-index",
-    "title": "Workflow",
-    "description": "Day-to-day developer surface: git + identity, your shell, terminals, herdr, and the custom commands that glue them together."
-  }
-}

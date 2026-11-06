@@ -21,10 +21,13 @@ Name prefixes: `exact_` exact directory (apply deletes untracked files), `readon
 - Ensure minimum sufficient test protection under `~/AGENTS.md` §3.
   Map each justified test to its production paths in `scripts/check.py`: `scripts/foo.py` → `scripts/tests/test_foo.py`, `home/exact_lib/exact_,name/` → `scripts/tests/test_name.py`, or a `TEST_RULES` row.
 
-## Docs
+## Documentation and contributor conventions
 
-- A change to behavior, commands, or install logic under `home/` updates the matching page in `docs/` in the same change.
-- Before adding or changing package installs, comma commands, or shell helper structure, read `docs/topics/workflow/dotfiles-recipes.md`.
+- Read `CONTRIBUTING.md` before changing package installs, comma commands, or shell helpers.
+- Keep repository-level documentation limited to setup/safety/recovery in `README.md` and editing/checks in `CONTRIBUTING.md`.
+  Update them only when their instructions become incorrect, not for routine code changes.
+- Do not add a docs website, command catalogs, configuration inventories, or checks requiring docs coverage.
+  Command usage belongs in `--help` and shell completions.
 
 ## Skills
 

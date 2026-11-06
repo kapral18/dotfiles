@@ -100,14 +100,8 @@ GATES: tuple[Gate, ...] = (
             "home/exact_bin/",
             "home/exact_lib/",
             "home/dot_config/fish/completions/",
-            "docs/topics/workflow/custom-commands/",
             "scripts/verify_bin_surface.py",
         ),
-    ),
-    Gate(
-        name="verify-docs-navigation",
-        argv=("python3", "scripts/verify_docs_navigation.py"),
-        prefixes=("docs/", "website/", "scripts/verify_docs_navigation.py"),
     ),
     Gate(
         name="verify-agent-file-sizes",
@@ -377,17 +371,6 @@ TEST_RULES: tuple[TestRule, ...] = (
 )
 
 EXTRA_TESTS: tuple[ExtraTest, ...] = (
-    ExtraTest(
-        name="website-search",
-        argv=("node", "--test", "scripts/tests/website_search.test.cjs"),
-        prefixes=(
-            "scripts/tests/website_search.test.cjs",
-            "website/src/theme/SearchBar/",
-            "website/src/plugins/local-search/",
-            "website/package.json",
-            "website/pnpm-lock.yaml",
-        ),
-    ),
     ExtraTest(
         name="context-mode",
         argv=("bun", "test", "scripts/tests/context_mode.test.ts"),

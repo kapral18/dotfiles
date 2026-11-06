@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help fmt lint test check check-full verify-templates verify-bin-surface verify-docs-navigation verify-agent-file-sizes docs docs-build docs-serve docs-clean
+.PHONY: help fmt lint test check check-full verify-templates verify-bin-surface verify-agent-file-sizes
 
 help: ## Show available targets
 	@grep -E '^[a-z][a-z_-]+:.*##' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -15,11 +15,8 @@ lint: ## Check formatting and lint (no writes)
 verify-templates: ## Render every chezmoi template to catch breakage before apply
 	python3 scripts/verify_templates.py
 
-verify-bin-surface: ## Check ~/bin commands have completions and docs coverage
+verify-bin-surface: ## Check ~/bin completions and command-library ownership
 	python3 scripts/verify_bin_surface.py
-
-verify-docs-navigation: ## Check docs/reference links and catalog coverage
-	python3 scripts/verify_docs_navigation.py
 
 verify-agent-file-sizes: ## Check agent skill/hook markdown stays under the 20KB view limit
 	python3 scripts/verify_agent_file_sizes.py
@@ -33,19 +30,3 @@ check: ## Affected lint/gates/tests (bin/check)
 
 check-full: ## Human-only full lint/gates/tests (not for agents)
 	CHECK_FULL=1 bin/check --full
-
-website/node_modules: website/package.json website/pnpm-lock.yaml
-	cd website && pnpm install --frozen-lockfile
-	@touch $@
-
-docs: website/node_modules ## Start the docs dev server (hot-reload at http://localhost:3000/dotfiles/)
-	cd website && pnpm start
-
-docs-build: website/node_modules ## Build the production docs site into website/build/
-	cd website && pnpm build
-
-docs-serve: website/node_modules ## Serve the built docs/ statically (matches GitHub Pages output)
-	cd website && pnpm serve
-
-docs-clean: ## Clear the Docusaurus cache (.docusaurus/)
-	cd website && pnpm clear

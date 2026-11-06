@@ -1,67 +1,31 @@
-# kapral18/dotfiles
+# dotfiles
 
-Personal macOS dotfiles managed with Chezmoi: Fish, herdr, Neovim, CLI assistants, and package installation.
-
-Read the [documentation](https://kapral18.github.io/dotfiles/) for setup, command references, and configuration recipes (source: [`docs/`](docs/intro/index.md)).
-
-## Included
-
-| Feature         | Description                                           |
-| --------------- | ----------------------------------------------------- |
-| Agent memory    | `,ai-kb` knowledge base and `,task handoff` notes     |
-| Local inference | llama.cpp router and model sync (`,llama-cpp`)        |
-| Git identity    | 1Password SSH agent and SSH commit signing            |
-| Git worktrees   | Worktree management with PR integration               |
-| Neovim          | LSP, commit-message assistance, and refactoring tools |
-| Fish            | Comma-prefixed commands in `~/bin`                    |
-| Packages        | Homebrew lists by category and mise-managed runtimes  |
+Personal macOS setup managed with [chezmoi](https://www.chezmoi.io/): Fish, Neovim, herdr, packages, and comma-prefixed commands.
 
 ## Setup
 
-### Prerequisites
+Install `chezmoi` and sign in to 1Password first; templates use it for SSH keys and secrets. Preview before applying to an existing machine:
 
-Use macOS with **1Password** installed and signed in for SSH keys and secrets.
-Applying this setup installs packages, changes shell and macOS settings, and can remove Homebrew packages absent from its Brewfile. Review [Getting Started](docs/intro/getting-started.md) and [New machine bootstrap](docs/intro/new-machine-bootstrap.md) before applying it to an existing machine.
+```sh
+chezmoi init kapral18
+chezmoi diff
+chezmoi apply --dry-run --verbose
+chezmoi apply
+```
 
-### Bootstrap
+Apply hooks install packages, change the login shell and macOS settings, and **remove Homebrew packages absent from the Brewfile**. Review [`home/.chezmoiscripts/`](home/.chezmoiscripts/) before applying. Directories marked `exact_` can delete unmanaged files in their deployed directory. Back up existing configuration first.
 
-```bash
+To install chezmoi and apply immediately on a new machine:
+
+```sh
 sh -c "$(curl -fsLS get.chezmoi.io/lb)" -- init --apply kapral18
 ```
 
-If Chezmoi is already installed, preview with `chezmoi init kapral18 && chezmoi diff` before running `chezmoi apply`.
+## Use and maintenance
 
-## Source and deployment
+- Edit sources under [`home/`](home/), not their deployed copies. Run `chezmoi diff` before `chezmoi apply`.
+- Find custom commands in [`home/exact_bin/`](home/exact_bin/); run `,<name> --help` for usage. Command internals live in [`home/exact_lib/`](home/exact_lib/).
+- Package lists live in [`home/.chezmoitemplates/brews/`](home/.chezmoitemplates/brews/) and `home/readonly_dot_default-*`; tool versions live in [`home/dot_config/mise/`](home/dot_config/mise/).
+- For setup failures, run `chezmoi doctor`, inspect the failing hook in `home/.chezmoiscripts/`, fix the source, then preview and reapply. Reverting source files does not undo installed packages, deletions, or macOS settings; restore backups or reverse those changes separately.
 
-Chezmoi renders templates from [`home/`](home/) into `$HOME`. Hooks in [`home/.chezmoiscripts/`](home/.chezmoiscripts/) install and reconcile packages when lists change.
-
-For the full layout (naming conventions, hook lifecycle, AI config merging, externals), see [Architecture](docs/intro/architecture.md).
-
-## Configuration reference
-
-| Area                                    | Doc                                                         | Source-of-truth (edit here)                                                                              |
-| --------------------------------------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Packages (Homebrew, mise, cargo, go, …) | [Packages](docs/topics/core/packages/index.md)              | [`home/.chezmoitemplates/brews/`](home/.chezmoitemplates/brews/), [`home/readonly_dot_default-*`](home/) |
-| Custom `~/bin` commands                 | [Custom commands](docs/topics/workflow/custom-commands/)    | [`home/exact_bin/`](home/exact_bin/), [`home/exact_lib/`](home/exact_lib/)                               |
-| Git identity & worktrees                | [Worktrees](docs/topics/workflow/git-identity/worktrees.md) | [`home/exact_bin/executable_,w`](home/exact_bin/executable_,w)                                           |
-| GitHub picker & herdr                   | [herdr](docs/topics/workflow/herdr/index.md)                | [`home/dot_config/herdr/`](home/dot_config/herdr/)                                                       |
-| Fish shell                              | [Shell: Fish](docs/topics/workflow/shell-fish.md)           | [`home/dot_config/fish/`](home/dot_config/fish/)                                                         |
-| Neovim                                  | [Neovim](docs/topics/editor/neovim/index.md)                | [`home/dot_config/exact_nvim/`](home/dot_config/exact_nvim/)                                             |
-| macOS automation                        | [macOS](docs/topics/macos/index.md)                         | [`home/dot_hammerspoon/`](home/dot_hammerspoon/), [`home/.osx.core`](home/.osx.core)                     |
-| Reference map (where to change X)       | [Reference map](docs/reference/reference-map.md)            | —                                                                                                        |
-
-## Daily use
-
-1. herdr keeps workspaces running across detach and restores their layout after a restart.
-2. `,w add …` or the GitHub picker (`prefix + G`) for branch/PR worktrees.
-3. Neovim for editing; `,update` to update tools or `chezmoi apply` to apply the declared configuration and package lists.
-
-See [A day in the life](docs/intro/day-in-the-life.md) for a fuller walkthrough.
-
-## Further Reading
-
-- Docs hub: [`docs/intro/index.md`](docs/intro/index.md)
-- Contributing (repo development): [`CONTRIBUTING.md`](CONTRIBUTING.md)
-- Agent instructions: [`AGENTS.md`](AGENTS.md)
-- Chezmoi data prompts: [`home/.chezmoi.toml.tmpl`](home/.chezmoi.toml.tmpl)
-- License: [MIT](LICENSE)
+Repository editing and checks: [CONTRIBUTING.md](CONTRIBUTING.md). Agent rules: [AGENTS.md](AGENTS.md).

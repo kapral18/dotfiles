@@ -4,8 +4,6 @@ This directory contains my personal Neovim setup, managed with `chezmoi`.
 
 The config targets **Neovim 0.12+** and uses built-in `vim.pack` for plugin installation and updates, with trigger-aware deferred loading (`cmd`, `event`, `ft`, and key-triggered specs) handled by [`dash-paq.nvim`](https://github.com/kapral18/dash-paq.nvim), bootstrapped by `lua/core/init.lua` and configured with `lua/plugins/dash-paq.lua`.
 
-For a guided tour (including an IDE-first on-ramp for VSCode/JetBrains users), see [`docs/topics/editor/neovim/index.md`](../../../docs/topics/editor/neovim/index.md).
-
 ## Implementation notes
 
 - `lua/core/init.lua` bootstraps `dash-paq.nvim` onto `runtimepath` before calling its `setup()`: a local checkout at `~/code/dash-paq.nvim/main` (or a saved dev-toggle choice) if present, else `vim.pack.add` from GitHub.

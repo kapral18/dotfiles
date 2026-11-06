@@ -1,24 +1,11 @@
 #!/usr/bin/env python3
-"""Verify comma command discoverability stays in sync.
+"""Verify comma commands have Fish completions and no orphaned command libraries.
 
-User-facing commands live in ``home/exact_bin/executable_,<name>`` and are
-deployed to ``~/bin/,<name>``. AGENTS.md requires each command to carry a Fish
-completion plus docs coverage, but that contract used to be reviewed by
-hand. This check turns the command surface into a machine-verifiable gate.
-
-Usage:
-    verify_bin_surface.py [REPO_ROOT]
-
-Exit status is non-zero if any command is missing:
-
-- ``home/dot_config/fish/completions/readonly_,<name>.fish``
-- a backticked command token under ``docs/topics/workflow/custom-commands/``
-- no unreferenced command-library directory under ``home/exact_lib/exact_,<name>/``
+Usage: verify_bin_surface.py [REPO_ROOT]
 """
 
 from __future__ import annotations
 
-import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -26,7 +13,7 @@ from pathlib import Path
 
 @dataclass(frozen=True)
 class CommandSurface:
-    """The files that must exist/mention one comma command."""
+    """A comma command and its required Fish completion."""
 
     name: str
     source: Path
@@ -97,32 +84,10 @@ def _command_references_library(command: CommandSurface, library_name: str) -> b
     return f"lib/,{library_name}/" in source
 
 
-def _read_docs_dir(path: Path) -> str:
-    if not path.is_dir():
-        raise FileNotFoundError(path)
-    docs_files = sorted(path.glob("*.md"))
-    if not docs_files:
-        raise FileNotFoundError(path / "*.md")
-    return "\n".join(p.read_text(encoding="utf-8") for p in docs_files)
-
-
-def _docs_mentions_command(docs_text: str, name: str) -> bool:
-    return re.search(rf"`{re.escape(_command_token(name))}`", docs_text) is not None
-
-
 def check_bin_surface(repo_root: Path) -> list[str]:
     """Return human-readable failures for command-surface drift."""
 
-    docs_path = repo_root / "docs" / "topics" / "workflow" / "custom-commands"
     failures: list[str] = []
-
-    try:
-        docs_text = _read_docs_dir(docs_path)
-        docs_available = True
-    except FileNotFoundError:
-        failures.append(f"docs file missing: {docs_path.relative_to(repo_root)}")
-        docs_text = ""
-        docs_available = False
 
     commands = discover_commands(repo_root)
     command_names = {command.name for command in commands}
@@ -131,8 +96,6 @@ def check_bin_surface(repo_root: Path) -> list[str]:
         display = _command_token(command.name)
         if not command.fish_completion.is_file():
             failures.append(f"{display}: missing Fish completion {command.fish_completion.relative_to(repo_root)}")
-        if docs_available and not _docs_mentions_command(docs_text, command.name):
-            failures.append(f"{display}: missing docs token in {docs_path.relative_to(repo_root)}/")
 
     for library in discover_command_libraries(repo_root):
         if library.name not in command_names and not any(
