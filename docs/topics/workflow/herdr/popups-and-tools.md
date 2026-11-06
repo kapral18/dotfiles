@@ -54,7 +54,7 @@ See [GitHub picker](github-picker.md).
 
 ## Agent integrations
 
-`chezmoi apply` also runs `herdr integration install` for pi, OMP, Claude Code, Codex, and OpenCode after every apply, so each agent reports its state (working, blocked, idle) to the herdr sidebar. It runs after the `07-merge-*` scripts because those regenerate the configs herdr's hooks live in; installing an integration that is already current changes nothing.
+`chezmoi apply` also runs `herdr integration install` for pi, OMP, Claude Code, Codex, and OpenCode, so each agent reports its state (working, blocked, idle) to the herdr sidebar. It runs only when the herdr version changes or `07-merge-claude-code-settings` reinstalls `~/.claude/settings.json`, which drops herdr's hook entry; an apply that changes neither leaves herdr's files untouched.
 
 ## Lowfi
 

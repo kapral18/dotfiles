@@ -5,7 +5,7 @@ app_icons/
 .codex/config.toml
 .pi/agent/settings.json
 .pi/agent/models.json
-# herdr writes this into an exact_ dir (run_after_10-install-herdr-integrations.sh).
+# herdr writes this into an exact_ dir (run_onchange_after_10-install-herdr-integrations.sh.tmpl).
 .pi/agent/extensions/herdr-agent-state.ts
 .config/gh-dash/gh-dash-shared.yml
 crontab

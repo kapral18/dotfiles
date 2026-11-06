@@ -148,10 +148,10 @@ Helper scripts called by hooks and commands (stdlib-only by convention).
 
 Idempotent post-apply hooks: housekeeping that removes orphaned generated state, and herdr plugin and integration installs.
 
-| Hook                                                                                                                              | Purpose                                              |
-| --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| [`run_onchange_after_08-link-herdr-plugins.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_08-link-herdr-plugins.sh.tmpl) | Link the local herdr plugins                         |
-| [`run_after_10-install-herdr-integrations.sh`](../../home/.chezmoiscripts/run_after_10-install-herdr-integrations.sh)             | Install herdr's agent integrations after every apply |
+| Hook                                                                                                                                              | Purpose                                                                            |
+| ------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| [`run_onchange_after_08-link-herdr-plugins.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_08-link-herdr-plugins.sh.tmpl)                 | Link the local herdr plugins                                                       |
+| [`run_onchange_after_10-install-herdr-integrations.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_10-install-herdr-integrations.sh.tmpl) | Install herdr's agent integrations when herdr or the Claude settings merge changes |
 
 ## Formatting
 
