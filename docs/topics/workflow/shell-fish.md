@@ -32,6 +32,17 @@ It also initializes a few tools if present:
 - zoxide (smarter `cd`)
 - fzf integration via `PatrickF1/fzf.fish`
 
+## Starship Prompt
+
+The prompt pins Starship 1.27.0's module order explicitly, excluding Google Cloud and Git line-count metrics. Existing module defaults still decide when each listed indicator appears, including Bun, CMake, and low-battery warnings. Modules introduced by later Starship releases stay hidden until added to the list.
+
+- Git tracking states use green for ahead, red for behind, and purple for diverged. Conflict counts are separated from tracking counts.
+- Git line-count metrics are omitted.
+- Python shows the active virtual environment alongside the interpreter version.
+- Node detection includes `.mts` and `.cts`, as well as JavaScript, TypeScript, JSX, and TSX files.
+- External commands have a 500 ms timeout.
+- The `gcloud` module is disabled and excluded from the module list to hide the Google Cloud account email. AWS remains in the explicit list.
+
 ## Startup Model
 
 Fish setup in this repo is split by shell mode:

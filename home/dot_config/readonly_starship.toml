@@ -2,7 +2,20 @@
 
 "$schema" = 'https://starship.rs/config-schema.json'
 
-command_timeout = 3000
+command_timeout = 500
+
+format = """\
+$username$hostname$localip$shlvl$singularity$kubernetes$nats$directory$vcsh\
+$fossil_branch$fossil_metrics$git_branch$git_commit$git_state$git_status$hg_branch$hg_state$pijul_channel\
+$docker_context$package\
+$bun$c$cmake$cobol$cpp$daml$dart$deno$dotnet$elixir$elm$erlang$fennel$fortran$gleam\
+$golang$gradle$haskell$haxe$helm$java$julia$kotlin$lua$maven$mojo$nim$nodejs$ocaml$odin\
+$opa$perl$php$pulumi$purescript$python$quarto$raku$rlang$red$ruby$rust$scala$solidity\
+$swift$terraform$typst$vlang$vagrant$xmake$zig\
+$buf$guix_shell$nix_shell$conda$pixi$meson$spack$memory_usage\
+$aws$openstack$azure$direnv$env_var$mise$crystal$custom$sudo\
+$cmd_duration$line_break$jobs$battery$time$status$container$netns$os$shell$character\
+"""
 
 [status]
 map_symbol = true
@@ -29,10 +42,10 @@ style = "bold white"
 format = '[\($state( $progress_current of $progress_total)\)]($style) '
 
 [git_status]
-conflicted = '${count}⚠ '
-ahead = "⇡${count}"
-behind = "⇣${count}"
-diverged = "⇕⇡${ahead_count}⇣${behind_count}"
+conflicted = ' ${count}⚠'
+ahead = '[⇡${count}](fg:green)'
+behind = '[⇣${count}](fg:red)'
+diverged = '[⇕⇡${ahead_count}⇣${behind_count}](fg:purple)'
 modified = "  ${count}"
 renamed = " 󰪹 ${count}"
 deleted = " 󰗨 ${count}"
@@ -40,23 +53,15 @@ staged = " 󰋴 ${count}"
 stashed = "  ${count}"
 untracked = "  ${count}"
 format = """\
-[$ahead_behind](fg:green)\
+($ahead_behind\
 [$stashed](fg:white)\
-[$behind_behind](fg:red)\
-[$diverged](fg:purple)\
 [$conflicted](fg:red)\
 [$deleted](fg:red)\
 [$modified](fg:green)\
 [$untracked](fg:cyan)\
-[$staged](fg:#F5B700) \
-[$renamed](fg:#F5B700) \
+[$staged](fg:#F5B700)\
+[$renamed](fg:#F5B700) )\
 """
-
-[git_metrics]
-disabled = false
-added_style = 'fg:green'
-deleted_style = 'fg:red'
-format = '[+$added]($added_style)/[-$deleted]($deleted_style) '
 
 [shell]
 fish_indicator = ' 🐟 '
@@ -72,7 +77,7 @@ error_symbol = "[✖](bold red) "
 
 [python]
 symbol = " "
-format = "[$symbol$version]($style) "
+format = '[${symbol}${pyenv_prefix}(${version} )(\($virtualenv\) )]($style)'
 style = "bold green"
 
 [rust]
@@ -89,7 +94,10 @@ symbol = " "
 style = 'bold green'
 version_format = 'v${major}.${minor}'
 format = '[$symbol\[$version\]]($style) '
-detect_extensions = ['js', 'ts', 'jsx', 'tsx', 'mjs', 'cjs']
+detect_extensions = ['js', 'ts', 'jsx', 'tsx', 'mjs', 'cjs', 'mts', 'cts']
+
+[gcloud]
+disabled = true
 
 [aws]
 symbol = "  "
@@ -147,47 +155,6 @@ symbol = "󰆥 "
 
 [nix_shell]
 symbol = " "
-
-[os.symbols]
-Alpaquita = " "
-Alpine = " "
-Amazon = " "
-Android = " "
-Arch = " "
-Artix = " "
-CentOS = " "
-Debian = " "
-DragonFly = " "
-Emscripten = " "
-EndeavourOS = " "
-Fedora = " "
-FreeBSD = " "
-Garuda = "󰛓 "
-Gentoo = " "
-HardenedBSD = "󰞌 "
-Illumos = "󰈸 "
-Linux = " "
-Mabox = " "
-Macos = " "
-Manjaro = " "
-Mariner = " "
-MidnightBSD = " "
-Mint = " "
-NetBSD = " "
-NixOS = " "
-OpenBSD = "󰈺 "
-openSUSE = " "
-OracleLinux = "󰌷 "
-Pop = " "
-Raspbian = " "
-Redhat = " "
-RedHatEnterprise = " "
-Redox = "󰀘 "
-Solus = "󰠳 "
-SUSE = " "
-Ubuntu = " "
-Unknown = " "
-Windows = "󰍲 "
 
 [pijul_channel]
 symbol = " "
