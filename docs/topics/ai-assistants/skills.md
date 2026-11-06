@@ -5,7 +5,7 @@ sidebar_position: 3
 # Skills
 
 Skills live in `home/exact_dot_agents/exact_skills/exact_k-<name>/` and deploy to `~/.agents/skills/k-<name>/SKILL.md`.
-Claude Code, Pi, OMP, Codex, and OpenCode read the same tree. A model-invoked skill loads when its description matches the request. Manual skills require explicit invocation or an authorized handoff; reading their files alone does not authorize their workflows.
+Claude Code, Pi, OMP, and Codex read the same tree. A model-invoked skill loads when its description matches the request. Manual skills require explicit invocation or an authorized handoff; reading their files alone does not authorize their workflows.
 
 Skills provide task procedures. The global operating rules govern delegation, approvals, verification, and memory writes.
 

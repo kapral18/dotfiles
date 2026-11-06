@@ -42,7 +42,6 @@ AI_INSTRUCTION_PATH_MARKERS = (
     "/.omp/agent/skills/",
     "/.omp/agent/agents/",
     "/.pi/agent/agents/",
-    "/.config/opencode/skills/",
 )
 
 # List markers (bullet, numeric, outline-letter) may appear at any indentation

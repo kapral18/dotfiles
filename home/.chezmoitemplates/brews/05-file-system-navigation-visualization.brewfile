@@ -10,14 +10,6 @@ brew "lsd"
 # http://mama.indstate.edu/users/ice/tree/
 brew "tree"
 
-# Terminal disk space navigator
-# https://github.com/imsnif/diskonaut
-brew "diskonaut"
-
-# Fast TUI for disk usage analysis and cleanup
-# https://github.com/Byron/dua-cli
-brew "dua-cli"
-
 # Blazing fast terminal file manager
 # https://yazi-rs.github.io/
 brew "yazi"

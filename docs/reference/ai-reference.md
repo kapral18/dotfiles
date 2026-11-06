@@ -14,7 +14,7 @@ See [AI assistants](../topics/ai-assistants/index.md) and [Instructions](../topi
 | Skills                 | [`home/exact_dot_agents/exact_skills/`](../../home/exact_dot_agents/exact_skills/)             |
 | Shared reviewer prompt | [`home/.chezmoitemplates/reviewer-prompt.md`](../../home/.chezmoitemplates/reviewer-prompt.md) |
 
-`~/CLAUDE.md` and `~/.claude/CLAUDE.md` both link to `~/AGENTS.md`; Claude Code loads it once. The repo's own `CLAUDE.md` links to the repo `AGENTS.md`. Pi, OMP, Codex, and OpenCode read `~/AGENTS.md` through `symlink_AGENTS.md` entries in their config dirs.
+`~/CLAUDE.md` and `~/.claude/CLAUDE.md` both link to `~/AGENTS.md`; Claude Code loads it once. The repo's own `CLAUDE.md` links to the repo `AGENTS.md`. Pi, OMP, and Codex read `~/AGENTS.md` through `symlink_AGENTS.md` entries in their config dirs.
 
 ## Harness configs
 
@@ -25,22 +25,20 @@ Per-tool config sources and the `run_onchange_after_07-*` hooks that render them
 | Claude Code                         | [`home/dot_claude/`](../../home/dot_claude/)                                                       | [`run_onchange_after_07-merge-claude-code-settings.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-claude-code-settings.sh.tmpl) |
 | Claude Code (`~/.claude.json` keys) | [`home/.chezmoidata/claude_global_config.json`](../../home/.chezmoidata/claude_global_config.json) | [`run_onchange_after_07-merge-claude-global-config.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-claude-global-config.sh.tmpl) |
 | Codex                               | [`home/dot_codex/`](../../home/dot_codex/)                                                         | [`run_onchange_after_07-merge-codex-config.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-codex-config.sh.tmpl)                 |
-| OpenCode                            | [`home/dot_config/opencode/`](../../home/dot_config/opencode/)                                     | [`run_onchange_after_07-merge-opencode-config.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-opencode-config.sh.tmpl)           |
 | Pi                                  | [`home/dot_pi/agent/`](../../home/dot_pi/agent/)                                                   | [`run_onchange_after_07-merge-pi-config.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-pi-config.sh.tmpl)                       |
 
 ## MCP
 
 Canonical MCP registry plus generator/injectors. See [MCP servers](../topics/ai-assistants/mcp.md).
 
-| Component         | Source path                                                                                                                           |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| MCP registry      | [`home/.chezmoidata/mcp_servers.yaml`](../../home/.chezmoidata/mcp_servers.yaml)                                                      |
-| Registry reader   | [`scripts/mcp_registry.py`](../../scripts/mcp_registry.py)                                                                            |
-| Config generator  | [`scripts/generate_mcp_configs.py`](../../scripts/generate_mcp_configs.py)                                                            |
-| Codex injector    | [`scripts/inject_mcp_into_codex_toml.py`](../../scripts/inject_mcp_into_codex_toml.py)                                                |
-| OpenCode injector | [`scripts/inject_mcp_into_opencode_jsonc.py`](../../scripts/inject_mcp_into_opencode_jsonc.py)                                        |
-| Claude MCP merge  | [`scripts/merge_claude_mcp.py`](../../scripts/merge_claude_mcp.py)                                                                    |
-| Generate hook     | [`run_onchange_after_07-generate-mcp-configs.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-generate-mcp-configs.sh.tmpl) |
+| Component        | Source path                                                                                                                           |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| MCP registry     | [`home/.chezmoidata/mcp_servers.yaml`](../../home/.chezmoidata/mcp_servers.yaml)                                                      |
+| Registry reader  | [`scripts/mcp_registry.py`](../../scripts/mcp_registry.py)                                                                            |
+| Config generator | [`scripts/generate_mcp_configs.py`](../../scripts/generate_mcp_configs.py)                                                            |
+| Codex injector   | [`scripts/inject_mcp_into_codex_toml.py`](../../scripts/inject_mcp_into_codex_toml.py)                                                |
+| Claude MCP merge | [`scripts/merge_claude_mcp.py`](../../scripts/merge_claude_mcp.py)                                                                    |
+| Generate hook    | [`run_onchange_after_07-generate-mcp-configs.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-generate-mcp-configs.sh.tmpl) |
 
 ## Memory and handoffs
 
@@ -66,5 +64,4 @@ See [llama.cpp local inference](../topics/ai-assistants/llama-cpp/index.md).
 | Control plane       | [`home/exact_bin/executable_,llama-cpp`](../../home/exact_bin/executable_,llama-cpp)                                                                                                                                                                               |
 | Claude launcher     | [`home/exact_bin/executable_,claude-llama-cpp`](../../home/exact_bin/executable_,claude-llama-cpp)                                                                                                                                                                 |
 | Codex launcher      | [`home/exact_bin/executable_,codex-llama-cpp`](../../home/exact_bin/executable_,codex-llama-cpp), [`home/exact_bin/executable_,codex`](../../home/exact_bin/executable_,codex), [`home/exact_lib/exact_,codex/main.py`](../../home/exact_lib/exact_,codex/main.py) |
-| OpenCode launcher   | [`home/exact_bin/executable_,opencode-llama-cpp`](../../home/exact_bin/executable_,opencode-llama-cpp)                                                                                                                                                             |
 | Pi provider         | [`home/dot_pi/agent/readonly_models.json`](../../home/dot_pi/agent/readonly_models.json)                                                                                                                                                                           |

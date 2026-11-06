@@ -47,7 +47,7 @@ Input and mask are converted to matching PNGs. A grayscale mask becomes its alph
 | `,image-local`                         | `home/exact_bin` + `home/exact_lib` | `chezmoi apply`                                                               |
 | Weights (~15 GB)                       | `~/.config/sd-image/models.txt`     | **command-only**: `,image-local sync`. Not gated on `downloadLlamaCppModels`. |
 
-Do not add these files to `models.ini` or the Pi/Codex/OpenCode llama.cpp catalogs.
+Do not add these files to `models.ini` or the Pi/Codex llama.cpp catalogs.
 
 ## Manifest
 

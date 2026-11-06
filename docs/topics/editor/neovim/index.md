@@ -8,12 +8,12 @@ Neovim is the inline editor pane in the herdr workbench. Pickers and dashboards 
 
 ## Read path
 
-| Slice                                                 | Owns                                                                                            |
-| ----------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| [Architecture and source](architecture-and-source.md) | source layout, installed target, quick start, customization entry points                        |
-| [Language tooling](language-tooling/index.md)         | tree-sitter, filetypes, LSP setup, chezmoi source jumps, prose formatting                       |
-| [Workflows](workflows/index.md)                       | keymaps, search, git, local plugin entrypoints, IDE translation                                 |
-| [Local plugins](local-plugins/index.md)               | in-repo Lua plugins for tests, git AI, ownership, refactors, pane bridge, quickfix, screenshots |
+| Slice                                                 | Owns                                                                                                  |
+| ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| [Architecture and source](architecture-and-source.md) | source layout, installed target, quick start, customization entry points                              |
+| [Language tooling](language-tooling/index.md)         | tree-sitter, filetypes, LSP setup, chezmoi source jumps, prose formatting                             |
+| [Workflows](workflows/index.md)                       | keymaps, search, git, local plugin entrypoints, IDE translation                                       |
+| [Local plugins](local-plugins/index.md)               | in-repo Lua plugins for tests, git AI, ownership, refactors, pane bridge, quickfix, window ergonomics |
 
 ## What you get
 

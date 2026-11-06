@@ -115,34 +115,32 @@ Each registry has a declarative list plus the hook that converges it. See [Packa
 
 Helper scripts called by hooks and commands (stdlib-only by convention).
 
-| Script                              | Purpose                                                                                                                         |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `chezmoi_lib.sh`                    | Shared shell library for merge/apply hooks (source selection, atomic writes, checksums, artifact ledger)                        |
-| `check.py`                          | Affected-first `make check` planner/runner (`bin/check`; `make check-full` is human-only)                                       |
-| `verify_templates.py`               | Render every chezmoi `*.tmpl` via `execute-template` to catch errors early                                                      |
-| `verify_bin_surface.py`             | Check comma-command completions, docs tokens, and library ownership                                                             |
-| `verify_docs_navigation.py`         | Check docs links, anchors, and Scripts-table entries                                                                            |
-| `verify_agent_file_sizes.py`        | Check agent skill reference markdown stays under the 20 KB harness view limit (`SKILL.md` exempt)                               |
-| `yaml_parser.py`                    | Minimal dependency-free YAML parser for project data files                                                                      |
-| `jsonc_dump.py`                     | JSONC serializer matching OpenCode's trailing-comma config style                                                                |
-| `mcp_registry.py`                   | Read/normalize the canonical MCP registry                                                                                       |
-| `generate_mcp_configs.py`           | Generate tool-specific MCP configs from `mcp_servers.yaml`                                                                      |
-| `inject_mcp_into_codex_toml.py`     | Inject MCP servers into Codex TOML at a marker line                                                                             |
-| `inject_mcp_into_opencode_jsonc.py` | Inject MCP servers into an OpenCode JSONC placeholder                                                                           |
-| `merge_claude_mcp.py`               | Surgically update only `mcpServers` in `~/.claude.json`                                                                         |
-| `merge_claude_global_config.py`     | Set the declared top-level keys (`claude_global_config.json`) in `~/.claude.json`, keeping runtime state                        |
-| `managed_config_manifest.py`        | Declared-key manifests shared by the config merge hooks                                                                         |
-| `generated_artifact_ledger.py`      | Record/evaluate generated artifacts for semantic drift (backs `,doctor ai`)                                                     |
-| `ai_kb.py`                          | Local markdown + SQLite FTS5/vector knowledge base for agent runs                                                               |
-| `embed.py`                          | Stdlib embedding-service abstraction: one-shot `embed_runner.py` runs plus connect-only resident dispatch via `embed_client.py` |
-| `embed_runner.py`                   | Isolated PEP 723 `fastembed` runner (`BAAI/bge-small-en-v1.5`, 384-d)                                                           |
-| `embed_client.py`                   | Deadline-bounded unix-socket client for the resident embed worker (ensure/ping/embed)                                           |
-| `embed_worker.py`                   | PEP 723 resident `fastembed` worker serving embeddings over a private unix socket                                               |
-| `vec_runner.py`                     | Isolated PEP 723 `sqlite-vec` KNN/pairs runner for the KB                                                                       |
-| `sync_llama_cpp_models.py`          | Download missing GGUF files declared in the llama.cpp manifest                                                                  |
-| `reconcile_golang_pkgs.py`          | Reconcile Go binaries against the manifest (hook 05-update-golang-pkgs)                                                         |
-| `yt_search.py`                      | YouTube search backend (powers `,youtube-search`)                                                                               |
-| `tests/`                            | Python test suite                                                                                                               |
+| Script                          | Purpose                                                                                                                         |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `chezmoi_lib.sh`                | Shared shell library for merge/apply hooks (source selection, atomic writes, checksums, artifact ledger)                        |
+| `check.py`                      | Affected-first `make check` planner/runner (`bin/check`; `make check-full` is human-only)                                       |
+| `verify_templates.py`           | Render every chezmoi `*.tmpl` via `execute-template` to catch errors early                                                      |
+| `verify_bin_surface.py`         | Check comma-command completions, docs tokens, and library ownership                                                             |
+| `verify_docs_navigation.py`     | Check docs links, anchors, and Scripts-table entries                                                                            |
+| `verify_agent_file_sizes.py`    | Check agent skill reference markdown stays under the 20 KB harness view limit (`SKILL.md` exempt)                               |
+| `yaml_parser.py`                | Minimal dependency-free YAML parser for project data files                                                                      |
+| `mcp_registry.py`               | Read/normalize the canonical MCP registry                                                                                       |
+| `generate_mcp_configs.py`       | Generate tool-specific MCP configs from `mcp_servers.yaml`                                                                      |
+| `inject_mcp_into_codex_toml.py` | Inject MCP servers into Codex TOML at a marker line                                                                             |
+| `merge_claude_mcp.py`           | Surgically update only `mcpServers` in `~/.claude.json`                                                                         |
+| `merge_claude_global_config.py` | Set the declared top-level keys (`claude_global_config.json`) in `~/.claude.json`, keeping runtime state                        |
+| `managed_config_manifest.py`    | Declared-key manifests shared by the config merge hooks                                                                         |
+| `generated_artifact_ledger.py`  | Record/evaluate generated artifacts for semantic drift (backs `,doctor ai`)                                                     |
+| `ai_kb.py`                      | Local markdown + SQLite FTS5/vector knowledge base for agent runs                                                               |
+| `embed.py`                      | Stdlib embedding-service abstraction: one-shot `embed_runner.py` runs plus connect-only resident dispatch via `embed_client.py` |
+| `embed_runner.py`               | Isolated PEP 723 `fastembed` runner (`BAAI/bge-small-en-v1.5`, 384-d)                                                           |
+| `embed_client.py`               | Deadline-bounded unix-socket client for the resident embed worker (ensure/ping/embed)                                           |
+| `embed_worker.py`               | PEP 723 resident `fastembed` worker serving embeddings over a private unix socket                                               |
+| `vec_runner.py`                 | Isolated PEP 723 `sqlite-vec` KNN/pairs runner for the KB                                                                       |
+| `sync_llama_cpp_models.py`      | Download missing GGUF files declared in the llama.cpp manifest                                                                  |
+| `reconcile_golang_pkgs.py`      | Reconcile Go binaries against the manifest (hook 05-update-golang-pkgs)                                                         |
+| `yt_search.py`                  | YouTube search backend (powers `,youtube-search`)                                                                               |
+| `tests/`                        | Python test suite                                                                                                               |
 
 ## Maintenance / cleanup hooks
 

@@ -2,16 +2,7 @@
 # https://github.com/tj/git-extras
 brew "git-extras"
 
-# Manage hosts file entries with profiles and groups
-# https://github.com/guumaster/hostctl
-tap "guumaster/tap", trusted: true
-brew "guumaster/tap/hostctl"
-
 # Change dates of git commits
 # https://github.com/PotatoLabs/git-redate
 tap "potatolabs/git-redate", trusted: true
 brew "potatolabs/git-redate/git-redate"
-
-# Remove large files or passwords from Git history like git-filter-branch
-# https://rtyley.github.io/bfg-repo-cleaner/
-brew "bfg"

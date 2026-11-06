@@ -132,12 +132,6 @@ When a macOS app is not available via Homebrew but provides a .dmg release:
    - Already-installed checks
    - Cleanup on failure/success
 
-**Example**:
-
-```text
-dmg|Squirrel Disk|adileo/squirreldisk|latest|SquirrelDisk.app|.dmg
-```
-
 **Best practices**:
 
 - Use exact .app bundle name from mounted volume
@@ -156,7 +150,7 @@ When a CLI tool is not available through higher-priority package managers and is
 
 ```text
 file|kitten|kovidgoyal/kitty|latest|kitten-darwin-arm64|kitten
-tar_gz_bin|mdtt|szktkfm/mdtt|v0.3.1|mdtt_Darwin_arm64.tar.gz|mdtt|mdtt
+tar_gz_bin|<tool>|<owner>/<repo>|<tag>|<tool>_Darwin_arm64.tar.gz|<tool>|<tool>
 zip_opt|sd-cli|leejet/stable-diffusion.cpp|master-820-de298c2|sd-*-bin-Darwin-macOS-*-arm64.zip|sd-cli|sd-cli
 ```
 

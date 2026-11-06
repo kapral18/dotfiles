@@ -1,4 +1,0 @@
-# Cast text to speech
-# https://github.com/piqoni/cast-text
-tap "piqoni/cast-text", trusted: true
-brew "cast-text"

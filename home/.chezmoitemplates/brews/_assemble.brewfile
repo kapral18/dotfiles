@@ -34,9 +34,6 @@
 # GIT WORKFLOW & PRODUCTIVITY
 {{ includeTemplate "brews/12-git-workflow-productivity.brewfile" . -}}
 
-# GIT ANALYSIS & STATISTICS
-{{ includeTemplate "brews/13-git-analysis-statistics.brewfile" . -}}
-
 # GIT UTILITIES & EXTENSIONS
 {{ includeTemplate "brews/14-git-utilities-extensions.brewfile" . -}}
 
@@ -73,14 +70,8 @@
 # TASK AUTOMATION & SCHEDULING
 {{ includeTemplate "brews/27-task-automation-scheduling.brewfile" . -}}
 
-# DATA VISUALIZATION & PLOTTING
-{{ includeTemplate "brews/28-data-visualization-plotting.brewfile" . -}}
-
 # FILE TRANSFER & SHARING
 {{ includeTemplate "brews/29-file-transfer-sharing.brewfile" . -}}
-
-# PRESENTATION & CONTENT CREATION
-{{ includeTemplate "brews/31-presentation-content-creation.brewfile" . -}}
 
 # MEDIA & ENTERTAINMENT
 {{ includeTemplate "brews/32-media-entertainment.brewfile" . -}}

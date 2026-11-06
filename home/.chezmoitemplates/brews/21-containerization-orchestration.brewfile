@@ -1,16 +1,3 @@
-# Explore container image layers in a TUI
-# https://github.com/knqyf263/sou
-tap "knqyf263/sou", trusted: true
-brew "knqyf263/sou/sou"
-
-# Analyze layers and wasted space in container images
-# https://github.com/wagoodman/dive
-brew "dive"
-
-# Explore the (overlay) filesystem and layers of OCI container images
-# https://github.com/bschaatsbergen/cek
-brew "cek"
-
 # Simple terminal UI for both docker and docker-compose
 # https://github.com/jesseduffield/lazydocker
 brew "lazydocker"

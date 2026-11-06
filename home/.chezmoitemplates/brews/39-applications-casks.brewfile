@@ -10,10 +10,6 @@ cask "brave-browser"
 # https://www.videolan.org/vlc/
 cask "vlc"
 
-# Lossless video editor and trimmer
-# https://github.com/mifi/lossless-cut
-cask "losslesscut"
-
 # Command-line interface for 1Password
 # https://developer.1password.com/docs/cli
 cask "1password-cli"
@@ -37,14 +33,6 @@ cask "knockknock"
 # Open-source firewall
 # https://objective-see.org/products/lulu.html
 cask "lulu"
-
-# Open-source software for live streaming and screen recording
-# https://obsproject.com/
-cask "obs"
-
-# AI-powered background removal plugin for OBS
-# https://github.com/royshil/obs-backgroundremoval
-cask "obs-backgroundremoval"
 
 # Monitor mic and webcam
 # https://objective-see.org/products/oversight.html

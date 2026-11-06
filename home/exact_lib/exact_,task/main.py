@@ -5,7 +5,7 @@
 A card holds the goal, the agent's reading of the request, numbered `Done when`
 items, the `Scope` the task may touch, and what it leaves alone. The agent writes
 it with `,task card set`; harness adapters (Claude mod, Pi/OMP extension, Codex
-hooks, OpenCode plugin) call `,task hook <event>` to inject it, flag edits outside
+hooks) call `,task hook <event>` to inject it, flag edits outside
 `Scope`, prompt a zoom-out every few steps, and send a stop back while a
 `Done when` item is still open.
 

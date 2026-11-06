@@ -33,7 +33,6 @@ Its verdict follows the evidence: there is no finding quota, and the caller's or
 | Pi          | `home/dot_pi/agent/exact_agents/k-agent-reviewer.md.tmpl` (`claude-opus-5-5`, medium)                                        | `k-agent-scout` (`gpt-6-luna`, low)        |
 | OMP         | `home/dot_omp/private_agent/exact_agents/k-agent-reviewer.md.tmpl`                                                           | native `scout`, `APPEND_SYSTEM.md` overlay |
 | Codex       | native `spawn_agent` with `fork_turns: "none"`; shared prompt from `~/.agents/skills/k-review/references/reviewer_prompt.md` | fresh native agent                         |
-| OpenCode    | none; review inline                                                                                                          | native tools                               |
 
 Pi's `pi-subagents` built-in agents stay disabled (`subagents.disableBuiltins`), so only these profiles exist there.
 OMP disables its own `reviewer` and `security-reviewer` agents in `task.disabledAgents`.

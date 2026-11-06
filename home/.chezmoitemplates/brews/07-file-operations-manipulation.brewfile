@@ -1,11 +1,3 @@
-# Command-line batch rename tool
-# https://github.com/ayoisaiah/f2
-brew "f2"
-
-# Efficient duplicate file finder with hashing and parallelism
-# https://github.com/pkolaczk/fclones
-brew "fclones"
-
 # macOS command line utility for managing file icons
 # https://github.com/mklement0/fileicon
 brew "fileicon"

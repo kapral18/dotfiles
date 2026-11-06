@@ -34,13 +34,13 @@ class TestLlamaCppWrappers(unittest.TestCase):
                 'shift 2\nexec "$@"\n'
             )
             lifecycle.chmod(0o755)
-            for name in ("claude", ",codex", "opencode"):
+            for name in ("claude", ",codex"):
                 command = bindir / name
                 command.write_text(
                     '#!/bin/sh\n[ "${LIFECYCLE_READY:-}" = 1 ] || exit 99\nprintf "harness\\n" >> "$EVENTS"\nexit 37\n'
                 )
                 command.chmod(0o755)
-            for harness in ("claude", "codex", "opencode"):
+            for harness in ("claude", "codex"):
                 with self.subTest(harness=harness):
                     events.write_text("")
                     result = subprocess.run(
@@ -54,7 +54,7 @@ class TestLlamaCppWrappers(unittest.TestCase):
                     self.assertEqual(events.read_text().splitlines(), ["ready", "harness"])
 
     def test_SHOULD_offer_router_ids_from_every_llama_cpp_harness_completion(self):
-        for harness in ("claude", "codex", "opencode"):
+        for harness in ("claude", "codex"):
             with self.subTest(harness=harness):
                 completion = REPO / f"home/dot_config/fish/completions/readonly_,{harness}-llama-cpp.fish"
                 result = subprocess.run(

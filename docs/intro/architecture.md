@@ -64,11 +64,11 @@ This setup is intentionally declarative:
 
 ## Dynamic AI Context Merging
 
-Because AI tools (like OpenCode and Pi) often rewrite their config files during runtime, rendering templates directly into those files causes conflicts. Instead, this architecture uses **Source-Based Merging**:
+Because AI tools (like Codex and Pi) often rewrite their config files during runtime, rendering templates directly into those files causes conflicts. Instead, this architecture uses **Source-Based Merging**:
 
 - MCP server definitions share a single canonical registry at [`home/.chezmoidata/mcp_servers.yaml`](../../home/.chezmoidata/mcp_servers.yaml).
 - During `chezmoi apply`, the unified script `run_onchange_after_07-generate-mcp-configs.sh.tmpl` calls [`scripts/generate_mcp_configs.py`](../../scripts/generate_mcp_configs.py) once and writes the result to Claude Code, Pi, and any other tool that consumes the standard `mcpServers` JSON shape.
-- Tools with different MCP schemas (OpenCode, Codex) still derive from the same registry via small inject scripts in `scripts/` that transform the canonical registry into the tool-specific config shape.
+- Tools with a different MCP schema (Codex) still derive from the same registry via a small inject script in `scripts/` that transforms the canonical registry into the tool-specific config shape.
 
 Models are set directly in each harness config. For the full picture see [MCP servers](../topics/ai-assistants/mcp.md) and [Tool configs](../topics/ai-assistants/tool-configs/index.md).
 

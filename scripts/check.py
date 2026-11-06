@@ -301,10 +301,8 @@ TEST_RULES: tuple[TestRule, ...] = (
         prefixes=(
             "home/exact_bin/executable_,claude-llama-cpp",
             "home/exact_bin/executable_,codex-llama-cpp",
-            "home/exact_bin/executable_,opencode-llama-cpp",
             "home/dot_config/fish/completions/readonly_,claude-llama-cpp.fish",
             "home/dot_config/fish/completions/readonly_,codex-llama-cpp.fish",
-            "home/dot_config/fish/completions/readonly_,opencode-llama-cpp.fish",
         ),
         tests=("tests/test_llama_cpp_wrappers.py",),
     ),
@@ -324,7 +322,6 @@ TEST_RULES: tuple[TestRule, ...] = (
             "home/dot_claude/",
             "home/dot_codex/",
             "home/dot_omp/",
-            "home/dot_config/opencode/",
             "home/dot_config/exact_nvim/",
             "home/.chezmoiscripts/",
         ),
@@ -419,7 +416,6 @@ EXTRA_TESTS: tuple[ExtraTest, ...] = (
             "home/exact_lib/exact_shared/task_context.ts",
             "home/dot_pi/agent/exact_extensions/intent-guard.ts.tmpl",
             "home/dot_omp/private_agent/extensions/intent-guard.ts.tmpl",
-            "home/dot_config/opencode/plugins/readonly_intent-guard.ts.tmpl",
         ),
     ),
     ExtraTest(

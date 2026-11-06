@@ -41,8 +41,7 @@ Lines starting with `#` and blank lines are ignored. Chezmoi template conditiona
 
    - Pi: [`home/dot_pi/agent/readonly_models.json`](../../../../home/dot_pi/agent/readonly_models.json)
    - Codex: [`home/dot_codex/readonly_llama-cpp-model-catalog.json.tmpl`](../../../../home/dot_codex/readonly_llama-cpp-model-catalog.json.tmpl) and `LOCAL_MODELS` in [`home/exact_lib/exact_,codex/main.py`](../../../../home/exact_lib/exact_,codex/main.py)
-   - OpenCode: [`readonly_opencode.jsonc`](../../../../home/dot_config/opencode/readonly_opencode.jsonc)
-   - Fish completions for `,claude-llama-cpp`, `,codex-llama-cpp`, and `,opencode-llama-cpp`
+   - Fish completions for `,claude-llama-cpp` and `,codex-llama-cpp`
    - `python3 scripts/model_mirrors.py generate`
    - llama.cpp docs under `docs/topics/ai-assistants/llama-cpp/`
 
@@ -76,7 +75,7 @@ chezmoi execute-template < ~/.local/share/chezmoi/home/readonly_dot_default-llam
 
 1. Remove the line from [`home/readonly_dot_default-llama-cpp-models.tmpl`](../../../../home/readonly_dot_default-llama-cpp-models.tmpl).
 2. Remove the matching preset from [`home/dot_config/llama.cpp/models.ini.tmpl`](../../../../home/dot_config/llama.cpp/models.ini.tmpl).
-3. Remove the router id from the Pi/Codex/OpenCode catalogs, `,codex` `LOCAL_MODELS`, fish completions, and regenerate the model mirror.
+3. Remove the router id from the Pi/Codex catalogs, `,codex` `LOCAL_MODELS`, fish completions, and regenerate the model mirror.
 4. Re-apply:
 
 ```bash
@@ -91,4 +90,4 @@ rm -f ~/.llama.cpp/models/<model>.gguf
 
 ## Not for image edit
 
-On-device image generate/edit is [`,image-local`](sd-image.md) (FLUX.2 klein 9B via `sd-cli`). Do not add those weights to `models.ini` or the Pi/Codex/OpenCode llama catalogs.
+On-device image generate/edit is [`,image-local`](sd-image.md) (FLUX.2 klein 9B via `sd-cli`). Do not add those weights to `models.ini` or the Pi/Codex llama catalogs.

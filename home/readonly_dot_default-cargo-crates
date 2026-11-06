@@ -13,27 +13,15 @@ git-brws
 # Description: Terminal UI for browsing Hacker News
 # URL: https://github.com/aome510/hackernews-TUI
 hackernews_tui
-# Description: Terminal client for lobste.rs discussions
-# URL: https://github.com/pythops/lobtui
-lobtui
 # Description: Simple lofi music player for the terminal
 # URL: https://github.com/talwat/lowfi
 lowfi
 # Description: Stop processes interactively
 # URL: https://github.com/jacek-kurlit/pik
 pik
-# Description: A terminal-based file tree diff viewer with flexible diff tool integration
-# URL: https://github.com/wtnqk/ftdv
-ftdv
 # Description: TUI for browsing lobste.rs
 # URL: https://github.com/Rolv-Apneseth/omaro
 omaro
 # Description: Live Action Search and Replace TUI
 # URL: https://github.com/rcorre/lasr
 lasr
-# Description: Interactive side-by-side git diff viewer for PR review
-# URL: https://github.com/flamestro/deff
-deff
-# Description: Disk usage TUI with snapshots (what changed and what to delete)
-# URL: https://github.com/cesarferreira/disko
-disko-cli

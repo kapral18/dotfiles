@@ -34,5 +34,5 @@ Repo-owned skills live in `home/exact_dot_agents/exact_skills/exact_k-<name>/rea
 
 `home/readonly_AGENTS.md` is the global agent instruction file.
 It deploys to `~/AGENTS.md`; Claude reads it through the `~/.claude/CLAUDE.md` and `~/CLAUDE.md` symlinks;
-Pi, OMP, Codex, and OpenCode read it through `symlink_AGENTS.md` entries in their config dirs.
+Pi, OMP, and Codex read it through `symlink_AGENTS.md` entries in their config dirs.
 Keep it short: every byte loads into every session.

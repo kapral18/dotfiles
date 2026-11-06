@@ -1,5 +1,4 @@
 app_icons/
-.config/opencode/opencode.jsonc
 
 .claude/settings.json
 .codex/config.toml

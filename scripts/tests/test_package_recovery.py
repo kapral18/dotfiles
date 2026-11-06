@@ -179,7 +179,6 @@ class PackageRecoveryTests(unittest.TestCase):
         names = [
             "07-merge-codex-config",
             "07-generate-mcp-configs",
-            "07-merge-opencode-config",
             "07-merge-claude-global-config",
             "07-merge-pi-config",
         ]

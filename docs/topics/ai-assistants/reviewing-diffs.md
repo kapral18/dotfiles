@@ -47,7 +47,7 @@ Comment types are actionable categories (`issue`, `suggestion`, `question`, `nit
 Invoke `tuicr` directly — no wrapper:
 
 ```bash
-# 1. agent makes edits (claude / ,codex / opencode / pi)
+# 1. agent makes edits (claude / ,codex / pi)
 
 # 2. review and export to clipboard, then paste into the next agent prompt:
 tuicr

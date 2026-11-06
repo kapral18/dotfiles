@@ -207,7 +207,6 @@ class TestFormatMdCommand(unittest.TestCase):
             ".omp/agent/skills/example/references/guide.md",
             ".omp/agent/agents/guide.md",
             ".pi/agent/agents/guide.md",
-            ".config/opencode/skills/example/references/guide.md",
         )
         for path in paths:
             with self.subTest(path=path):

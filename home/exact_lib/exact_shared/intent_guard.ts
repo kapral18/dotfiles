@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-/** The intent-guard adapter shared by Pi, OMP, and OpenCode: forwards session events to `,task hook` (~/AGENTS.md §3 step 0). */
+/** The intent-guard adapter shared by Pi and OMP: forwards session events to `,task hook` (~/AGENTS.md §3 step 0). */
 
 export interface Answer {
   context?: string
@@ -58,7 +58,7 @@ export function lastAnswer(messages: readonly unknown[]): string {
 }
 
 /** A caller of `,task hook <event>`; a failed or missing `,task` answers nothing, so the session goes on unguarded. */
-export function createIntentGuard(harness: "pi" | "omp" | "opencode", exec: Exec) {
+export function createIntentGuard(harness: "pi" | "omp", exec: Exec) {
   return async function task(event: string, input: Record<string, unknown>, ctx: GuardContext, session?: string): Promise<Answer> {
     const payload = JSON.stringify({ ...input, cwd: ctx.cwd, session: session ?? ctx.sessionManager.getSessionId() })
     // A file keeps large writes under the argument-size limit and out of the process list.

@@ -1,7 +1,3 @@
-# Deep clean and optimize your Mac
-# https://github.com/tw93/mole
-brew "mole"
-
 # GNU File, Shell, and Text utilities
 # https://www.gnu.org/software/coreutils
 brew "coreutils"
@@ -13,7 +9,3 @@ brew "gawk"
 # GNU implementation of the famous stream editor
 # https://www.gnu.org/software/sed/
 brew "gnu-sed"
-
-# Get/set Bluetooth power and discoverable state from the CLI (macOS)
-# https://github.com/toy/blueutil
-brew "blueutil"

@@ -11,10 +11,6 @@ brew "pstree"
 # https://github.com/dalance/procs
 brew "procs"
 
-# CPU usage limiter for macOS
-# https://github.com/opsengine/cpulimit
-brew "cpulimit"
-
 # Kill process running on given port
 # https://github.com/jkfran/killport
 brew "killport"

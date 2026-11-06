@@ -4,10 +4,6 @@ tap "charmbracelet/tap", trusted: true
 # https://charm.sh/crush
 brew "crush"
 
-# Generate images of code and terminal output
-# https://github.com/charmbracelet/freeze
-brew "charmbracelet/tap/freeze"
-
 # Render markdown on the CLI
 # https://github.com/charmbracelet/glow
 brew "glow"

@@ -63,7 +63,7 @@ Do not execute those commands until its push, amend, commit-quality, and attribu
 Branching:
 
 - follow repo/team branch naming if one exists; otherwise default to `<type>/<scope>/<kebab-description>` (example:
-  `chore/opencode/update-sop-wording`)
+  `chore/pi/update-sop-wording`)
 
 Merge policy:
 

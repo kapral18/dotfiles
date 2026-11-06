@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it, mock } from "bun:test"
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import { createIntentGuard, lastAnswer, writePaths } from "../../home/exact_lib/exact_shared/intent_guard.ts"
@@ -14,10 +14,8 @@ afterAll(() => {
 const adapters = {
   pi: "home/dot_pi/agent/exact_extensions/intent-guard.ts.tmpl",
   omp: "home/dot_omp/private_agent/extensions/intent-guard.ts.tmpl",
-  opencode: "home/dot_config/opencode/plugins/readonly_intent-guard.ts.tmpl",
 } as const
-// The hosts provide `@opencode/plugin` and Pi's schema builder; the test stands in for them.
-mock.module("@opencode/plugin", () => ({ Plugin: { define: (plugin: unknown) => plugin } }))
+// The host provides Pi's schema builder; the test stands in for it.
 mock.module("@earendil-works/pi-ai", () => ({ Type: { Object: (shape: unknown) => shape, String: () => ({}), Integer: () => ({}), Optional: (type: unknown) => type } }))
 // Materialize every adapter before the first import, as chezmoi does before runtime startup.
 for (const [name, source] of Object.entries(adapters)) {
@@ -320,94 +318,5 @@ describe("omp adapter", () => {
     expect(calls).toHaveLength(1)
     await fire("input", { text: "keep CSV via rpc", source: "rpc" })
     expect(calls.slice(1).map(({ event, input }) => [event, input.text])).toEqual([["user", "keep CSV via rpc"]])
-  })
-})
-
-describe("opencode adapter", () => {
-  // A fake `~/bin/,task` that logs its arguments with the input file inlined and answers from a JSON map keyed by event.
-  function fakeTask(answers: Record<string, unknown>) {
-    const home = mkdtempSync(join(temp, "home-"))
-    mkdirSync(join(home, "bin"))
-    writeFileSync(join(home, "answers.json"), JSON.stringify(answers))
-    const script = join(home, "bin", ",task")
-    writeFileSync(script, `#!/bin/sh\ntest "$5" = --input-file && printf '%s %s %s %s --input %s\\n' "$1" "$2" "$3" "$4" "$(cat "$6")" >> "${home}/calls.log"\npython3 -c 'import json,sys; print(json.dumps(json.load(open(sys.argv[1])).get(sys.argv[2], {})))' "${home}/answers.json" "$2"\n`)
-    chmodSync(script, 0o755)
-    return home
-  }
-
-  async function setup(answers: Record<string, unknown>) {
-    const home = fakeTask(answers)
-    process.env.HOME = home
-    const hooks = new Map<string, (event: any) => Promise<void> | void>()
-    const prompts: unknown[] = []
-    let push: ((event: unknown) => void) | undefined
-    const events = (async function* () {
-      while (true) yield await new Promise((resolve) => { push = resolve })
-    })()
-    const ctx = {
-      location: { directory: home },
-      session: {
-        hook: async (name: string, cb: any) => { hooks.set(`session.${name}`, cb) },
-        prompt: async (input: unknown) => { prompts.push(input) },
-        get: async ({ sessionID }: { sessionID: string }) => (sessionID === "child" ? { parentID: "s1" } : {}),
-      },
-      tool: { hook: async (name: string, cb: any) => { hooks.set(`tool.${name}`, cb) } },
-      event: { subscribe: () => events },
-    }
-    const module = await import(join(temp, "opencode.ts"))
-    const cleanup = await module.default.setup(ctx)
-    const calls = () => readFileSync(join(home, "calls.log"), "utf8").trim().split("\n")
-    return { hooks, prompts, calls, cleanup, emit: (event: unknown) => push?.(event) }
-  }
-
-  it("pins the card on each request and refuses an uncarded edit", async () => {
-    const { hooks, calls } = await setup({ prompt: { context: "Intent card" }, tool: { deny: "no intent card" } })
-    await hooks.get("session.prompt")!({ sessionID: "s1", prompt: { text: "add it" } })
-    const request = { sessionID: "s1", system: [] as unknown[] }
-    await hooks.get("session.context")!(request)
-    expect(request.system).toEqual([{ type: "text", text: "Intent card" }])
-    await expect(hooks.get("tool.execute.before")!({ tool: "edit", sessionID: "s1", input: { path: "src/a.ts" } })).rejects.toThrow("no intent card")
-    expect(calls()[0]).toContain("hook prompt --harness opencode --input")
-    // A command's expanded template reaches this hook too, so the text is never marked as the user's words.
-    expect(calls()[0]).not.toContain('"origin"')
-  })
-
-  it("appends the note to the tool result and follows up a run with open items", async () => {
-    const { hooks, prompts, emit, cleanup } = await setup({ tool: { note: "zoom out" }, stop: { block: "open items" } })
-    const event = { tool: "shell", sessionID: "s1", status: "completed", input: {}, result: { content: "out" } }
-    await hooks.get("tool.execute.after")!(event)
-    expect(event.result.content).toEqual([{ type: "text", text: "out" }, { type: "text", text: "zoom out" }])
-
-    await Bun.sleep(10)
-    emit({ type: "session.execution.succeeded", data: { sessionID: "s1" } })
-    for (let i = 0; i < 100 && prompts.length === 0; i++) await Bun.sleep(10)
-    expect(prompts).toEqual([{ sessionID: "s1", text: "open items", metadata: { intentGuardFollowUp: true } }])
-    await cleanup()
-  })
-
-  it("leaves a subagent's child session alone", async () => {
-    const { hooks, calls } = await setup({ tool: { deny: "no intent card" } })
-    await hooks.get("tool.execute.before")!({ tool: "edit", sessionID: "child", input: { path: "src/a.ts" } })
-    expect(() => calls()).toThrow()
-  })
-
-  it("WHEN a shell fails SHOULD settle its snapshot", async () => {
-    const { hooks, calls, cleanup } = await setup({})
-    const shell = { tool: "shell", sessionID: "s1", id: "shell-42", input: {} }
-    await hooks.get("tool.execute.before")!(shell)
-    await hooks.get("tool.execute.after")!({ ...shell, status: "error", error: "exit 1" })
-    const payloads = calls().map((line) => JSON.parse(line.split(" --input ")[1]))
-    expect(payloads.map((input) => [input.call_id, input.phase])).toEqual([["shell-42", "before"], ["shell-42", "after"]])
-    await cleanup()
-  })
-
-  it("WHEN a direct write fails SHOULD settle its snapshot", async () => {
-    const { hooks, calls, cleanup } = await setup({})
-    const edit = { tool: "edit", sessionID: "s1", id: "edit-43", input: { path: "src/a.ts" } }
-    await hooks.get("tool.execute.before")!(edit)
-    await hooks.get("tool.execute.after")!({ ...edit, status: "error", error: "write failed" })
-    const payloads = calls().map((line) => JSON.parse(line.split(" --input ")[1]))
-    expect(payloads.map((input) => [input.call_id, input.phase])).toEqual([["edit-43", "before"], ["edit-43", "after"]])
-    await cleanup()
   })
 })

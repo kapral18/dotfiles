@@ -2,37 +2,15 @@
 # https://github.com/achristmascarl/rainfrog
 brew "rainfrog"
 
-# Cross-platform TUI database management tool
-# https://github.com/jorgerojas26/lazysql
-brew "lazysql"
-
 # Lightweight and flexible command-line JSON processor
 # https://jqlang.github.io/jq/
 brew "jq"
-
-# Interactive jq
-# https://sr.ht/~gpanders/ijq/
-brew "ijq"
 
 # Process YAML, JSON, XML, CSV and properties documents
 # https://github.com/mikefarah/yq
 # Dependency of the GitHub picker
 brew "yq"
 
-# Command-line CSV processor
-# https://github.com/medialab/xan
-brew "xan"
-
 # Terminal based spreadsheet tool
 # https://github.com/maaslalani/sheets
 brew "sheets"
-
-# Interactive grep with live preview
-# https://github.com/konradsz/igrep
-# command: ig
-brew "igrep"
-
-# TUI for parsing and arranging tabular data
-# https://github.com/mpryor/nothing-less
-tap "mpryor/tap", trusted: true
-brew "mpryor/tap/nless"

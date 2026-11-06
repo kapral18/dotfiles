@@ -10,31 +10,6 @@
 {{ $os := .chezmoi.os }}
 {{ $arch := .chezmoi.arch }}
 
-dmg|FluidVoice|altic-dev/FluidVoice|latest|FluidVoice.app|.dmg
-dmg|Squirrel Disk|adileo/squirreldisk|latest|SquirrelDisk.app|.dmg
-dmg|Jharu|riponcm/Jharu|latest|Jharu.app|.dmg
-
-# mdtt
-# https://github.com/szktkfm/mdtt
-{{ $mdttTag := "v0.3.1" }}
-{{ $mdttAsset := "" }}
-{{ if eq $os "darwin" }}
-  {{ if eq $arch "arm64" }}
-    {{ $mdttAsset = "mdtt_Darwin_arm64.tar.gz" }}
-  {{ else }}
-    {{ $mdttAsset = "mdtt_Darwin_x86_64.tar.gz" }}
-  {{ end }}
-{{ else if eq $os "linux" }}
-  {{ if eq $arch "arm64" }}
-    {{ $mdttAsset = "mdtt_Linux_arm64.tar.gz" }}
-  {{ else }}
-    {{ $mdttAsset = "mdtt_Linux_x86_64.tar.gz" }}
-  {{ end }}
-{{ end }}
-{{ if ne $mdttAsset "" }}
-tar_gz_bin|mdtt|szktkfm/mdtt|{{ $mdttTag }}|{{ $mdttAsset }}|mdtt|mdtt
-{{ end }}
-
 # kitten (kitty CLI — used for image preview in fzf via unicode-placeholder protocol)
 # https://github.com/kovidgoyal/kitty
 {{ $kittenAsset := "" }}
@@ -53,27 +28,6 @@ tar_gz_bin|mdtt|szktkfm/mdtt|{{ $mdttTag }}|{{ $mdttAsset }}|mdtt|mdtt
 {{ end }}
 {{ if ne $kittenAsset "" }}
 file|kitten|kovidgoyal/kitty|latest|{{ $kittenAsset }}|kitten
-{{ end }}
-
-# enola
-# https://github.com/TheYahya/enola
-{{ $enolaTag := "v0.4.0" }}
-{{ $enolaAsset := "" }}
-{{ if eq $os "darwin" }}
-  {{ if eq $arch "arm64" }}
-    {{ $enolaAsset = "enola_0.4.0_darwin_arm64.tar.gz" }}
-  {{ else }}
-    {{ $enolaAsset = "enola_0.4.0_darwin_amd64.tar.gz" }}
-  {{ end }}
-{{ else if eq $os "linux" }}
-  {{ if eq $arch "arm64" }}
-    {{ $enolaAsset = "enola_0.4.0_linux_arm64.tar.gz" }}
-  {{ else }}
-    {{ $enolaAsset = "enola_0.4.0_linux_amd64.tar.gz" }}
-  {{ end }}
-{{ end }}
-{{ if ne $enolaAsset "" }}
-tar_gz_bin|enola|TheYahya/enola|{{ $enolaTag }}|{{ $enolaAsset }}|enola|enola
 {{ end }}
 
 # sd-cli (stable-diffusion.cpp). Metal runner for ,image-local.

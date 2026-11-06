@@ -195,7 +195,7 @@ pane_activity_status() {
   local cmd="$1"
   [ -n "$cmd" ] || return 0
   case "$cmd" in
-    claude | aider | codex | opencode | goose | crush)
+    claude | aider | codex | goose | crush)
       printf '%sagent%s (%s)' "$C_GREEN" "$C_R" "$cmd"
       ;;
     fish | zsh | bash | sh | nu | dash)

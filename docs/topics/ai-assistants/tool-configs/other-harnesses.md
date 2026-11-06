@@ -5,16 +5,13 @@ title: Other harnesses
 
 # Other harnesses
 
-Codex, OpenCode, Oh My Pi, Crush, tuicr, and lgtm keep harness-native configuration. Shared agent instructions come from `~/AGENTS.md`; Claude's workflow mods are not ported here.
+Codex, Oh My Pi, Crush, tuicr, and lgtm keep harness-native configuration. Shared agent instructions come from `~/AGENTS.md`; Claude's workflow mods are not ported here.
 
-## Codex and OpenCode
+## Codex
 
-| Tool     | Config source                                                                                                      | Merge                                                                                              |
-| -------- | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
-| Codex    | [`home/dot_codex/private_config.toml`](../../../../home/dot_codex/private_config.toml)                             | `run_onchange_after_07-merge-codex-config.sh.tmpl` injects MCP servers into `~/.codex/config.toml` |
-| OpenCode | [`home/dot_config/opencode/readonly_opencode.jsonc`](../../../../home/dot_config/opencode/readonly_opencode.jsonc) | `run_onchange_after_07-merge-opencode-config.sh.tmpl`                                              |
-
-OpenCode loads [`plugins/readonly_intent-guard.ts.tmpl`](../../../../home/dot_config/opencode/plugins/readonly_intent-guard.ts.tmpl), the intent card adapter ([Staying on the goal](../staying-on-goal.md)).
+| Tool  | Config source                                                                          | Merge                                                                                              |
+| ----- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Codex | [`home/dot_codex/private_config.toml`](../../../../home/dot_codex/private_config.toml) | `run_onchange_after_07-merge-codex-config.sh.tmpl` injects MCP servers into `~/.codex/config.toml` |
 
 Interactive shells route `codex` through `~/bin/,codex`, which injects the local llama.cpp model catalog when needed and then runs the real binary.
 
@@ -42,10 +39,10 @@ Everything else in the live file is replaced. Narrow exact-command approvals can
 
 ### Provider wrappers
 
-| Wrapper                                                        | Backend                                                            |
-| -------------------------------------------------------------- | ------------------------------------------------------------------ |
-| `,claude-openrouter`, `,codex-openrouter`                      | OpenRouter; default `xiaomi/mimo-v2.6-pro` at `high`               |
-| `,claude-llama-cpp`, `,codex-llama-cpp`, `,opencode-llama-cpp` | local llama.cpp router; see [launchers](../llama-cpp/launchers.md) |
+| Wrapper                                   | Backend                                                            |
+| ----------------------------------------- | ------------------------------------------------------------------ |
+| `,claude-openrouter`, `,codex-openrouter` | OpenRouter; default `xiaomi/mimo-v2.6-pro` at `high`               |
+| `,claude-llama-cpp`, `,codex-llama-cpp`   | local llama.cpp router; see [launchers](../llama-cpp/launchers.md) |
 
 The OpenRouter wrappers read `OPENROUTER_API_KEY`, falling back to `pass show openrouter/api/token`.
 `--model <id>` and `--effort <level>` (aliases `--reasoning-effort`, `--thinking`; `--no-thinking` = `minimal`) compose `<model>@preset/effort-<level>`.

@@ -31,7 +31,6 @@ venv/
 .terragrunt-cache/
 
 # High-noise nested paths.
-.local/share/opencode/storage/
 .sdkman/candidates/
 .local/share/yarn/
 .local/share/pnpm/

@@ -305,7 +305,6 @@ check_editors_ai() {
   local -a ai_checks=(
     "claude:Claude Code"
     "codex:OpenAI Codex"
-    "opencode:OpenCode"
   )
   for entry in "${ai_checks[@]}"; do
     local cmd="${entry%%:*}"
@@ -418,7 +417,6 @@ check_ai_configs() {
   local -a config_checks=(
     "$HOME/.claude/settings.json:claude:Claude Code settings"
     "$HOME/.claude.json:claude:Claude Code MCP"
-    "$HOME/.config/opencode/opencode.jsonc:opencode:OpenCode config"
     "$HOME/.codex/config.toml:codex:Codex config"
     "$HOME/.pi/agent/settings.json:pi:Pi settings"
     "$HOME/.pi/agent/mcp.json:pi:Pi MCP"

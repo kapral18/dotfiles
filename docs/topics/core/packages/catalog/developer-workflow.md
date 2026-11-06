@@ -9,16 +9,15 @@ This slice covers source control, review/readiness tooling, build/test utilities
 
 ## Git, GitHub, and branch work
 
-| Tool                                                                                                                                                        | Source             | Why it is here                                       |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | ---------------------------------------------------- |
-| [`git`](https://git-scm.com), [`git-lfs`](https://git-lfs.com/), [`gh`](https://cli.github.com/)                                                            | `brew`             | core Git/GitHub workflow                             |
-| [`sem`](https://github.com/Ataraxy-Labs/sem)                                                                                                                | `brew` (`sem-cli`) | semantic git diff/blame/impact CLI exposed as `,sem` |
-| [`lazygit`](https://github.com/jesseduffield/lazygit/), [`tig`](https://jonas.github.io/tig/)                                                               | `brew`             | terminal Git UIs                                     |
-| [`git-absorb`](https://github.com/tummychow/git-absorb)                                                                                                     | `brew`             | automatically amend fixups into earlier commits      |
-| [`git-delta`](https://dandavison.github.io/delta/), [`difftastic`](https://difftastic.wilfred.me.uk/)                                                       | `brew`             | readable diff renderers                              |
-| [`git-cal`](https://github.com/k4rthik/git-cal), [`git-extras`](https://github.com/tj/git-extras), [`git-redate`](https://github.com/PotatoLabs/git-redate) | `brew`             | history/statistics and branch maintenance utilities  |
-| [`git-brws`](https://crates.io/crates/git-brws)                                                                                                             | `cargo`            | open/browse git remotes from the terminal            |
-| [`bfg`](https://rtyley.github.io/bfg-repo-cleaner/)                                                                                                         | `brew`             | destructive repo cleanup tool                        |
+| Tool                                                                                                       | Source             | Why it is here                                       |
+| ---------------------------------------------------------------------------------------------------------- | ------------------ | ---------------------------------------------------- |
+| [`git`](https://git-scm.com), [`gh`](https://cli.github.com/)                                              | `brew`             | core Git/GitHub workflow                             |
+| [`sem`](https://github.com/Ataraxy-Labs/sem)                                                               | `brew` (`sem-cli`) | semantic git diff/blame/impact CLI exposed as `,sem` |
+| [`lazygit`](https://github.com/jesseduffield/lazygit/), [`tig`](https://jonas.github.io/tig/)              | `brew`             | terminal Git UIs                                     |
+| [`git-absorb`](https://github.com/tummychow/git-absorb)                                                    | `brew`             | automatically amend fixups into earlier commits      |
+| [`git-delta`](https://dandavison.github.io/delta/), [`difftastic`](https://difftastic.wilfred.me.uk/)      | `brew`             | readable diff renderers                              |
+| [`git-extras`](https://github.com/tj/git-extras), [`git-redate`](https://github.com/PotatoLabs/git-redate) | `brew`             | branch maintenance utilities                         |
+| [`git-brws`](https://crates.io/crates/git-brws)                                                            | `cargo`            | open/browse git remotes from the terminal            |
 
 ## GitHub CLI extensions
 
@@ -49,8 +48,7 @@ This slice covers source control, review/readiness tooling, build/test utilities
 | Tool                                                                                                              | Source          | Why it is here                    |
 | ----------------------------------------------------------------------------------------------------------------- | --------------- | --------------------------------- |
 | [`cmake`](https://www.cmake.org/), [`automake`](https://www.gnu.org/software/automake/)                           | `brew`          | native build dependencies         |
-| [`dive`](https://github.com/wagoodman/dive), [`lazydocker`](https://github.com/jesseduffield/lazydocker)          | `brew`          | container and Kubernetes workflow |
-| [`sou`](https://github.com/knqyf263/sou), [`cek`](https://github.com/bschaatsbergen/cek)                          | `brew`          | container/devops utilities        |
+| [`lazydocker`](https://github.com/jesseduffield/lazydocker)                                                       | `brew`          | container and Kubernetes workflow |
 | [`docker-desktop`](https://www.docker.com/products/docker-desktop), [`gcloud-cli`](https://cloud.google.com/cli/) | `cask` / `brew` | cloud/container desktop CLIs      |
 
 ## Project/runtime helpers

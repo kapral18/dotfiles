@@ -1,11 +1,3 @@
-# Autosave runner that executes commands on file edits
-# https://github.com/wtetsu/gaze
-brew "gaze"
-
-# Execute a program periodically
-# https://gitlab.com/procps-ng/procps
-brew "watch"
-
 # Shell command parallelization utility
 # https://www.gnu.org/software/parallel/
 # link: false — GNU parallel also ships a `sem` helper; this setup exposes GNU

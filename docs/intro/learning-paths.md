@@ -70,7 +70,7 @@ Run assistants alongside your editor and use the shared instructions, skills, an
 
 What to focus on:
 
-- Start a terminal assistant, such as Pi or OpenCode.
+- Start a terminal assistant, such as Pi or Codex.
 - Read the shared operating rules and each repository's instructions.
 - Configure MCP tools for the context the task needs.
 

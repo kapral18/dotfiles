@@ -1,11 +1,3 @@
-# Ping, but with a graph
-# https://github.com/orf/gping
-brew "gping"
-
-# Global DNS propagation checker
-# https://github.com/unfrl/dug
-brew "dug"
-
 # DuckDuckGo search from the command-line
 # https://github.com/jarun/ddgr
 brew "ddgr"
@@ -14,17 +6,9 @@ brew "ddgr"
 # https://www.gnu.org/software/wget/
 brew "wget"
 
-# Check domain availability via RDAP/WHOIS
-# https://github.com/saidutt46/domain-check
-brew "domain-check"
-
 # Cross-platform network monitoring terminal UI tool
 # https://github.com/domcyrus/rustnet
 brew "rustnet"
-
-# LAN discovery tool with a modern TUI
-# https://github.com/ramonvermeulen/whosthere
-brew "whosthere"
 
 # Local port management tool
 # https://github.com/diegoholiveira/localports

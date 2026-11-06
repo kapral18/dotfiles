@@ -315,7 +315,7 @@ fi
 
 status=0
 # Rows get /dev/null as stdin: any child that reads stdin would otherwise eat
-# the remaining rows (as `mdtt version` did under the old version probe).
+# the remaining rows (as a binary's version probe once did).
 while IFS= read -r line || [[ -n "$line" ]]; do
   if ! process_custom_package_line "$line" </dev/null; then
     status=1

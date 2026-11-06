@@ -113,8 +113,6 @@ lib/,mcp-token
 .omp/agent/extensions/runtime-parity.ts
 # OMP's native context controls replace the personal /context-mode extension.
 .omp/agent/extensions/context-mode.ts
-.config/opencode/plugins/agent-memory.ts
-.config/opencode/plugins/read-supersede.ts
 # Work profile and Elastic/Kibana tooling retired (2026-10-11).
 work/.gitconfig
 .ssh/secondary_public_key.pub
@@ -122,8 +120,12 @@ work/.gitconfig
 .config/fish/completions/,kbn-stack.fish
 # Retired gitui config
 .config/gitui
-# dug moved from a custom release binary to Homebrew; the old copy shadows it in PATH
+# Retired dug release binary
 .local/bin/dug
 .config/tmux
 .config/fish/completions/,tmux-lowfi.fish
 .config/fish/completions/,tmux-run-all.fish
+# OpenCode retired (2026-11-06).
+.config/opencode
+.config/fish/completions/,opencode-llama-cpp.fish
+.config/fish/completions/,opencode-cloudflare.fish

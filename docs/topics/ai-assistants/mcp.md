@@ -4,7 +4,7 @@ sidebar_position: 8
 
 # MCP Servers
 
-A single canonical registry defines every MCP server once. At `chezmoi apply` time, generators render per-tool configs for Claude Code, Pi, OMP, Codex, and OpenCode, avoiding five hand-maintained copies of the same server list.
+A single canonical registry defines every MCP server once. At `chezmoi apply` time, generators render per-tool configs for Claude Code, Pi, OMP, and Codex, avoiding four hand-maintained copies of the same server list.
 
 Use this page when adding, removing, or debugging an MCP server, or when tracing how a server reaches a given assistant.
 
@@ -30,7 +30,7 @@ Each entry is one of two shapes:
 
 The registry currently declares no servers, so every generated MCP config is empty.
 
-An HTTP server reaches a harness only when `oauth_by_tool` names that harness; every other harness omits it. OpenCode and Codex emit command servers only and skip every HTTP entry.
+An HTTP server reaches a harness only when `oauth_by_tool` names that harness; every other harness omits it. Codex emits command servers only and skips every HTTP entry.
 
 ### Hosted OAuth limits
 
@@ -81,21 +81,19 @@ Pi's built-in MCP defaults a server's `exposure` to `codemode`: its tools are no
 
 Tools whose config is not plain JSON get dedicated injectors with explicit ownership rules:
 
-| Injector                                                                                          | Ownership rule                                                                                                                                                                                                                                           |
-| ------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`scripts/inject_mcp_into_codex_toml.py`](../../../scripts/inject_mcp_into_codex_toml.py)         | Replaces a `# __MCP_SERVERS__` marker in the authoritative base config, then reattaches only valid runtime MCP approvals, hook trust hashes, project trust levels, and unsigned-32-bit TUI model-availability counters. Other live tables are discarded. |
-| [`scripts/inject_mcp_into_opencode_jsonc.py`](../../../scripts/inject_mcp_into_opencode_jsonc.py) | Replaces a `"mcp": "__MCP_SERVERS__"` placeholder with local command servers; HTTP entries are intentionally skipped.                                                                                                                                    |
-| [`scripts/merge_claude_mcp.py`](../../../scripts/merge_claude_mcp.py)                             | Surgically updates only the `mcpServers` key in `~/.claude.json`, which Claude Code also writes runtime state into.                                                                                                                                      |
+| Injector                                                                                  | Ownership rule                                                                                                                                                                                                                                           |
+| ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`scripts/inject_mcp_into_codex_toml.py`](../../../scripts/inject_mcp_into_codex_toml.py) | Replaces a `# __MCP_SERVERS__` marker in the authoritative base config, then reattaches only valid runtime MCP approvals, hook trust hashes, project trust levels, and unsigned-32-bit TUI model-availability counters. Other live tables are discarded. |
+| [`scripts/merge_claude_mcp.py`](../../../scripts/merge_claude_mcp.py)                     | Surgically updates only the `mcpServers` key in `~/.claude.json`, which Claude Code also writes runtime state into.                                                                                                                                      |
 
 ## Per-tool targets
 
-| Tool        | Target file (`mcpServers`)          | Rendered by hook                                                                                                                           |
-| ----------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Claude Code | `~/.claude.json` (`mcpServers` key) | [`run_onchange_after_07-generate-mcp-configs.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-generate-mcp-configs.sh.tmpl)   |
-| Pi          | `~/.pi/agent/mcp.json`              | [`run_onchange_after_07-generate-mcp-configs.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-generate-mcp-configs.sh.tmpl)   |
-| OMP         | `~/.omp/agent/mcp.json`             | [`run_onchange_after_07-generate-mcp-configs.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-generate-mcp-configs.sh.tmpl)   |
-| OpenCode    | `~/.config/opencode/opencode.jsonc` | [`run_onchange_after_07-merge-opencode-config.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-merge-opencode-config.sh.tmpl) |
-| Codex       | `~/.codex/config.toml`              | [`run_onchange_after_07-merge-codex-config.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-merge-codex-config.sh.tmpl)       |
+| Tool        | Target file (`mcpServers`)          | Rendered by hook                                                                                                                         |
+| ----------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Claude Code | `~/.claude.json` (`mcpServers` key) | [`run_onchange_after_07-generate-mcp-configs.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-generate-mcp-configs.sh.tmpl) |
+| Pi          | `~/.pi/agent/mcp.json`              | [`run_onchange_after_07-generate-mcp-configs.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-generate-mcp-configs.sh.tmpl) |
+| OMP         | `~/.omp/agent/mcp.json`             | [`run_onchange_after_07-generate-mcp-configs.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-generate-mcp-configs.sh.tmpl) |
+| Codex       | `~/.codex/config.toml`              | [`run_onchange_after_07-merge-codex-config.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-merge-codex-config.sh.tmpl)     |
 
 LetsFG is intentionally not exposed through the shared MCP registry because its tools are irrelevant to most sessions. Agents load its skill on demand instead. See [Tool configs](tool-configs/index.md) for details.
 
