@@ -274,7 +274,7 @@ exit "${{UPDATE_TEST_{category.upper()}_RC:-0}}"
         cases = (
             (["--only", "gh"], {"gh"}),
             (["--only", "unknown"], set()),
-            (["--skip", "dotfiles,brew,mise,uv,cargo,pnpm,gems,go,manual"], {"gh"}),
+            (["--skip", "dotfiles,brew,casks,mise,uv,cargo,pnpm,gems,go,manual"], {"gh"}),
             (["--only", "gh,uv", "--dry-run"], set()),
         )
         for args, expected in cases:

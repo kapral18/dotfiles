@@ -40,7 +40,7 @@ Project instructions may add rules.
   - The fix loop parked a cause that returned twice or a churning mechanism (`~/.agents/skills/k-review/references/review_fixes.md` step 6):
     choosing how to proceed with it is the user's judgment.
 
-  Put other unfinished steps in their §3 step 8 report lists.
+  Do every other unfinished step the "Finish the task" rule above authorizes; put the rest in their §3 step 8 report lists.
 
 - When choosing how to do the task, take the option you expect the user to agree with and record it under `Assumptions:`.
   If you expect them to agree with none, ask.
@@ -174,9 +174,10 @@ Steps for each change; skip one that does not apply and say why:
 8. **Report.**
    First, and again until a pass changes nothing, do every next step §1 makes part of the task that you can still do now,
    including each `Proposed:` or `Open:` item it now allows; move each one you finish to `Checked:`.
+   List pending reviews, re-reviews, and fixes while working to keep them in focus; that list never ends your turn.
+   When step 5 applies, report only after the step 6 loop ends; never report a fix as unreviewed while you can review it.
    - `Checked:` one bullet, no sub-bullets, per Done-when item or changed behavior, with a command and its result, or a `file:line`;
      each fact in it cites its verified `[C<n>]`.
-     Mark each fix after the last review "(unreviewed)" unless it is wording-only.
    - `Assumptions:` each fork in how to do the task that you settled without asking (§1), citing its `[S<n>]`.
    - `Proposed:` steps outside the request's scope that fix no defect in the change's impact, left unapplied, with `[S<n>]`.
    - `Open:` only what you cannot do now, each with its blocker. A step you could do now is never a blocker.

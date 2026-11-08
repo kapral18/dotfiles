@@ -1,16 +1,9 @@
 #:schema https://www.schemastore.org/chezmoi.json
 
-{{ $is1PasswordReady := promptBool "Is 1Password ready? y/N" -}}
-
-{{ if not $is1PasswordReady -}}
-{{ exit 1 }}
-{{- end -}}
-
 [data]
-is1PasswordReady = {{ $is1PasswordReady }}
-primaryEmail = {{ promptString "Enter your primary email*: " | quote }}
-primaryPublicSshKey = {{ promptString "Enter your primary public SSH key*: " | quote }}
-pgpCacheTtl = {{ promptString "Select Cache TTL for PGP config in sec:" "86400" | quote }}
+primaryEmail = {{ promptStringOnce . "primaryEmail" "Enter your primary email*: " | quote }}
+primaryPublicSshKey = {{ promptStringOnce . "primaryPublicSshKey" "Enter your primary public SSH key*: " | quote }}
+pgpCacheTtl = {{ promptStringOnce . "pgpCacheTtl" "Select Cache TTL for PGP config in sec:" "86400" | quote }}
 
 {{ $homebrewPrefix := "/opt/homebrew" -}}
 {{ if eq .chezmoi.arch "amd64" }}{{ $homebrewPrefix = "/usr/local" }}{{ end -}}
@@ -22,5 +15,9 @@ homebrewPrefix = {{ $homebrewPrefix | quote }}
 downloadLlamaCppModels = {{ promptBoolOnce . "downloadLlamaCppModels" "Download llama.cpp models on apply? y/N" false }}
 
 [scriptEnv]
-PATH = {{ printf "%s/bin:%s/sbin:%s" $homebrewPrefix $homebrewPrefix (env "PATH") | quote }}
+PATH = {{ printf "%s/.local/bin:%s/bin:%s/sbin:%s" .chezmoi.homeDir $homebrewPrefix $homebrewPrefix (env "PATH") | splitList ":" | uniq | join ":" | quote }}
+
+[hooks.read-source-state.pre]
+command = "/bin/bash"
+args = [{{ joinPath .chezmoi.sourceDir ".install-1password.sh" | quote }}]
 

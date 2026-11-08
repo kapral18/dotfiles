@@ -1,0 +1,71 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "\"$HOME/bin/,task\" hook codex",
+            "timeout": 15,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "\"$HOME/bin/,task\" hook codex",
+            "timeout": 15,
+            "type": "command"
+          }
+        ],
+        "matcher": "apply_patch|Write|Edit|Bash"
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "\"$HOME/bin/,task\" hook codex",
+            "timeout": 15,
+            "type": "command"
+          }
+        ],
+        "matcher": "^compact$"
+      },
+      {
+        "hooks": [
+          {
+            "command": {{ printf "bash '%s/.codex/herdr-agent-state.sh' session" .chezmoi.homeDir | toJson }},
+            "timeout": 10,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "command": "\"$HOME/bin/,task\" hook codex",
+            "timeout": 15,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "command": "\"$HOME/bin/,task\" hook codex",
+            "timeout": 15,
+            "type": "command"
+          }
+        ]
+      }
+    ]
+  }
+}
+{{- /* Match herdr's JSON serialization, including its omitted final newline. */ -}}

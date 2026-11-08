@@ -51,7 +51,9 @@ class TestInjectMcpIntoCodexToml(unittest.TestCase):
                 f"[projects.{json.dumps(project)}]",
                 'trust_level = "trusted"',
                 "[hooks.state.'hook#dot.]']",
+                "enabled = false",
                 'trusted_hash = "sha256:abc"',
+                'trusted_content_hash = "sha256:contents"',
                 "[tui.model_availability_nux]",
                 '"gpt-5.5" = 2',
                 "[mcp_servers.plain-tool]",
@@ -67,7 +69,10 @@ class TestInjectMcpIntoCodexToml(unittest.TestCase):
         actual = self._render_existing(commented)
         self.assertEqual(actual, expected)
         self.assertEqual(_table_body(actual, f"projects.{json.dumps(project)}"), 'trust_level = "trusted"')
-        self.assertEqual(_table_body(actual, 'hooks.state."hook#dot.]"'), 'trusted_hash = "sha256:abc"')
+        self.assertEqual(
+            set(_table_body(actual, 'hooks.state."hook#dot.]"').splitlines()),
+            {"enabled = false", 'trusted_hash = "sha256:abc"', 'trusted_content_hash = "sha256:contents"'},
+        )
         self.assertEqual(_table_body(actual, "tui.model_availability_nux"), '"gpt-5.5" = 2')
         self.assertIn('default_tools_approval_mode = "prompt"', _table_body(actual, "mcp_servers.plain-tool"))
         self.assertEqual(

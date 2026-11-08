@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# {{ include "readonly_dot_default-pake-apps" | sha256sum }}
+
+PAKE_APPS={{ joinPath .chezmoi.sourceDir "readonly_dot_default-pake-apps" | quote }}
+
+export PATH="$HOME/.local/share/pnpm/bin:$HOME/.cargo/bin:$HOME/.local/share/mise/shims${PATH:+:${PATH}}"
+
+if ! command -v pake >/dev/null 2>&1; then
+  echo "Error: pake is required; it is declared in ~/.default-pnpm-pkgs" >&2
+  exit 1
+fi
+
+status=0
+while IFS='|' read -r name url flags || [[ -n "$name" ]]; do
+  [[ -z "$name" || "$name" == \#* ]] && continue
+  if [[ -d "/Applications/$name.app" ]]; then
+    echo "$name is already installed"
+    continue
+  fi
+  echo "Building $name with Pake..."
+  build_dir=$(mktemp -d)
+  # shellcheck disable=SC2086
+  if ! (cd "$build_dir" && pake "$url" --name "$name" --install ${flags:-} </dev/null) || [[ ! -d "/Applications/$name.app" ]]; then
+    echo "Error: Pake failed to install $name into /Applications" >&2
+    status=1
+  fi
+  rm -rf "$build_dir"
+done <"$PAKE_APPS"
+
+exit $status

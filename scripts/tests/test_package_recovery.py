@@ -13,6 +13,7 @@ from pathlib import Path
 from _test_support import REPO
 
 CHEZMOI = shutil.which("chezmoi")
+RUBY = shutil.which("ruby", path=os.defpath)
 
 
 @unittest.skipUnless(CHEZMOI, "chezmoi is not installed")
@@ -84,8 +85,6 @@ class PackageRecoveryTests(unittest.TestCase):
         prompts = [
             "--init",
             "--promptBool",
-            "Is 1Password ready? y/N=true",
-            "--promptBool",
             "Download llama.cpp models on apply? y/N=false",
             "--promptString",
             "Enter your primary email*: =fixture@example.invalid",
@@ -96,8 +95,11 @@ class PackageRecoveryTests(unittest.TestCase):
         ]
         for arch, prefix in [("arm64", "/opt/homebrew"), ("amd64", "/usr/local")]:
             with self.subTest(arch=arch):
-                output = self.render(template.replace(".chezmoi.arch", json.dumps(arch)), *prompts)
+                arch_template = template.replace(".chezmoi.arch", json.dumps(arch))
+                output = self.render(arch_template, *prompts)
                 rendered_config = self.root / "rendered.toml"
+                rendered_config.write_text(output)
+                output = self.render(arch_template, "--init", "--config", str(rendered_config))
                 rendered_config.write_text(output)
                 config = json.loads(
                     subprocess.run(
@@ -110,8 +112,14 @@ class PackageRecoveryTests(unittest.TestCase):
                         check=True,
                     ).stdout
                 )
-                self.assertEqual(config["scriptEnv"]["PATH"], f"{prefix}/bin:{prefix}/sbin:{self.env['PATH']}")
+                self.assertEqual(
+                    config["scriptEnv"]["PATH"],
+                    f"{self.home}/.local/bin:{prefix}/bin:{prefix}/sbin:{self.env['PATH']}",
+                )
                 self.assertEqual(config["data"]["homebrewPrefix"], prefix)
+                self.assertEqual(config["data"]["primaryEmail"], "fixture@example.invalid")
+                self.assertEqual(config["data"]["primaryPublicSshKey"], "ssh-ed25519 fixture")
+                self.assertEqual(config["data"]["pgpCacheTtl"], "86400")
 
     def test_only_apple_silicon_receives_the_metal_sd_cli_archive(self):
         template = (self.source / "readonly_dot_default-custom-packages.tmpl").read_text()
@@ -122,6 +130,59 @@ class PackageRecoveryTests(unittest.TestCase):
                 )
                 rows = [line for line in rendered.splitlines() if line.startswith("zip_opt|sd-cli|")]
                 self.assertEqual(bool(rows), expected)
+
+    @unittest.skipUnless(RUBY, "ruby is not installed")
+    def test_brewfile_skips_external_apps_and_retains_managed_apps(self):
+        system_apps = self.root / "Applications"
+        (system_apps / "1Password.app").mkdir(parents=True)
+        (self.home / "Applications/VLC.app").mkdir(parents=True)
+        (self.home / "Applications/Claude.app").mkdir()
+        brewfile = self.root / "Brewfile"
+        brewfile.write_text(
+            self.render((self.source / "readonly_dot_Brewfile.tmpl").read_text()).replace(
+                '"/Applications"', json.dumps(str(system_apps))
+            )
+        )
+        ruby_lib = self.root / "ruby/bundle"
+        ruby_lib.mkdir(parents=True)
+        (ruby_lib / "cask.rb").write_text(
+            "module Homebrew; module Bundle; class Cask\n"
+            "def self.cask_installed?(name)\n"
+            "JSON.parse(ENV.fetch('MANAGED_CASKS')).include?(name)\n"
+            "end\nend; end; end\n"
+        )
+        receiver = (
+            "receiver = Object.new\n"
+            "def receiver.cask(name); (@casks ||= []) << name; end\n"
+            "def receiver.brew(*); end\n"
+            "def receiver.tap(*); end\n"
+            "def receiver.mas(*); end\n"
+            "receiver.instance_eval(File.read(ARGV[0]), ARGV[0])\n"
+            "puts JSON.generate(receiver.instance_variable_get(:@casks))\n"
+        )
+        for managed, app_exists, expected in [
+            ([], True, False),
+            (["1password"], True, True),
+            ([], False, True),
+        ]:
+            with self.subTest(managed=managed, app_exists=app_exists):
+                if not app_exists:
+                    (system_apps / "1Password.app").rmdir()
+                result = subprocess.run(
+                    [RUBY, "-rjson", "-I", str(ruby_lib.parent), "-e", receiver, str(brewfile)],
+                    env={**self.env, "MANAGED_CASKS": json.dumps(managed)},
+                    cwd=self.root,
+                    text=True,
+                    capture_output=True,
+                    timeout=10,
+                    check=True,
+                )
+                casks = json.loads(result.stdout)
+                self.assertEqual("1password" in casks, expected)
+                self.assertNotIn("vlc", casks)
+                self.assertNotIn("claude", casks)
+                self.assertIn("codex-app", casks)
+                self.assertIn("1password-cli", casks)
 
     def test_uv_final_declaration_survives_eof_and_empty_lists_prune_installed_tools(self):
         declaration = self.source / "readonly_dot_default-uv-tools.tmpl"

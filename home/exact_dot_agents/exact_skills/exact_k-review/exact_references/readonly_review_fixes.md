@@ -50,14 +50,13 @@ This adds no stop; the Fix procedure owns the stopping rule.
    Skip this review only for wording-only fixes (typos, reflow, a rename with no change in meaning).
 6. In steps 6 to 8, a finding counts only when this task fixes it (Step back first);
    one listed under `Proposed:` does not continue the loop.
-   Repeat the reviewed fix round while the last fix-diff review found a supported medium or higher finding;
-   fix lows in the same round without another review.
+   Repeat the reviewed fix round while the last fix-diff review found a supported finding this task fixes, lows included.
    A returned cause repeats the same specific invariant violation or failed enforcement assumption in the same mechanism as an earlier fix.
    Different inputs, symptoms, locations or finding IDs do not make it a new cause.
    Do not add another input-specific exception: investigate the shared assumption read-only, then replace the approach or revert this task's change there (Step back first).
    Check the result against every earlier trigger and affected consumer of that mechanism.
    If it returns a second time, park it (below), unless a later review names new evidence; then check it like any finding.
-   Churn stop: a regression is a supported medium or higher finding that a review traces to an edit this fix loop made,
+   Churn stop: a regression is a supported finding of any severity that a review traces to an edit this fix loop made,
    not a fix that misses its original trigger and not one an earlier review reported.
    A mechanism churns when two reviews each find a regression in it, with no two-reviewer round between them that found none there.
    At the first churn in a mechanism, replace the approach there within Fix Scope (Step back first) and continue.
@@ -72,19 +71,26 @@ This adds no stop; the Fix procedure owns the stopping rule.
    That next round is narrowed: it reviews what fixes since the previous two-reviewer round touched and their consumers.
    Once a narrowed round finds no new supported medium or higher finding, the next round covers the whole Verify scope.
    Fix its findings with steps 1 to 6.
-   A clean fix-diff review or a clean narrowed round does not end the loop; a clean whole-scope round does.
+   A clean fix-diff review or a clean narrowed round does not end the loop before a whole-scope round closes the rounds (below).
    No count of reviews or rounds stops the loop, and it never pauses to ask whether to continue;
    a parked cause or mechanism (step 6) goes to the user only in the final report.
-   The loop ends when a whole-scope round finds no new supported medium or higher finding and supplies passing evidence for the applicable criteria and claimed fixes; fix its lows.
+   A whole-scope round with no new supported medium or higher finding and passing evidence for the applicable criteria and claimed fixes closes the rounds;
+   fix its lows with steps 1 to 6.
+   The loop ends only when reviews have covered every edit that is not wording-only and every supported finding this task fixes from those reviews is fixed or parked (step 6),
+   or when every remaining step is blocked by something you cannot clear (step 8):
+   no finding this task fixes is left unfixed unless its fix is blocked or it is parked (step 6), and each fix still unreviewed has a blocked review.
    A material unverified result stays `Open:` with its blocker; missing reviewer coverage is returned to that reviewer for completion, not treated as clean.
    Neither checklist membership nor a reviewer's focus may exclude a new supported defect in scope or impact.
    Keep rounds short: aim for about 3 minutes per reviewer and 5 per round. Time a round from launch to results with `date +%s`
    just before the launch and when the results arrive, and a reviewer with the duration the harness reports, if any.
    When a round runs over, or two rounds in a row find the same kind of problem, write one line before the next round:
    what cost the time, and what the next round does differently.
-8. Mark each fix after the last review that is not wording-only "(unreviewed)" in `Checked:`, and list any unparked finding you could not fix under `Open:` with its blocker.
+8. Never end your turn before the loop ends (`~/AGENTS.md` §3 step 8).
+   In the final report, `Open:` holds only items a blocker you cannot clear stops, each with that blocker,
+   such as a material unverified result (step 7) or a fix whose review cannot run (`Review of <fix>: <blocker>`).
    Report fixed findings as a count, each rejected one with a one-line reason, proposed and open items, a `Decision needed:` for each parked cause or mechanism (step 6), and the rounds as a trend:
    `Rounds: <n> (<findings per round>; <total minutes>)` on one line, with minutes from those timings, never estimated; no per-round table.
 
-After two attempts at the same failure without new evidence, stop editing and investigate read-only or report the blocker.
+After two attempts at the same failure (`~/AGENTS.md` §3), in Verify mode continue with step 6 (replace, revert, or park);
+report a blocker only when you cannot clear it.
 Commit, push, reply, resolve, and publish only as `~/AGENTS.md` §5 allows.

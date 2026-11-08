@@ -117,7 +117,8 @@ Use when `~/AGENTS.md` §3 step 5 requires a review of a finished change, or whe
    Its Fix procedure (the Verify-mode steps) owns scratch copies, checks, fix-diff reviews, further full rounds, and stopping rules.
 5. Copy every file in the reviewed scope, as it stands after the fixes, into the baseline, even when nothing was fixed:
    a fresh directory under `/tmp` for the task's first Verify review, the existing baseline after that.
-   For a file with a fix marked "(unreviewed)", copy that round's pre-fix copy instead, so the next review still covers the fix.
+   For a file with a fix whose review is blocked (`review_fixes.md` step 8), copy the pre-fix copy from the earliest such round that touched it instead,
+   and leave out a file that round created, so the next review still covers the fix.
    List each reviewed path the task deleted in the baseline's `.k-review-deleted.txt`.
    Retain that baseline only while a remaining review or agreed handoff needs it; remove it under `k-cleanup` as soon as that need ends.
    An agreed handoff records the needed baseline's path.

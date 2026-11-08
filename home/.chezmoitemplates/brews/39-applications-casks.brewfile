@@ -1,14 +1,16 @@
 # AI-first web browser from The Browser Company
 # https://www.diabrowser.com/
-cask "thebrowsercompany-dia"
+app_cask "thebrowsercompany-dia", "Dia.app"
 
 # Web browser
 # https://brave.com/
-cask "brave-browser"
+app_cask "brave-browser", "Brave Browser.app"
 
 # Multimedia player
 # https://www.videolan.org/vlc/
-cask "vlc"
+app_cask "vlc", "VLC.app"
+
+app_cask "1password", "1Password.app"
 
 # Command-line interface for 1Password
 # https://developer.1password.com/docs/cli
@@ -16,35 +18,35 @@ cask "1password-cli"
 
 # Application uninstaller
 # https://freemacsoft.net/appcleaner/
-cask "appcleaner"
+app_cask "appcleaner", "AppCleaner.app"
 
 # Monitors common persistence locations. Security tool
 # https://objective-see.org/products/blockblock.html
-cask "blockblock"
+app_cask "blockblock", "BlockBlock Helper.app"
 
 # Menu bar manager
 # https://github.com/jordanbaird/Ice
-cask "jordanbaird-ice"
+app_cask "jordanbaird-ice", "Ice.app"
 
 # Tool to show what is persistently installed on the computer
 # https://objective-see.org/products/knockknock.html
-cask "knockknock"
+app_cask "knockknock", "KnockKnock.app"
 
 # Open-source firewall
 # https://objective-see.org/products/lulu.html
-cask "lulu"
+app_cask "lulu", "LuLu.app"
 
 # Monitor mic and webcam
 # https://objective-see.org/products/oversight.html
-cask "oversight"
+app_cask "oversight", "OverSight.app"
 
 # Scan and detect keyloggers
 # https://objective-see.org/products/reikey.html
-cask "reikey"
+app_cask "reikey", "ReiKey.app"
 
 # App to build and share containerised applications and microservices
 # https://www.docker.com/products/docker-desktop
-cask "docker-desktop"
+app_cask "docker-desktop", "Docker.app"
 
 # Set of tools to manage resources and applications hosted on Google Cloud
 # https://cloud.google.com/cli/
@@ -52,52 +54,76 @@ cask "gcloud-cli"
 
 # All-in-one bookmark manager
 # https://raindrop.io/
-cask "raindropio"
+app_cask "raindropio", "Raindrop.io.app"
 
 # Fast, feature-rich, and cross-platform terminal emulator
 # https://mitchellh.com/ghostty
-cask "ghostty"
+app_cask "ghostty", "Ghostty.app"
 
 # Desktop automation application
 # https://www.hammerspoon.org/
-cask "hammerspoon"
+app_cask "hammerspoon", "Hammerspoon.app"
 
 # Keyboard customizer
 # https://karabiner-elements.pqrs.org/
-cask "karabiner-elements"
+app_cask "karabiner-elements", "Karabiner-Elements.app"
 
 # Screenshot measurement and annotation tool
 # https://shottr.cc/
-cask "shottr"
+app_cask "shottr", "Shottr.app"
 
 # Allows connection to a computer remotely
 # https://anydesk.com/
-cask "anydesk"
+app_cask "anydesk", "AnyDesk.app"
 
 # Web browser
 # https://www.google.com/chrome/
-cask "google-chrome"
+app_cask "google-chrome", "Google Chrome.app"
 
 # VPN client
 # https://mullvad.net/
-cask "mullvad-vpn"
+app_cask "mullvad-vpn", "Mullvad VPN.app"
 
 # Voice and text chat software
 # https://discord.com/
-cask "discord"
+app_cask "discord", "Discord.app"
 
 # Messaging app with a focus on speed and security
 # https://telegram.org/
-cask "telegram"
+app_cask "telegram", "Telegram.app"
 
 # Native desktop client for WhatsApp
 # https://www.whatsapp.com/
-cask "whatsapp"
+app_cask "whatsapp", "WhatsApp.app"
 
 # Client for the Google Drive storage service
 # https://www.google.com/drive/
-cask "google-drive"
+app_cask "google-drive", "Google Drive.app"
 
 # Task management application
 # https://www.rememberthemilk.com/
-cask "remember-the-milk"
+app_cask "remember-the-milk", "Remember The Milk.app"
+
+# OpenAI ChatGPT desktop app
+# https://chatgpt.com/
+app_cask "chatgpt", "ChatGPT.app"
+
+# Web browser
+# https://www.mozilla.org/firefox/
+app_cask "firefox", "Firefox.app"
+
+# Video conferencing client
+# https://www.zoom.us/
+app_cask "zoom", "zoom.us.app"
+
+# Video game digital distribution service
+# https://store.steampowered.com/
+app_cask "steam", "Steam.app"
+
+# Cloud gaming client
+# https://www.nvidia.com/en-us/geforce-now/
+app_cask "nvidia-geforce-now", "GeForceNOW.app"
+
+# AirPods connection menu bar app
+# https://apps.apple.com/app/id1191449274
+mas "ToothFairy", id: 1191449274

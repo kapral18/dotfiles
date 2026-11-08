@@ -13,7 +13,7 @@ for tap in (brew bundle cleanup --global 2>/dev/null | awk '/^Would untap:/ {on=
     brew trust --tap $tap; and brew untap --force $tap
 end
 
-brew bundle cleanup --global --force; or exit 1
+brew bundle cleanup --global --force --no-mas; or exit 1
 brew bundle --global --no-upgrade; or exit 1
 
 echo "---------------------------------"

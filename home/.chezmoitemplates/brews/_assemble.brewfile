@@ -1,6 +1,14 @@
 # Homebrew packages, assembled from home/.chezmoitemplates/brews/.
 # Edit the matching brews/NN-<category>.brewfile partial to add a package.
 
+require "bundle/cask"
+
+def app_cask(name, app)
+  app_directories = ["/Applications", File.expand_path("~/Applications")]
+  cask name if Homebrew::Bundle::Cask.cask_installed?(name) ||
+               app_directories.none? { |directory| File.directory?(File.join(directory, app)) }
+end
+
 # CHARMBRACELET ECOSYSTEM
 {{ includeTemplate "brews/02-charmbracelet-ecosystem.brewfile" . -}}
 

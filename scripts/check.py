@@ -111,6 +111,8 @@ GATES: tuple[Gate, ...] = (
 )
 
 TEST_RULES: tuple[TestRule, ...] = (
+    TestRule(prefixes=("home/.install-1password.sh", "home/.chezmoi.toml.tmpl"), tests=("tests/test_bootstrap.py",)),
+    TestRule(prefixes=("home/readonly_dot_default-pnpm-pkgs",), tests=("tests/test_install_pnpm_pkgs.py",)),
     TestRule(
         prefixes=(
             "home/dot_config/herdr/exact_scripts/pickers/session/executable_remove_all_worktrees.sh",
@@ -161,6 +163,7 @@ TEST_RULES: tuple[TestRule, ...] = (
     TestRule(
         prefixes=(
             "home/.chezmoi.toml.tmpl",
+            "home/.chezmoitemplates/brews/",
             "home/readonly_dot_default-custom-packages.tmpl",
             "home/.chezmoiscripts/run_onchange_after_05-update-golang-pkgs.sh.tmpl",
             "home/.chezmoiscripts/run_onchange_after_06-update-uv-tools.sh.tmpl",

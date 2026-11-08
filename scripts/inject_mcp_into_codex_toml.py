@@ -12,7 +12,7 @@ Usage:
   inject_mcp_into_codex_toml.py <base_toml_path> <mcp_servers_yaml> [tool] [existing_toml_path]
 
 When an existing config is supplied, only explicit Codex runtime-owned state is
-reattached: MCP approval modes, hook trust hashes, project trust levels, and
+reattached: MCP approval modes, hook state, project trust levels, and
 TUI model-availability counters. The base config and generated MCP transport
 remain authoritative.
 
@@ -212,8 +212,8 @@ def _load_preserved_mcp_approvals(
     return preserved
 
 
-def _load_preserved_hook_state(existing_toml_path: str | None) -> dict[str, str]:
-    preserved: dict[str, str] = {}
+def _load_preserved_hook_state(existing_toml_path: str | None) -> dict[str, dict[str, str | bool]]:
+    preserved: dict[str, dict[str, str | bool]] = {}
     current_path: list[str] = []
     for line in _read_existing_toml_lines(existing_toml_path):
         table_path = _parse_toml_table_path(line)
@@ -227,12 +227,20 @@ def _load_preserved_hook_state(existing_toml_path: str | None) -> dict[str, str]
             continue
 
         key, raw_value = line.split("=", 1)
-        if key.strip() != "trusted_hash":
+        key = key.strip()
+        if key == "enabled":
+            raw_bool = raw_value.split("#", 1)[0].strip()
+            if raw_bool not in {"true", "false"}:
+                continue
+            value: str | bool = raw_bool == "true"
+        elif key in {"trusted_hash", "trusted_content_hash"}:
+            parsed = _parse_toml_string_value(raw_value)
+            if parsed is None:
+                continue
+            value = parsed
+        else:
             continue
-
-        trusted_hash = _parse_toml_string_value(raw_value)
-        if isinstance(trusted_hash, str) and trusted_hash.startswith("sha256:"):
-            preserved[current_path[2]] = trusted_hash
+        preserved.setdefault(current_path[2], {})[key] = value
 
     return preserved
 
@@ -312,7 +320,9 @@ def _with_preserved_hook_state(config: str, existing_toml_path: str | None) -> s
     lines = [config.rstrip(), ""]
     for hook_id in sorted(preserved_hook_state):
         lines.append(f"[hooks.state.{_toml_key(hook_id)}]")
-        lines.append(f"trusted_hash = {_toml_string(preserved_hook_state[hook_id])}")
+        for key, value in preserved_hook_state[hook_id].items():
+            rendered = str(value).lower() if isinstance(value, bool) else _toml_string(value)
+            lines.append(f"{key} = {rendered}")
         lines.append("")
     return "\n".join(lines).rstrip() + "\n"
 

@@ -5,3 +5,7 @@ brew "taproom"
 # Make Homebrew output bold with a TUI interface
 # https://github.com/Valkyrie00/bold-brew
 brew "bbrew"
+
+# Mac App Store command-line interface; installs the `mas` entries
+# https://github.com/mas-cli/mas
+brew "mas"

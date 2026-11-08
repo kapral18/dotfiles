@@ -36,3 +36,15 @@ file|kitten|kovidgoyal/kitty|latest|{{ $kittenAsset }}|kitten
 {{ if and (eq $os "darwin") (eq $arch "arm64") }}
 zip_opt|sd-cli|leejet/stable-diffusion.cpp|master-820-de298c2|sd-*-bin-Darwin-macOS-*-arm64.zip|sd-cli|sd-cli
 {{ end }}
+
+# Portkeeper (local port manager)
+# https://github.com/MarcAparisiTFG/portkeeper
+{{ if and (eq $os "darwin") (eq $arch "arm64") }}
+dmg|Portkeeper|MarcAparisiTFG/portkeeper|latest|Portkeeper.app|-macOS-AppleSilicon.dmg
+{{ end }}
+
+# Compresso (video and image compressor by Rotato)
+# https://tools.rotato.app/
+{{ if and (eq $os "darwin") (eq $arch "arm64") }}
+dmg|Compresso|https://pub-f9be02bb501644fbb358ddcceb4e2b89.r2.dev/macos/aarch64/0.1.90/Compresso_0.1.90_aarch64.dmg|latest|Compresso.app|.dmg
+{{ end }}

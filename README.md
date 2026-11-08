@@ -4,21 +4,23 @@ Personal macOS setup managed with [chezmoi](https://www.chezmoi.io/): Fish, Neov
 
 ## Setup
 
-Install `chezmoi` and sign in to 1Password first; templates use it for SSH keys and secrets. Preview before applying to an existing machine:
+Apply hooks install packages, change the login shell and macOS settings, and **remove Homebrew packages absent from the Brewfile**. Review [`home/.chezmoiscripts/`](home/.chezmoiscripts/) before applying. Directories marked `exact_` can delete unmanaged files in their deployed directory. Back up existing configuration first.
+
+On a new Mac, sign in to the App Store first: the Brewfile installs App Store apps through `mas`, and a failed `mas` install stops the apply. Then run this in Terminal (requires administrator access):
+
+```sh
+sh -c "$(curl -fsLS https://get.chezmoi.io/lb)" -- -b "$HOME/.local/bin" init --use-builtin-git=true --apply kapral18
+```
+
+The installer installs chezmoi into `~/.local/bin`. During `init --apply`, chezmoi [prepares 1Password](home/.install-1password.sh) before reading secret-dependent templates. If Homebrew and the app are installed, CLI authentication succeeds and the 1Password SSH agent offers keys, setup returns without installing packages, opening the app or showing setup prompts. Otherwise, it repairs missing prerequisites, reinstating app/CLI files even when Homebrew still records their casks as installed, then guides any remaining sign-in and developer settings. Enable CLI integration and the SSH agent, then press Enter. Failed installation or readiness checks stop the apply. Fix the prerequisite and rerun the command. Initialization reuses saved identity answers and keeps PATH entries unique. Ordinary `diff` and `apply` commands skip this setup.
+
+For manual setup, install `chezmoi` and configure 1Password first. Preview before applying to an existing machine:
 
 ```sh
 chezmoi init kapral18
 chezmoi diff
 chezmoi apply --dry-run --verbose
 chezmoi apply
-```
-
-Apply hooks install packages, change the login shell and macOS settings, and **remove Homebrew packages absent from the Brewfile**. Review [`home/.chezmoiscripts/`](home/.chezmoiscripts/) before applying. Directories marked `exact_` can delete unmanaged files in their deployed directory. Back up existing configuration first.
-
-To install chezmoi and apply immediately on a new machine:
-
-```sh
-sh -c "$(curl -fsLS get.chezmoi.io/lb)" -- init --apply kapral18
 ```
 
 ## Use and maintenance

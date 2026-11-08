@@ -32,3 +32,10 @@ readmeroast@1.0.0
 # Description: Free coding agent CLI
 # URL: https://freebuff.com/get-started
 freebuff
+# Description: Packages web pages as lightweight desktop apps; builds the ~/.default-pake-apps entries
+# URL: https://github.com/tw93/Pake
+# @install-priority-exception: prefer=pnpm; skip=homebrew; reason=formula-adds-second-rust-toolchain
+pake-cli
+# Description: npm semver library; ,mise-bump loads it from pnpm-global-links to check upgrades against engines ranges
+# URL: https://github.com/npm/node-semver
+semver

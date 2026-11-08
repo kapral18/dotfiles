@@ -14,7 +14,11 @@ import sys
 import tempfile
 from pathlib import Path
 
-CATEGORIES = {"brew", "gh", "mise", "cargo", "pnpm", "gems", "go", "uv"}
+CATEGORIES = {"brew", "casks", "gh", "mise", "cargo", "pnpm", "gems", "go", "uv"}
+# These install packages that run on mise runtimes, so they wait for the mise step's upgrades.
+ON_MISE = {"cargo", "pnpm", "gems", "go"}
+# dekit starts a dependent only after its dependency exits 0, so these jobs always exit 0.
+DEPENDED_ON = {"mise"}
 XDG_KEYS = ("XDG_RUNTIME_DIR", "XDG_STATE_HOME")
 
 
@@ -67,7 +71,17 @@ class NativeRunner:
             directory = self.root / name
             directory.mkdir(mode=0o700)
             self.env[key] = str(directory)
-        task_env = {key: os.environ.get(key) for key in XDG_KEYS}
+        # ,update fetches Homebrew data before the lanes and cleans up after them; lanes must not
+        # clean up themselves while the brew and casks lanes overlap.
+        task_env = {
+            **{key: os.environ.get(key) for key in XDG_KEYS},
+            "UPDATE_BREW_FETCHED": "1",
+            "HOMEBREW_NO_INSTALL_CLEANUP": "1",
+        }
+        # dekit jobs start with umask 027; files a lane writes must get the caller's modes, and
+        # chezmoi otherwise reports deployed 0644 files as mode changes.
+        mask = os.umask(0)
+        os.umask(mask)
         tasks = {}
         for category in self.args.categories:
             wrapper = self.root / f"{category}.sh"
@@ -75,12 +89,17 @@ class NativeRunner:
             if self.args.verbose:
                 command.append("--verbose")
             completion = shlex.quote(str(self.root / f"{category}.rc"))
+            # A failed mise step still lets its dependents run; its result stays in the
+            # .rc file. A trapped INT lets the mise wrapper outlive a Ctrl-C in its pane.
+            exit_code = "0" if category in DEPENDED_ON else '"$rc"'
             wrapper.write_text(
                 "#!/usr/bin/env bash\n"
+                + f"umask {mask:04o}\n"
+                + ("trap : INT\n" if category == "mise" else "")
                 + shlex.join(command)
                 + '\nrc=$?\nprintf "%s\\n" "$rc" > '
                 + completion
-                + '\nexit "$rc"\n',
+                + f"\nexit {exit_code}\n",
                 encoding="utf-8",
             )
             tasks[category] = {
@@ -90,6 +109,8 @@ class NativeRunner:
                 "cwd": os.getcwd(),
                 "env": task_env,
             }
+            if category in ON_MISE and "mise" in self.args.categories:
+                tasks[category]["deps"] = ["mise"]
         (self.root / "dekit.yaml").write_text(
             json.dumps({"kernel": {"path": self.dekit}, "tasks": tasks}), encoding="utf-8"
         )

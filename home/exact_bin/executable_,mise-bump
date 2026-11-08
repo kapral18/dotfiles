@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage: ,mise-bump [TOOL[@VERSION]...]
+
+Check node and bun upgrades against pnpm global and Mason npm packages (an engines
+range the current version meets, or a classic native addon across a Node major) and
+print each conflict with the highest version that has none, or one line saying none
+were found; other outdated tools are listed as not checked. Breakage a package does
+not declare is not detected. Then pick global mise tools to upgrade past their
+pins (mise upgrade --interactive --bump) and write the new pins into the chezmoi
+source of ~/.config/mise/config.toml.
+
+A tool pinned to several versions, such as lua = ["5.1.5", "5.4.7"], is left out of
+the menu; each version is offered the newest release of its own major.minor series.
+A pin with "# @mise-bump-hold: <reason>" in the comment lines above it is never offered.
+
+Arguments:
+  TOOL     Limit the menu to these tools, such as bun node
+  VERSION  Upgrade to this version instead of the latest, such as node@24.15.0;
+           ignored for held and multi-version tools
+
+Options:
+  -h, --help  Show this help
+EOF
+}
+
+for arg in "$@"; do
+  case "$arg" in
+  -h | --help)
+    usage
+    exit 0
+    ;;
+  -*)
+    echo "Error: unknown option: $arg" >&2
+    usage >&2
+    exit 2
+    ;;
+  esac
+done
+
+target="$HOME/.config/mise/config.toml"
+source_file=$(chezmoi source-path "$target")
+
+if [[ -n "$(chezmoi diff --no-pager "$target")" ]]; then
+  echo "Error: $target differs from its chezmoi source; run chezmoi apply $target first" >&2
+  exit 1
+fi
+
+lib="$HOME/lib/,mise-bump"
+skip=$(node "$lib/pins.mjs" excluded "$target")
+excluded=()
+names=""
+for tool in $skip; do
+  excluded+=(--exclude "$tool")
+  names+="$tool "
+done
+tools=()
+upgrade=()
+for arg in "$@"; do
+  tool="${arg%%@*}"
+  tools+=("$tool")
+  if [[ " $names" == *" $tool "* ]]; then
+    note="$tool: held or pinned to several versions; not offered in the mise menu"
+    [[ $arg == *@* ]] && note+=" (version ${arg#*@} ignored)"
+    echo "$note" >&2
+  else
+    upgrade+=("$arg")
+  fi
+done
+
+MISE_BUMP_EXCLUDE="$names" node "$lib/impact.mjs" "$@" || echo "Warning: the dependency impact check failed; continuing without it" >&2
+
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+cp "$target" "$work/before.toml"
+
+# A failed or interrupted upgrade can still have written the pins it finished.
+status=0
+trap ':' INT
+# Named tools that are all held or multi-version leave nothing for the menu; an empty
+# argument list there would offer every tool.
+if [[ $# -eq 0 || ${#upgrade[@]} -gt 0 ]]; then
+  mise upgrade --global --interactive --bump ${excluded[@]+"${excluded[@]}"} ${upgrade[@]+"${upgrade[@]}"} || status=$?
+fi
+node "$lib/pins.mjs" series "$target" ${tools[@]+"${tools[@]}"} || status=$?
+trap - INT
+
+if cmp -s "$work/before.toml" "$target"; then
+  [[ $status -eq 0 ]] && echo "No pins changed"
+  exit "$status"
+fi
+
+diff -u "$work/before.toml" "$target" >"$work/pins.diff" || true
+cp "$source_file" "$work/source.toml"
+if ! patch -s "$work/source.toml" "$work/pins.diff"; then
+  echo "Error: could not apply the new pins to $source_file; edit it to match $target" >&2
+  exit 1
+fi
+if ! chezmoi execute-template <"$work/source.toml" | cmp -s - "$target"; then
+  echo "Error: patched $source_file would render differently from $target; edit it to match" >&2
+  exit 1
+fi
+trap '' INT
+cat "$work/source.toml" >"$source_file"
+trap - INT
+# The target already matches the new source; re-applying records it so chezmoi apply does not
+# report it as changed since chezmoi last wrote it.
+chezmoi apply --no-tty --force "$target" || echo "Warning: could not re-apply $target; run chezmoi apply $target" >&2
+grep '^[-+][^-+]' "$work/pins.diff" || true
+echo "Updated $source_file"
+exit "$status"

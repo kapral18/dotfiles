@@ -34,7 +34,7 @@ Usage: ,update [options]
 Unified update orchestrator for the dotfiles ecosystem.
 Pulls dotfiles, updates all package managers, and reports what changed.
 
-Categories: dotfiles, brew, gh, mise, cargo, pnpm, gems, go, uv, manual
+Categories: dotfiles, brew, casks, gh, mise, cargo, pnpm, gems, go, uv, manual
 
 Options:
   -n, --dry-run       Show what would be updated without doing it
@@ -46,7 +46,7 @@ Options:
 Examples:
   ,update                     # Update everything
   ,update --dry-run           # Preview what would happen
-  ,update --only brew,pnpm    # Update only Homebrew and pnpm
+  ,update --only brew,pnpm    # Update Homebrew formulae, Brewfile installs, and pnpm
   ,update --skip cargo,gems   # Update everything except cargo and gems
 EOF
 }
@@ -236,6 +236,9 @@ run_parallel() {
   [ "$verbose" -eq 1 ] && runner_args+=(--verbose)
 
   step_info "running ${#active_funcs[@]} steps in parallel (dekit TUI — q or Q closes updates)"
+  if [[ " ${active_labels[*]} " == *" mise "* ]]; then
+    step_info "the mise pane waits for its ,mise-bump menu; cargo, pnpm, gems and go start after it"
+  fi
   python3 "$helper" "${runner_args[@]}" "${active_labels[@]}" <&0 &
   helper_pid=$!
   trap '_parallel_signal INT 130' INT
@@ -309,19 +312,54 @@ update_brew() {
   fi
 
   local outdated_before
-  outdated_before=$(brew outdated --quiet 2> /dev/null | wc -l | tr -d ' ')
-  [ "$verbose" -eq 1 ] && step_info "$outdated_before packages outdated before update"
+  outdated_before=$(brew outdated --formula --quiet 2> /dev/null | wc -l | tr -d ' ')
+  [ "$verbose" -eq 1 ] && step_info "$outdated_before formulae outdated before update"
 
-  run_timed "brew update (fetch)" brew update || true
-
-  run_timed "brew upgrade" brew upgrade || true
+  run_timed "brew upgrade --formula" brew upgrade --formula || true
   run_timed "brew bundle (Brewfile)" brew bundle --global --no-upgrade || true
-  run_timed "brew cleanup" brew cleanup --prune=30 -s || true
 
   local outdated_after
-  outdated_after=$(brew outdated --quiet 2> /dev/null | wc -l | tr -d ' ')
+  outdated_after=$(brew outdated --formula --quiet 2> /dev/null | wc -l | tr -d ' ')
   if [ "$outdated_after" -gt 0 ]; then
-    step_info "$outdated_after packages still outdated"
+    step_info "$outdated_after formulae still outdated"
+  fi
+}
+
+# HOMEBREW_NO_AUTO_UPDATE keeps brew on cached data. The parent fetches once before the brew
+# and casks lanes run in parallel (brew update holds a single lock), and cleans up once after
+# them: brew cleanup deletes cask staging without a lock, so it must not overlap a cask upgrade.
+# Lanes started by the dekit runner skip both (UPDATE_BREW_FETCHED).
+update_brew_fetch() {
+  should_run "brew" || should_run "casks" || return 0
+  [ -z "${UPDATE_BREW_FETCHED:-}" ] || return 0
+  has_cmd brew || return 0
+  section "Homebrew fetch"
+  run_timed "brew update (fetch)" brew update || true
+}
+
+update_brew_cleanup() {
+  should_run "brew" || should_run "casks" || return 0
+  [ -z "${UPDATE_BREW_FETCHED:-}" ] || return 0
+  has_cmd brew || return 0
+  section "Homebrew cleanup"
+  run_timed "brew cleanup" brew cleanup --prune=30 -s || true
+}
+
+update_casks() {
+  should_run "casks" || return 0
+  section "Homebrew casks"
+
+  if ! has_cmd brew; then
+    step_skip "Homebrew not installed"
+    return 0
+  fi
+
+  run_timed "brew upgrade --cask" brew upgrade --cask || true
+
+  local outdated_after
+  outdated_after=$(brew outdated --cask --quiet 2> /dev/null | wc -l | tr -d ' ')
+  if [ "$outdated_after" -gt 0 ]; then
+    step_info "$outdated_after casks still outdated"
   fi
 }
 
@@ -351,6 +389,23 @@ update_mise() {
 
   run_timed "mise install --yes" env PATH="$HOME/.local/share/mise/shims${clean_path:+:${clean_path}}" mise install --yes || true
   run_timed "mise reshim" env PATH="$HOME/.local/share/mise/shims${clean_path:+:${clean_path}}" mise reshim || true
+
+  # ,mise-bump owns the terminal: its menu and prompts cannot run through run_timed's output relay.
+  if [ "$dry_run" -eq 1 ]; then
+    step_info "${C_DIM}[dry-run]${C_R} would run: ,mise-bump"
+    total_skipped=$((total_skipped + 1))
+  elif ! has_cmd ,mise-bump; then
+    step_skip ",mise-bump not installed"
+  elif [ ! -t 0 ] || [ ! -t 1 ]; then
+    step_skip ",mise-bump" "needs a terminal for its upgrade menu"
+  else
+    step_info ",mise-bump (pick runtime upgrades)"
+    if ,mise-bump; then
+      step_pass ",mise-bump"
+    else
+      step_fail ",mise-bump" "exit $?"
+    fi
+  fi
 }
 
 update_cargo() {
@@ -459,13 +514,17 @@ overall_start=$(date +%s)
 # Phase 1: dotfiles must run first (pulls new package/runtime definitions)
 update_dotfiles
 
+update_brew_fetch
+
 parallel_rc=0
-run_parallel update_brew update_gh update_mise update_uv \
+run_parallel update_brew update_casks update_gh update_mise update_uv \
   update_cargo update_pnpm update_gems update_go || parallel_rc=$?
 
 # Phase 3: manual packages run after Homebrew cleanup so non-Homebrew apps and
-# release assets converge after managed cask cleanup.
+# release assets converge after managed cask cleanup. A failed runner may leave lanes alive,
+# so neither runs then.
 if [ "$parallel_rc" -eq 0 ]; then
+  update_brew_cleanup
   update_manual
 fi
 

@@ -1,0 +1,11 @@
+# Pake desktop apps (pipe-delimited): App Name|https://url[|space-separated pake flags; values cannot contain spaces]
+# Each app installs to /Applications/<App Name>.app; an existing bundle is left as-is.
+YoutubeMusic|https://music.youtube.com/
+Youtube|https://www.youtube.com/
+Reddit|https://www.reddit.com/
+Threads|https://www.threads.com/
+X|https://www.x.com/
+Linkedin|https://www.linkedin.com/
+NLTimes|https://www.nltimes.nl/
+Armenpress|https://armenpress.am/en
+K18-Github|https://github.com/kapral18
