@@ -24,6 +24,7 @@ function killallApps() {
   killall "Finder" >/dev/null 2>&1 || true # Finder restarts automatically
   killall "SystemUIServer" >/dev/null 2>&1 || true
   killall "Dock" >/dev/null 2>&1 || true
+  killall "ControlCenter" >/dev/null 2>&1 || true # Menu bar clock and battery
 
   appsToKill=(
     "Activity Monitor"
@@ -98,6 +99,12 @@ defaults write -g AppleFirstWeekday -dict gregorian -int 2 # Set to Monday
 defaults write -g AppleICUForce12HourTime -bool false # Use 24-hour clock
 defaults write -g AppleICUForce24HourTime -bool true
 
+# Menu bar clock: seconds, day of week, AM/PM; battery percentage
+defaults write com.apple.menuextra.clock ShowSeconds -bool true
+defaults write com.apple.menuextra.clock ShowDayOfWeek -bool true
+defaults write com.apple.menuextra.clock ShowAMPM -bool true
+defaults -currentHost write com.apple.controlcenter BatteryShowPercentage -bool true
+
 # --- Text & Input ---
 # Live Text (Select text in images)
 defaults write -g AppleLiveTextEnabled -bool true
@@ -122,7 +129,7 @@ defaults import com.apple.symbolichotkeys "$(dirname -- "${BASH_SOURCE[0]}")/.sy
 
 # Disable automatic spelling correction
 defaults write -g NSAutomaticSpellingCorrectionEnabled -bool false
-# defaults write -g WebAutomaticSpellingCorrectionEnabled -bool false # Often controlled by browser prefs
+defaults write -g WebAutomaticSpellingCorrectionEnabled -bool false
 
 # Automatically identify language for spelling correction
 defaults write -g NSSpellCheckerAutomaticallyIdentifiesLanguages -bool true
@@ -273,6 +280,18 @@ defaults write -g AppleFontSmoothing -int 1
 # Enable HiDPI display modes (requires restart) - Useful for non-Apple 4K+ displays
 sudo defaults write /Library/Preferences/com.apple.windowserver DisplayResolutionEnabled -bool true
 
+# Power: Low Power on battery; High Power and no sleep on the charger
+if pmset -g batt | grep -q InternalBattery; then
+  sudo pmset -b powermode 1 || echo "WARN: Failed to set battery power mode"
+fi
+sudo pmset -c powermode 2 || echo "WARN: Failed to set charger power mode"
+sudo pmset -c sleep 0 || echo "WARN: Failed to disable sleep on the charger"
+
+# Siri off, without a menu bar item or voice trigger
+defaults write com.apple.assistant.support "Assistant Enabled" -bool false
+defaults write com.apple.Siri StatusMenuVisible -bool false
+defaults write com.apple.Siri VoiceTriggerUserEnabled -bool false
+
 # ==============================================
 # Photos / Image Capture
 # ==============================================
@@ -303,6 +322,21 @@ defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadRightC
 defaults write com.apple.AppleMultitouchTrackpad TrackpadRightClick -bool true
 defaults -currentHost write -g com.apple.trackpad.trackpadCornerClickBehavior -int 0 # Ensure corner click is off
 defaults -currentHost write -g com.apple.trackpad.enableSecondaryClick -bool true
+
+# Tracking speeds: trackpad, mouse, scroll wheel
+defaults write -g com.apple.trackpad.scaling -float 1.5
+defaults write -g com.apple.mouse.scaling -float 0.875
+defaults write -g com.apple.scrollwheel.scaling -float 0.5
+
+# Force Click off, light click, three-finger tap to look up
+defaults write -g com.apple.trackpad.forceClick -bool false
+defaults write com.apple.AppleMultitouchTrackpad FirstClickThreshold -int 0
+defaults write com.apple.AppleMultitouchTrackpad SecondClickThreshold -int 0
+defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadThreeFingerTapGesture -int 2
+defaults write com.apple.AppleMultitouchTrackpad TrackpadThreeFingerTapGesture -int 2
+
+# Globe/Fn key does nothing
+defaults write com.apple.HIToolbox AppleFnUsageType -int 0
 
 # Disable three finger drag (can interfere with other gestures if enabled)
 defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadThreeFingerDrag -bool false
@@ -363,6 +397,7 @@ defaults write com.apple.finder AppleShowAllFiles -bool true
 
 # Hide internal hard drives on the Desktop.
 defaults write com.apple.finder ShowHardDrivesOnDesktop -bool false
+defaults write com.apple.finder ShowMountedServersOnDesktop -bool true
 if defaults read com.apple.finder ShowSidebarHardDrivesOnDesktop >/dev/null 2>&1; then
   defaults delete com.apple.finder ShowSidebarHardDrivesOnDesktop
 fi
@@ -463,10 +498,13 @@ echo "Setting Mission Control preferences..."
 defaults write com.apple.dock expose-animation-duration -float 0.1
 
 # Don’t group windows by application in Mission Control (old Exposé behavior)
-defaults write com.apple.dock expose-group-by-app -bool false
+defaults write com.apple.dock expose-group-apps -bool false
 
 # Don’t automatically rearrange Spaces based on most recent use
 defaults write com.apple.dock mru-spaces -bool false
+
+# Clicking the wallpaper shows the desktop only in Stage Manager
+defaults write com.apple.WindowManager EnableStandardClickToShowDesktop -bool false
 
 # Keep Hammerspoon in charge of tiling; preserve this machine's existing choices.
 defaults write com.apple.WindowManager EnableTilingByEdgeDrag -bool false
