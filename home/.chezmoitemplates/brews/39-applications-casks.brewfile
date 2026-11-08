@@ -120,6 +120,10 @@ app_cask "zoom", "zoom.us.app"
 # https://store.steampowered.com/
 app_cask "steam", "Steam.app"
 
+# Blizzard game launcher
+# https://www.battle.net/
+app_cask "battle-net", "Battle.net.app"
+
 # Cloud gaming client
 # https://www.nvidia.com/en-us/geforce-now/
 app_cask "nvidia-geforce-now", "GeForceNOW.app"

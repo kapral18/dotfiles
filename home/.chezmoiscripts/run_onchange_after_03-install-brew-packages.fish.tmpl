@@ -6,6 +6,12 @@ echo "---------------------------------------"
 
 # Brewfile hash: {{ includeTemplate "brews/_assemble.brewfile" . | sha256sum }}
 
+# Cleanup resolves every Brewfile formula name, so declared taps must exist and be trusted first.
+for tap in (brew bundle list --global --tap)
+    brew tap $tap; or exit 1
+    brew trust --tap $tap; or exit 1
+end
+
 # cleanup --force resets brew trust to the Brewfile before it untaps, so a tap that
 # still has installed formulae fails as untrusted. Trust and untap retired taps first.
 # This grants trust to any undeclared tap and uninstalls everything installed from it.
