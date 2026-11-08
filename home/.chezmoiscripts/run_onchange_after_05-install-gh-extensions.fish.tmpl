@@ -8,15 +8,6 @@
     "gennaro-tedesco/gh-s"
 }}
 
-if not gh auth status >/dev/null 2>&1
-    echo "GitHub CLI not authenticated. Running login..."
-    gh auth login
-    or begin
-        echo "Login failed. Exiting."
-        exit 1
-    end
-end
-
 set -l desired_extensions \
 {{- range $extensions }}
     {{ . | quote }} \

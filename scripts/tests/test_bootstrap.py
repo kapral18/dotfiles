@@ -6,7 +6,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-SCRIPT = Path(__file__).resolve().parents[2] / "home/.install-1password.sh"
+SCRIPT = Path(__file__).resolve().parents[2] / "home/.bootstrap.sh"
+PERMISSIONS = SCRIPT.with_name(".require-terminal-permissions.sh")
 
 
 class BootstrapTests(unittest.TestCase):
@@ -16,7 +17,8 @@ class BootstrapTests(unittest.TestCase):
         self.root = Path(self.tmp.name)
         self.bin = self.root / "bin"
         self.bin.mkdir()
-        (self.bin / "cat").symlink_to("/bin/cat")
+        for tool in ("cat", "mkdir"):
+            (self.bin / tool).symlink_to(f"/bin/{tool}")
         self.prefix = self.root / "homebrew"
         (self.prefix / "bin").mkdir(parents=True)
         self.log = self.root / "calls"
@@ -30,7 +32,8 @@ class BootstrapTests(unittest.TestCase):
             "ONEPASSWORD_APP": str(self.root / "applications/1Password.app"),
             "OP_STUB": str(self.root / "op"),
         }
-        self.script = self.root / ".install-1password.sh"
+        (self.root / PERMISSIONS.name).write_text(PERMISSIONS.read_text())
+        self.script = self.root / ".bootstrap.sh"
         self.script.write_text(
             SCRIPT.read_text()
             .replace("/opt/homebrew", str(self.prefix))
@@ -39,6 +42,26 @@ class BootstrapTests(unittest.TestCase):
         )
         self.fake("uname", 'case "$1" in -s) echo Darwin;; -m) echo arm64;; esac')
         self.fake("open", 'echo open >> "$CALL_LOG"')
+        self.fake(
+            "defaults",
+            'case "$1 $3" in\n'
+            '"write chezmoiAccessProbe") exit "${DEFAULTS_STATUS:-0}";;\n'
+            '"delete chezmoiAccessProbe") ;;\n'
+            "*) exit 9;;\n"
+            "esac",
+        )
+        self.fake(
+            "gh",
+            'case "$1 $2" in\n'
+            '"auth status") exit "${GH_AUTH_STATUS:-0}";;\n'
+            '"auth login") echo gh-login >> "$CALL_LOG";;\n'
+            '"api meta") echo "github.com ssh-ed25519 KEY";;\n'
+            "*) exit 9;;\n"
+            "esac",
+        )
+        self.fake(
+            "ssh-keygen", 'case "$(cat "$HOME/.ssh/known_hosts" 2> /dev/null)" in "github.com "*) exit 0;; esac\nexit 1'
+        )
         self.fake("op", 'echo authenticate >> "$CALL_LOG"; exit "${AUTH_STATUS:-0}"')
         (self.bin / "op").rename(self.root / "op")
         self.fake(
@@ -127,6 +150,13 @@ class BootstrapTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.log.read_text().splitlines(), ["install-homebrew", "authenticate", "ssh-agent"])
 
+        self.env["GH_AUTH_STATUS"] = "1"
+        self.log.write_text("")
+        result = self.run_bootstrap("")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.log.read_text().splitlines(), ["authenticate", "ssh-agent", "gh-login"])
+        self.assertEqual((self.root / ".ssh/known_hosts").read_text(), "github.com ssh-ed25519 KEY\n")
+
         self.env["CHEZMOI_COMMAND"] = "apply"
         self.log.write_text("")
         result = self.run_bootstrap()
@@ -135,12 +165,13 @@ class BootstrapTests(unittest.TestCase):
 
     def test_failed_prerequisites_fail_init(self) -> None:
         for failure, last_call in (
+            ("DEFAULTS_STATUS", "open"),
             ("INSTALL_STATUS", "brew install --cask 1password"),
             ("AUTH_STATUS", "authenticate"),
             ("SSH_AGENT_STATUS", "ssh-agent"),
         ):
             with self.subTest(failure=failure):
-                for name in ("INSTALL_STATUS", "AUTH_STATUS", "SSH_AGENT_STATUS"):
+                for name in ("DEFAULTS_STATUS", "INSTALL_STATUS", "AUTH_STATUS", "SSH_AGENT_STATUS"):
                     self.env.pop(name, None)
                 self.env[failure] = "2" if failure == "SSH_AGENT_STATUS" else "1"
                 self.log.write_text("")

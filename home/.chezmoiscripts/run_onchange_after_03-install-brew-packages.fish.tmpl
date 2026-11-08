@@ -13,6 +13,20 @@ for tap in (brew bundle cleanup --global 2>/dev/null | awk '/^Would untap:/ {on=
     brew trust --tap $tap; and brew untap --force $tap
 end
 
+set -l missing_store_apps
+for app in (brew bundle list --global --mas)
+    test -d "/Applications/$app.app"; or set -a missing_store_apps $app
+end
+if test (count $missing_store_apps) -gt 0
+    open -a "App Store"
+    echo "Sign in to the App Store to install: $missing_store_apps"
+    read -l -P "Press Enter when signed in. " reply; or exit 1
+end
+
+set -l init_pid (cat ~/.cache/chezmoi/init-sudo 2>/dev/null)
+and test "$init_pid" = (ps -o ppid= -p $fish_pid | string trim)
+and set -gx HOMEBREW_SUDO_CHECKED 1
+
 brew bundle cleanup --global --force --no-mas; or exit 1
 brew bundle --global --no-upgrade; or exit 1
 

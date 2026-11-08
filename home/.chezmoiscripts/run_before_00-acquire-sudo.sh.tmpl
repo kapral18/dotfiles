@@ -1,0 +1,16 @@
+{{ if eq .chezmoi.command "init" -}}
+#!/bin/bash
+set -euo pipefail
+
+sudo -v
+chezmoi_pid=$PPID
+marker="$HOME/.cache/chezmoi/init-sudo"
+mkdir -p "${marker%/*}"
+printf %s "$chezmoi_pid" >"$marker"
+(
+  while kill -0 "$chezmoi_pid" 2>/dev/null && sudo -n -v 2>/dev/null; do
+    sleep 50
+  done
+  rm -f "$marker"
+) </dev/null >/dev/null 2>&1 &
+{{ end -}}

@@ -6,15 +6,17 @@ Personal macOS setup managed with [chezmoi](https://www.chezmoi.io/): Fish, Neov
 
 Apply hooks install packages, change the login shell and macOS settings, and **remove Homebrew packages absent from the Brewfile**. Review [`home/.chezmoiscripts/`](home/.chezmoiscripts/) before applying. Directories marked `exact_` can delete unmanaged files in their deployed directory. Back up existing configuration first.
 
-On a new Mac, sign in to the App Store first: the Brewfile installs App Store apps through `mas`, and a failed `mas` install stops the apply. Then run this in Terminal (requires administrator access):
+On a new Mac, run this in Terminal (requires administrator access):
 
 ```sh
 sh -c "$(curl -fsLS https://get.chezmoi.io/lb)" -- -b "$HOME/.local/bin" init --use-builtin-git=true --apply kapral18
 ```
 
-The installer installs chezmoi into `~/.local/bin`. During `init`, chezmoi [prepares 1Password](home/.install-1password.sh) before asking setup questions, so you can copy answers such as your public SSH key from it. If Homebrew and the app are installed, CLI authentication succeeds and the 1Password SSH agent offers keys, setup returns without installing packages, opening the app or showing setup prompts. Otherwise, it repairs missing prerequisites, reinstating app/CLI files even when Homebrew still records their casks as installed, then guides any remaining sign-in and developer settings. Enable CLI integration and the SSH agent, then press Enter. Failed installation or readiness checks stop initialization. Fix the prerequisite and rerun the command. Initialization reuses saved identity answers and keeps PATH entries unique. Ordinary `diff` and `apply` commands skip this setup. `init` does not update an existing clone: if an earlier attempt on a new Mac left `~/.local/share/chezmoi`, delete it before rerunning the command.
+The setup first checks that the terminal may change protected macOS settings (`.osx.core` needs it); if not, it opens Full Disk Access settings and exits so you can allow the terminal, reopen it and rerun the command. Before the Brewfile step it opens the App Store and waits until you sign in, when an App Store app from the Brewfile is missing.
 
-For manual setup, install `chezmoi` and configure 1Password first; `chezmoi init` runs the same 1Password setup. Preview before applying to an existing machine:
+The installer installs chezmoi into `~/.local/bin`. During `init`, chezmoi [prepares 1Password and GitHub](home/.bootstrap.sh) before asking setup questions, so you can copy answers such as your public SSH key from 1Password. GitHub setup installs the GitHub CLI and signs it in through the browser only when it is missing or signed out, and adds GitHub's SSH host keys from its API only when `known_hosts` has none. Installing Homebrew asks for your administrator password; the apply phase of `init --apply` asks once more and keeps `sudo` active until chezmoi exits. If Homebrew and the app are installed, CLI authentication succeeds and the 1Password SSH agent offers keys, 1Password setup returns without installing packages, opening the app or showing setup prompts. Otherwise, it repairs missing prerequisites, reinstating app/CLI files even when Homebrew still records their casks as installed, then guides any remaining sign-in and developer settings. Enable CLI integration and the SSH agent, then press Enter. Failed installation or readiness checks stop initialization. Fix the prerequisite and rerun the command. Initialization reuses saved identity answers and keeps PATH entries unique. Ordinary `diff` and `apply` commands skip this setup. `init` does not update an existing clone: if an earlier attempt on a new Mac left `~/.local/share/chezmoi`, delete it before rerunning the command.
+
+For manual setup, install `chezmoi` and configure 1Password first; `chezmoi init` runs the same 1Password and GitHub setup. Preview before applying to an existing machine:
 
 ```sh
 chezmoi init kapral18

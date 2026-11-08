@@ -32,11 +32,7 @@ ensure_cask() {
   fi
 }
 
-if command -v brew > /dev/null 2>&1 && onepassword_app_installed && onepassword_ready 2> /dev/null; then
-  exit 0
-fi
-
-if ! command -v brew > /dev/null 2>&1 || ! onepassword_app_installed || ! command -v op > /dev/null 2>&1; then
+load_brew() {
   brew_bin="$(command -v brew || true)"
   if [ -z "$brew_bin" ]; then
     if [ "$(uname -m)" = arm64 ]; then
@@ -52,30 +48,60 @@ if ! command -v brew > /dev/null 2>&1 || ! onepassword_app_installed || ! comman
 
   brew_env="$("$brew_bin" shellenv)"
   eval "$brew_env"
+}
 
-  if onepassword_app_installed && onepassword_ready 2> /dev/null; then
-    exit 0
+prepare_1password() {
+  if command -v brew > /dev/null 2>&1 && onepassword_app_installed && onepassword_ready 2> /dev/null; then
+    return 0
   fi
 
-  if ! onepassword_app_installed; then
-    ensure_cask 1password
-  fi
-  if ! command -v op > /dev/null 2>&1; then
-    ensure_cask 1password-cli
-  fi
-fi
-open -a '1Password'
+  if ! command -v brew > /dev/null 2>&1 || ! onepassword_app_installed || ! command -v op > /dev/null 2>&1; then
+    load_brew
 
-cat << 'EOF'
+    if onepassword_app_installed && onepassword_ready 2> /dev/null; then
+      return 0
+    fi
+
+    if ! onepassword_app_installed; then
+      ensure_cask 1password
+    fi
+    if ! command -v op > /dev/null 2>&1; then
+      ensure_cask 1password-cli
+    fi
+  fi
+  open -a '1Password'
+
+  cat << 'MSG'
 Sign in to 1Password, then enable:
   Settings > Developer > Integrate with 1Password CLI
   Settings > Developer > Use the SSH agent
 Unlock 1Password and make sure your GitHub SSH key is available to the agent.
 Press Enter when ready. macOS and 1Password may ask for approval during setup.
-EOF
-read -r _ || {
-  echo "1Password setup needs a terminal; rerun init interactively." >&2
-  exit 1
+MSG
+  read -r _ || {
+    echo "1Password setup needs a terminal; rerun init interactively." >&2
+    exit 1
+  }
+
+  onepassword_ready
 }
 
-onepassword_ready
+prepare_github() {
+  if ! command -v gh > /dev/null 2>&1; then
+    command -v brew > /dev/null 2>&1 || load_brew
+    command -v gh > /dev/null 2>&1 || brew install gh
+  fi
+
+  if ! gh auth status --hostname github.com > /dev/null 2>&1; then
+    gh auth login --hostname github.com --git-protocol ssh --skip-ssh-key --web
+  fi
+
+  if ! ssh-keygen -F github.com > /dev/null 2>&1; then
+    mkdir -p -m 700 "$HOME/.ssh"
+    gh api meta --jq '.ssh_keys[] | "github.com " + .' >> "$HOME/.ssh/known_hosts"
+  fi
+}
+
+/bin/bash "${BASH_SOURCE[0]%/*}/.require-terminal-permissions.sh"
+prepare_1password
+prepare_github

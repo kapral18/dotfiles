@@ -19,7 +19,7 @@ if [ "$(dscl . -read "$HOME" UserShell 2> /dev/null | awk '{print $2}')" != "$fi
   echo "---------------------------------------"
   echo "setting fish as main shell: applying..."
   echo "---------------------------------------"
-  chsh -s "$fish_path"
+  sudo chsh -s "$fish_path" "$USER"
   echo "--------------------------------"
   echo "setting fish as main shell: done"
   echo "--------------------------------"

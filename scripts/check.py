@@ -111,7 +111,10 @@ GATES: tuple[Gate, ...] = (
 )
 
 TEST_RULES: tuple[TestRule, ...] = (
-    TestRule(prefixes=("home/.install-1password.sh", "home/.chezmoi.toml.tmpl"), tests=("tests/test_bootstrap.py",)),
+    TestRule(
+        prefixes=("home/.bootstrap.sh", "home/.require-terminal-permissions.sh", "home/.chezmoi.toml.tmpl"),
+        tests=("tests/test_bootstrap.py",),
+    ),
     TestRule(prefixes=("home/readonly_dot_default-pnpm-pkgs",), tests=("tests/test_install_pnpm_pkgs.py",)),
     TestRule(
         prefixes=(

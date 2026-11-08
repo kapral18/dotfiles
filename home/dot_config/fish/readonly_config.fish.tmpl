@@ -74,7 +74,7 @@ set -x FZF_DEFAULT_COMMAND "git ls-files --cached --others --exclude-standard 2>
 set -x FZF_CTRL_T_COMMAND "$FZF_DEFAULT_COMMAND"
 set -x FZF_ALT_C_COMMAND "fd --type d"
 
-if type -q pass; and test -z "$GEMINI_API_KEY"
+if type -q pass; and test -d ~/.password-store; and test -z "$GEMINI_API_KEY"
     set -gx GEMINI_API_KEY (pass google/gemini/api/token)
 end
 
@@ -85,20 +85,20 @@ end
 # Do not export GOOGLE_CLOUD_PROJECT / GOOGLE_GENAI_USE_VERTEXAI / GOOGLE_CLOUD_LOCATION here.
 # Those steer Gemini Developer API clients onto Vertex.
 
-if type -q pass; and test -z "$OPENROUTER_API_KEY"
+if type -q pass; and test -d ~/.password-store; and test -z "$OPENROUTER_API_KEY"
     set -gx OPENROUTER_API_KEY (pass openrouter/api/token)
 end
 
 # Pi and OMP both ship a built-in `nvidia` provider (integrate.api.nvidia.com) that reads this
 # variable. Stays unset when the active password store has no NIM entry.
-if type -q pass; and test -z "$NVIDIA_API_KEY"
+if type -q pass; and test -d ~/.password-store; and test -z "$NVIDIA_API_KEY"
     set -l nvidia_nim_token (pass nvidia/nim/api/token 2>/dev/null)
     and set -gx NVIDIA_API_KEY $nvidia_nim_token
 end
 
 # Pi's built-in `typesafe` provider serves the Jev classifier (`typesafe/jev-latest`) to codemode
 # scripts. Stays unset when the active password store has no TypeSafe entry.
-if type -q pass; and test -z "$TYPESAFE_API_KEY"
+if type -q pass; and test -d ~/.password-store; and test -z "$TYPESAFE_API_KEY"
     set -l typesafe_token (pass typesafe-jev/api/token 2>/dev/null)
     and set -gx TYPESAFE_API_KEY $typesafe_token
 end

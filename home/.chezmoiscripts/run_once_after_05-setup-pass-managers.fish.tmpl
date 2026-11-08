@@ -1,16 +1,6 @@
 #!/usr/bin/env fish
 
 echo "---------------------------------------"
-echo "brew install pass: applying..."
-echo "---------------------------------------"
-
-brew install pass; or exit 1
-
-echo "---------------------------------------"
-echo "brew install pass: done"
-echo "---------------------------------------"
-
-echo "---------------------------------------"
 echo "pass setup: applying..."
 echo "---------------------------------------"
 
@@ -24,7 +14,7 @@ end
 if not test -d ~/.password-store/.git
     git clone git@github.com:kapral18/.password-store.git ~/.password-store; or exit 1
 end
-op read 'op://Personal/personal_pgp_keys/notesPlain' | gpg --import
+op read 'op://Personal/personal_pgp_keys/notesPlain' | gpg --batch --import
 if test $pipestatus[1] -ne 0 -o $pipestatus[2] -ne 0
     echo "Failed to import the PGP key from 1Password" >&2
     exit 1
