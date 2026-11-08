@@ -3,6 +3,8 @@ pcall(function()
   hs.loadSpoon("EmmyLua")
 end)
 
+hs.autoLaunch(true)
+
 Hyper = { "ctrl", "alt", "cmd" }
 
 require("window")

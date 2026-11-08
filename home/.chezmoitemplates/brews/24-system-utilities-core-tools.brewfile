@@ -2,6 +2,10 @@
 # https://www.gnu.org/software/coreutils
 brew "coreutils"
 
+# Command-line Dock item management; .osx.core removes unused Apple apps from the Dock
+# https://github.com/kcrawford/dockutil
+brew "dockutil"
+
 # GNU awk utility
 # https://www.gnu.org/software/gawk/
 brew "gawk"

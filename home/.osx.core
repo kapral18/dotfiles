@@ -40,6 +40,10 @@ function killallApps() {
     fi
   done
 
+  # Applies mouse and trackpad settings such as scroll direction without a logout.
+  /System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings -u ||
+    echo "WARN: Failed to activate settings; log out to apply mouse and trackpad settings"
+
   echo "--------------------------------------------------------------------"
   echo "Done applying settings."
   echo "Note: Some changes may require a logout/restart to take full effect."
@@ -105,6 +109,23 @@ defaults write -g ApplePressAndHoldEnabled -bool false
 # Note: 1/10 is VERY fast. Adjust to taste (e.g., 2/15)
 defaults write -g KeyRepeat -int 1
 defaults write -g InitialKeyRepeat -int 10
+
+# Input sources: ABC and Russian
+defaults write com.apple.HIToolbox AppleEnabledInputSources -array \
+  '<dict><key>Bundle ID</key><string>com.apple.CharacterPaletteIM</string><key>InputSourceKind</key><string>Non Keyboard Input Method</string></dict>' \
+  '<dict><key>InputSourceKind</key><string>Keyboard Layout</string><key>KeyboardLayout ID</key><integer>252</integer><key>KeyboardLayout Name</key><string>ABC</string></dict>' \
+  '<dict><key>InputSourceKind</key><string>Keyboard Layout</string><key>KeyboardLayout ID</key><integer>19456</integer><key>KeyboardLayout Name</key><string>Russian</string></dict>' \
+  '<dict><key>Bundle ID</key><string>com.apple.PressAndHold</string><key>InputSourceKind</key><string>Non Keyboard Input Method</string></dict>'
+
+# Cmd+Space switches to the previous input source; Spotlight moves to Cmd+/
+symbolic_hotkey() {
+  defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add "$1" \
+    "<dict><key>enabled</key><$2/><key>value</key><dict><key>type</key><string>standard</string><key>parameters</key><array><integer>$3</integer><integer>$4</integer><integer>$5</integer></array></dict></dict>"
+}
+symbolic_hotkey 60 true 32 49 1048576  # Select the previous input source: Cmd+Space
+symbolic_hotkey 61 false 32 49 786432  # Select next source in Input menu: off
+symbolic_hotkey 64 true 47 44 1048576  # Show Spotlight search: Cmd+/
+symbolic_hotkey 65 false 32 49 1572864 # Show Finder search window: off
 
 # Disable automatic spelling correction
 defaults write -g NSAutomaticSpellingCorrectionEnabled -bool false
@@ -393,6 +414,16 @@ python3 "$(dirname -- "${BASH_SOURCE[0]}")/../scripts/macos_preferences.py" com.
 # --- Dock ---
 echo "Setting Dock preferences..."
 
+if ! command -v dockutil >/dev/null; then
+  echo "dockutil is missing; it is installed by the Brewfile step." >&2
+  exit 1
+fi
+for app in Calendar Contacts FaceTime Games Mail Maps Music Phone Photos Reminders Safari TV; do
+  if dockutil --find "$app" >/dev/null; then
+    dockutil --remove "$app" --no-restart
+  fi
+done
+
 # Position on screen: left, bottom, right
 defaults write com.apple.dock orientation -string "bottom"
 
@@ -449,6 +480,32 @@ defaults write com.apple.WindowManager EnableTilingByEdgeDrag -bool false
 defaults write com.apple.WindowManager EnableTopTilingByEdgeDrag -bool false
 defaults write com.apple.WindowManager EnableTilingOptionAccelerator -bool false
 defaults write com.apple.WindowManager EnableTiledWindowMargins -bool false
+
+# Hammerspoon's key listeners (cmd+cmd picker) need Accessibility, which only the user can grant.
+hammerspoon_access() {
+  sqlite3 "/Library/Application Support/com.apple.TCC/TCC.db" \
+    "select auth_value from access where service = 'kTCCServiceAccessibility' and client = 'org.hammerspoon.Hammerspoon'"
+}
+open -a Hammerspoon
+if [ "$(hammerspoon_access)" != 2 ]; then
+  until [ "$(hammerspoon_access)" = 2 ]; do
+    open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
+    read -r -p "Allow Hammerspoon in Accessibility, then press Enter. " || exit 1
+  done
+  killall Hammerspoon || true
+  open -a Hammerspoon
+fi
+
+# Apps that start at login and run now
+login_apps=(1Password Docker "Google Drive" LuLu OverSight Portkeeper "Remember The Milk" Shottr Telegram ToothFairy)
+login_items=$(osascript -e 'tell application "System Events" to get the name of every login item')
+for app in "${login_apps[@]}"; do
+  case ", $login_items, " in
+  *", $app, "*) ;;
+  *) osascript -e "tell application \"System Events\" to make login item at end with properties {path:\"/Applications/$app.app\", hidden:false}" >/dev/null ;;
+  esac
+  open -g -a "/Applications/$app.app"
+done
 
 # Disable the multi-display swoosh animation when switching spaces
 defaults write com.apple.dock workspaces-swoosh-animation-off -bool true # Corrected: true disables it

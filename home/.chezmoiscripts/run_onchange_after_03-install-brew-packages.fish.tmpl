@@ -36,6 +36,24 @@ and set -gx HOMEBREW_SUDO_CHECKED 1
 brew bundle cleanup --global --force --no-mas; or exit 1
 brew bundle --global --no-upgrade; or exit 1
 
+# Casks with a manual installer only stage their setup app; run it until the app it installs exists.
+set -l caskroom (brew --caskroom)
+for line in (brew info --json=v2 --cask (brew bundle list --global --cask) | jq -r '
+    .casks[] | select(.installed != null)
+    | [.token, .installed,
+       ([.artifacts[] | .installer? // empty | .[] | .manual? // empty] | first),
+       ([.artifacts[] | .uninstall? // empty | .[] | .delete? // empty] | flatten | map(select(endswith(".app"))) | first)]
+    | select(.[2] != null and .[3] != null) | @tsv')
+    set -l cask (string split \t -- $line)
+    test -e $cask[4]; and continue
+    open "$caskroom/$cask[1]/$cask[2]/$cask[3]"; or exit 1
+    read -l -P "Finish the $cask[1] installer, then press Enter. " reply; or exit 1
+    test -e $cask[4]; or begin
+        echo "$cask[4] is still missing." >&2
+        exit 1
+    end
+end
+
 echo "---------------------------------"
 echo "brew install from Brewfile: done "
 echo "---------------------------------"
