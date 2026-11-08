@@ -7,7 +7,9 @@ echo "---------------------------------------"
 # Brewfile hash: {{ includeTemplate "brews/_assemble.brewfile" . | sha256sum }}
 
 # Cleanup resolves every Brewfile formula name, so declared taps must exist and be trusted first.
-for tap in (brew bundle list --global --tap)
+set -l declared_taps (brew bundle list --global --tap); or exit 1
+set -l pending_taps (brew ruby -e 'ARGV.each { |name| tap = Tap.fetch(name); puts name unless tap.installed? && Homebrew::Trust.trusted_tap?(tap) }' $declared_taps); or exit 1
+for tap in $pending_taps
     brew tap $tap; or exit 1
     brew trust --tap $tap; or exit 1
 end
@@ -32,6 +34,11 @@ end
 set -l init_pid (cat ~/.cache/chezmoi/init-sudo 2>/dev/null)
 and test "$init_pid" = (ps -o ppid= -p $fish_pid | string trim)
 and set -gx HOMEBREW_SUDO_CHECKED 1
+
+# Intel-only casks, such as Battle.net's setup app, need Rosetta on Apple Silicon.
+if test (uname -m) = arm64; and not pkgutil --pkg-info com.apple.pkg.RosettaUpdateAuto >/dev/null 2>&1
+    sudo softwareupdate --install-rosetta --agree-to-license; or exit 1
+end
 
 brew bundle cleanup --global --force --no-mas; or exit 1
 brew bundle --global --no-upgrade; or exit 1

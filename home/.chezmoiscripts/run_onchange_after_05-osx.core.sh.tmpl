@@ -6,6 +6,7 @@ echo "------------------------------"
 echo "osx settings: applying..."
 echo "------------------------------"
 # OSX hash: {{ joinPath .chezmoi.sourceDir ".osx.core" | include | sha256sum }}
+# Keyboard shortcuts hash: {{ joinPath .chezmoi.sourceDir ".symbolichotkeys.plist" | include | sha256sum }}
 # Finder helper hash: {{ joinPath .chezmoi.sourceDir ".." "scripts" "macos_preferences.py" | include | sha256sum }}
 bash {{ joinPath .chezmoi.sourceDir ".require-terminal-permissions.sh" | quote }}
 bash {{ joinPath .chezmoi.sourceDir ".osx.core" | quote }}

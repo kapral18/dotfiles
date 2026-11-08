@@ -117,15 +117,8 @@ defaults write com.apple.HIToolbox AppleEnabledInputSources -array \
   '<dict><key>InputSourceKind</key><string>Keyboard Layout</string><key>KeyboardLayout ID</key><integer>19456</integer><key>KeyboardLayout Name</key><string>Russian</string></dict>' \
   '<dict><key>Bundle ID</key><string>com.apple.PressAndHold</string><key>InputSourceKind</key><string>Non Keyboard Input Method</string></dict>'
 
-# Cmd+Space switches to the previous input source; Spotlight moves to Cmd+/
-symbolic_hotkey() {
-  defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add "$1" \
-    "<dict><key>enabled</key><$2/><key>value</key><dict><key>type</key><string>standard</string><key>parameters</key><array><integer>$3</integer><integer>$4</integer><integer>$5</integer></array></dict></dict>"
-}
-symbolic_hotkey 60 true 32 49 1048576  # Select the previous input source: Cmd+Space
-symbolic_hotkey 61 false 32 49 786432  # Select next source in Input menu: off
-symbolic_hotkey 64 true 47 44 1048576  # Show Spotlight search: Cmd+/
-symbolic_hotkey 65 false 32 49 1572864 # Show Finder search window: off
+# Keyboard shortcuts: copy of the primary Mac table, with nearly everything off
+defaults import com.apple.symbolichotkeys "$(dirname -- "${BASH_SOURCE[0]}")/.symbolichotkeys.plist"
 
 # Disable automatic spelling correction
 defaults write -g NSAutomaticSpellingCorrectionEnabled -bool false
