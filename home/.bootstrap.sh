@@ -86,6 +86,71 @@ MSG
   onepassword_ready
 }
 
+repo_argument_given() {
+  local url="" line word words repo owner skip_value="" config="${CHEZMOI_WORKING_TREE:-}/.git/config"
+  [ -f "$config" ] || return 1
+  while read -r line; do
+    case "$line" in "url = "*)
+      url="${line#url = }"
+      break
+      ;;
+    esac
+  done < "$config"
+  [ -n "$url" ] || return 1
+  repo="$(printf '%s' "${url%.git}" | tr '[:upper:]' '[:lower:]')"
+  repo="${repo#*github.com[:/]}"
+  owner="${repo%%/*}"
+  read -r -a words <<< "${CHEZMOI_ARGS:-}"
+  for word in "${words[@]:1}"; do
+    if [ -n "$skip_value" ]; then
+      skip_value=""
+      continue
+    fi
+    case "$word" in
+      --age-recipient | --age-recipient-file | --branch | --cache | --config-format | --mode | --persistent-state | --promptBool | --promptChoice | --promptInt | --promptMultichoice | --promptString | \
+        -c | --config | -C | --config-path | -d | --depth | -D | --destination | -i | --include | -o | --output | \
+        -S | --source | -W | --working-tree | -x | --exclude)
+        skip_value=1
+        continue
+        ;;
+      -*) continue ;;
+    esac
+    word="$(printf '%s' "${word%/}" | tr '[:upper:]' '[:lower:]')"
+    word="${word%.git}"
+    word="${word#*github.com[:/]}"
+    if [ "$word" = "$repo" ] || { [ -n "$owner" ] && [ "$word" = "$owner" ]; }; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+refresh_source() {
+  repo_argument_given || return 0
+
+  local tree="$CHEZMOI_WORKING_TREE" branch
+  command -v brew > /dev/null 2>&1 || load_brew
+  if [ -n "$(git -C "$tree" status --porcelain)" ]; then
+    echo "$tree has local changes. Commit, stash or remove them, then rerun the setup command." >&2
+    exit 1
+  fi
+
+  if ! branch="$(git -C "$tree" symbolic-ref --short -q HEAD)"; then
+    echo "$tree is not on a branch. Check out its main branch, then rerun the setup command." >&2
+    exit 1
+  fi
+  git -C "$tree" fetch --quiet origin "$branch"
+  if git -C "$tree" merge-base --is-ancestor FETCH_HEAD HEAD; then
+    return 0
+  fi
+  if ! git -C "$tree" merge --ff-only --quiet FETCH_HEAD; then
+    echo "$tree has commits that are not on GitHub. Push or remove them, then rerun the setup command." >&2
+    exit 1
+  fi
+  echo "Updated $tree to the latest version. Rerun the setup command." >&2
+  exit 1
+}
+
 prepare_github() {
   if ! command -v gh > /dev/null 2>&1; then
     command -v brew > /dev/null 2>&1 || load_brew
@@ -103,5 +168,6 @@ prepare_github() {
 }
 
 /bin/bash "${BASH_SOURCE[0]%/*}/.require-terminal-permissions.sh"
+refresh_source
 prepare_1password
 prepare_github

@@ -17,8 +17,8 @@ class BootstrapTests(unittest.TestCase):
         self.root = Path(self.tmp.name)
         self.bin = self.root / "bin"
         self.bin.mkdir()
-        for tool in ("cat", "mkdir"):
-            (self.bin / tool).symlink_to(f"/bin/{tool}")
+        for tool in ("/bin/cat", "/bin/mkdir", "/usr/bin/tr"):
+            (self.bin / Path(tool).name).symlink_to(tool)
         self.prefix = self.root / "homebrew"
         (self.prefix / "bin").mkdir(parents=True)
         self.log = self.root / "calls"
@@ -162,6 +162,56 @@ class BootstrapTests(unittest.TestCase):
         result = self.run_bootstrap()
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.log.read_text(), "")
+
+    def test_install_command_updates_a_stale_clean_clone_first(self) -> None:
+        (self.bin / "git").symlink_to("/usr/bin/git")
+        self.brew.rename(self.prefix / "bin/brew")
+        origin = self.root / "origin"
+        clone = self.root / "clone"
+
+        def git(*args: str, cwd: Path = clone) -> str:
+            return subprocess.run(
+                ["/usr/bin/git", "-c", "user.name=t", "-c", "user.email=t@t", *args],
+                cwd=cwd,
+                env=self.env,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+
+        origin.mkdir()
+        git("init", "-q", "-b", "main", cwd=origin)
+        git("commit", "-q", "--allow-empty", "-m", "one", cwd=origin)
+        git("clone", "-q", str(origin), str(clone), cwd=self.root)
+        git("remote", "set-url", "origin", "https://github.com/owner/dotfiles.git")
+        git("config", f"url.{origin}.insteadOf", "https://github.com/owner/dotfiles.git")
+        git("commit", "-q", "--allow-empty", "-m", "two", cwd=origin)
+        self.env["CHEZMOI_WORKING_TREE"] = str(clone)
+
+        for plain_init in (
+            "chezmoi init --apply",
+            "chezmoi init --branch owner",
+            "chezmoi init -S dotfiles",
+            f"chezmoi init -S {clone}",
+        ):
+            self.env["CHEZMOI_ARGS"] = plain_init
+            self.assertEqual(self.run_bootstrap().returncode, 0)
+            self.assertNotEqual(git("rev-parse", "HEAD"), git("rev-parse", "HEAD", cwd=origin))
+
+        self.env["CHEZMOI_ARGS"] = "chezmoi init --apply Owner"
+        (clone / "local").write_text("edit")
+        result = self.run_bootstrap()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("local changes", result.stderr)
+        (clone / "local").unlink()
+
+        result = self.run_bootstrap()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Rerun", result.stderr)
+        self.assertEqual(git("rev-parse", "HEAD"), git("rev-parse", "HEAD", cwd=origin))
+
+        result = self.run_bootstrap()
+        self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_failed_prerequisites_fail_init(self) -> None:
         for failure, last_call in (
