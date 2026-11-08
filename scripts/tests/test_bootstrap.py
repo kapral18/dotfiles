@@ -133,7 +133,7 @@ class BootstrapTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.log.read_text(), "")
 
-    def test_failed_prerequisites_fail_the_hook(self) -> None:
+    def test_failed_prerequisites_fail_init(self) -> None:
         for failure, last_call in (
             ("INSTALL_STATUS", "brew install --cask 1password"),
             ("AUTH_STATUS", "authenticate"),

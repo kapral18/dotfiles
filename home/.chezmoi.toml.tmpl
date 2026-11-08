@@ -1,5 +1,7 @@
 #:schema https://www.schemastore.org/chezmoi.json
 
+{{ output "/bin/sh" "-c" `[ "$CHEZMOI_COMMAND" = init ] || exit 0; if { true < /dev/tty; } 2> /dev/null; then exec /bin/bash "$1" < /dev/tty >&2; fi; exec /bin/bash "$1" >&2` "sh" (joinPath .chezmoi.sourceDir ".install-1password.sh") -}}
+
 [data]
 primaryEmail = {{ promptStringOnce . "primaryEmail" "Enter your primary email*: " | quote }}
 primaryPublicSshKey = {{ promptStringOnce . "primaryPublicSshKey" "Enter your primary public SSH key*: " | quote }}
@@ -16,8 +18,4 @@ downloadLlamaCppModels = {{ promptBoolOnce . "downloadLlamaCppModels" "Download 
 
 [scriptEnv]
 PATH = {{ printf "%s/.local/bin:%s/bin:%s/sbin:%s" .chezmoi.homeDir $homebrewPrefix $homebrewPrefix (env "PATH") | splitList ":" | uniq | join ":" | quote }}
-
-[hooks.read-source-state.pre]
-command = "/bin/bash"
-args = [{{ joinPath .chezmoi.sourceDir ".install-1password.sh" | quote }}]
 

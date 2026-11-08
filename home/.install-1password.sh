@@ -13,7 +13,7 @@ onepassword_app_installed() {
 }
 
 onepassword_ready() {
-  if ! op whoami > /dev/null; then
+  if ! op signin < /dev/null > /dev/null; then
     echo "1Password CLI authentication failed. Check the settings above, then rerun the setup command." >&2
     return 1
   fi
@@ -73,6 +73,9 @@ Sign in to 1Password, then enable:
 Unlock 1Password and make sure your GitHub SSH key is available to the agent.
 Press Enter when ready. macOS and 1Password may ask for approval during setup.
 EOF
-read -r _
+read -r _ || {
+  echo "1Password setup needs a terminal; rerun init interactively." >&2
+  exit 1
+}
 
 onepassword_ready
