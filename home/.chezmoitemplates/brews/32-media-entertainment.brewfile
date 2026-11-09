@@ -1,3 +1,7 @@
 # Terminal EPUB/PDF/DJVU reader with vim-style keybindings
 # https://github.com/bugzmanov/bookokrat
 brew "bookokrat"
+# Reddit in your terminal with tabs and inline images and video
+# https://github.com/kapral18/redtab
+tap "kapral18/tap", trusted: true
+brew "kapral18/tap/redtab"
