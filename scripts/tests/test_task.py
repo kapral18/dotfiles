@@ -811,6 +811,9 @@ class TestTask(unittest.TestCase):
         note = self.hook("tool", tool="Bash")["note"]
         self.assertIn("zoom out", note)
         self.assertEqual(self.guard_counts()["zoom-out"], ["2", "-", "-", "-", "-"])
+        # The zoom-out after a mid-turn compaction must not consume the preference re-injection.
+        self.run_task("pref", "add", "Never mock the database")
+        self.assertIn("Never mock the database", self.hook("prompt", text="go on")["context"])
 
     def test_SHOULD_speak_codex_hook_json(self):
         self.set_card()
@@ -826,10 +829,11 @@ class TestTask(unittest.TestCase):
         )
         self.assertIn("lib/other.py is outside", post["hookSpecificOutput"]["additionalContext"])
 
+        self.run_task("pref", "add", "Never mock the database")
         compacted = self.hook("codex", **base, hook_event_name="SessionStart", source="compact")
-        self.assertIn(
-            "The conversation was compacted. Intent card", compacted["hookSpecificOutput"]["additionalContext"]
-        )
+        context = compacted["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("The conversation was compacted. Intent card", context)
+        self.assertIn("Never mock the database", context)
 
         stop = self.hook("codex", **base, hook_event_name="Stop", last_assistant_message="done")
         self.assertEqual(stop["decision"], "block")
@@ -1839,8 +1843,12 @@ class TestTask(unittest.TestCase):
         self.assertRegex(self.board(), r"question +.*keep CSV only, or add XLSX too\?")
 
         self.hook("prompt", text="csv only")
-        for item in ("D1", "D2"):
-            self.mark(item)
+        self.mark("D1")
+        self.run_task("block", "D2", "--reason", "needs the staging bucket", "--session", "s1")
+        self.hook("stop", answer="Done.")
+        self.assertRegex(self.board(), r"blocked +.*D2: needs the staging bucket")
+
+        self.mark("D2")
         self.hook("stop", answer="Done.")
         other = Path(self.tmp.name) / "other"
         other.mkdir()

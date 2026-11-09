@@ -69,6 +69,21 @@ class TestFilteredVectorSearch(unittest.TestCase):
                     self.assertAlmostEqual(actual["hits"][0]["cosine"], 0.6, places=6)
 
 
+class TestMixedDimensionSearch(unittest.TestCase):
+    def test_query_dimension_selects_capsules_mid_reembed(self):
+        with sqlite3.connect(":memory:", factory=VecConnection) as db:
+            db.execute("CREATE TABLE capsules(id, scope, kind, domain_tags, workspace_path, embedding, embedding_dim)")
+            db.create_function("vec_distance_cosine", 2, lambda left, right: 0.0)
+            db.execute(
+                "INSERT INTO capsules VALUES ('old', 'project', 'fact', '', NULL, ?, 3)", (struct.pack("fff", 1, 0, 0),)
+            )
+            db.execute(
+                "INSERT INTO capsules VALUES ('new', 'project', 'fact', '', NULL, ?, 2)", (struct.pack("ff", 1, 0),)
+            )
+            actual = vec_runner._knn(db, {"query_vector": [1.0, 0.0], "limit": 5, "filters": {"scopes": ["project"]}})
+            self.assertEqual([hit["id"] for hit in actual["hits"]], ["new"])
+
+
 class TestUnfilteredVectorSearch(unittest.TestCase):
     def test_returns_nearest_capsules_with_requested_result_limit(self):
         with sqlite3.connect(":memory:", factory=VecConnection) as db:

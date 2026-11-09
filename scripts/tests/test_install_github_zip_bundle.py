@@ -10,7 +10,6 @@ from pathlib import Path
 from _test_support import modern_bash
 from install_github_zip_bundle import (
     InstallError,
-    already_installed,
     find_bundle_root,
     install_bundle,
     write_wrapper,
@@ -65,7 +64,10 @@ class TestInstallGithubZipBundle(unittest.TestCase):
             self.assertEqual(result, "installed")
             self.assertTrue((opt_dir / "sd-cli").is_file())
             self.assertTrue((opt_dir / "libstable-diffusion.dylib").is_file())
-            self.assertEqual((opt_dir / ".release-tag").read_text(encoding="utf-8").strip(), "master-820-de298c2")
+            self.assertEqual(
+                (opt_dir / ".release").read_text(encoding="utf-8").strip(),
+                "master-820-de298c2|leejet/stable-diffusion.cpp|sd-*-bin-Darwin-macOS-*-arm64.zip|sd-cli",
+            )
             run = subprocess.run(
                 [str(wrapper)],
                 env={**os.environ, "DYLD_FALLBACK_LIBRARY_PATH": "", "LD_LIBRARY_PATH": ""},
@@ -76,30 +78,35 @@ class TestInstallGithubZipBundle(unittest.TestCase):
             self.assertEqual(run.returncode, 0, run.stderr)
             self.assertEqual(run.stdout.splitlines(), [str(opt_dir.resolve()), str(opt_dir.resolve())])
 
-    def test_it_should_skip_when_release_tag_matches(self) -> None:
+    def test_it_should_skip_only_when_the_whole_release_record_matches(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             opt_dir = tmp_path / "opt" / "sd-cli"
             opt_dir.mkdir(parents=True)
             (opt_dir / "sd-cli").write_text("#!/bin/sh\n", encoding="utf-8")
-            (opt_dir / ".release-tag").write_text("master-820-de298c2\n", encoding="utf-8")
+            (opt_dir / ".release").write_text(
+                "master-820-de298c2|leejet/stable-diffusion.cpp|*.zip|sd-cli\n", encoding="utf-8"
+            )
             wrapper = tmp_path / "bin" / "sd-cli"
             write_wrapper(wrapper, opt_dir, "sd-cli")
 
             def download(*_args):
-                raise AssertionError("download must not run when the tag already matches")
+                raise InstallError("downloaded")
 
-            result = install_bundle(
-                repo="leejet/stable-diffusion.cpp",
-                tag="master-820-de298c2",
-                pattern="*.zip",
-                opt_dir=opt_dir,
-                bin_name="sd-cli",
-                wrapper_path=wrapper,
-                download=download,
-            )
-            self.assertEqual(result, "skipped")
-            self.assertTrue(already_installed(opt_dir, wrapper, "sd-cli", "master-820-de298c2"))
+            def install(pattern):
+                return install_bundle(
+                    repo="leejet/stable-diffusion.cpp",
+                    tag="master-820-de298c2",
+                    pattern=pattern,
+                    opt_dir=opt_dir,
+                    bin_name="sd-cli",
+                    wrapper_path=wrapper,
+                    download=download,
+                )
+
+            self.assertEqual(install("*.zip"), "skipped")
+            with self.assertRaisesRegex(InstallError, "downloaded"):
+                install("*-x64.zip")
 
     def test_it_should_use_nested_zip_directory_as_bundle_root(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

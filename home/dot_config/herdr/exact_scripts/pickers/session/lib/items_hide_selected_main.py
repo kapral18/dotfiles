@@ -8,6 +8,7 @@ import time
 from pathlib import Path
 
 import frecency
+import only_filter
 from pick_session_grouping import grouped_output, simple_resolve
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "lib"))
@@ -269,5 +270,5 @@ try:
 except Exception:
     frecency_scores = {}
 
-for line in grouped_output(base_rows, scan_roots, resolve_path, frecency_scores):
+for line in grouped_output(only_filter.apply(base_rows), scan_roots, resolve_path, frecency_scores):
     print(line)

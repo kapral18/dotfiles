@@ -231,7 +231,7 @@ run_parallel() {
   # Source-tree execution uses chezmoi's readonly_ filename.
   [ -f "$helper" ] || helper="${self%/*}/readonly_native_runner.py"
   local results="$_tmpdir/results"
-  local helper_pid rc=0 updated failed
+  local helper_pid rc=0 updated skipped failed
   local -a runner_args=(--script "$self" --results "$results")
   [ "$verbose" -eq 1 ] && runner_args+=(--verbose)
 
@@ -246,9 +246,10 @@ run_parallel() {
   wait "$helper_pid" || rc=$?
   trap - INT TERM
 
-  if [ -f "$results" ] && read -r updated failed < "$results" \
-    && [[ "$updated" =~ ^[0-9]+$ ]] && [[ "$failed" =~ ^[0-9]+$ ]]; then
+  if [ -f "$results" ] && read -r updated skipped failed < "$results" \
+    && [[ "$updated" =~ ^[0-9]+$ ]] && [[ "$skipped" =~ ^[0-9]+$ ]] && [[ "$failed" =~ ^[0-9]+$ ]]; then
     total_updated=$((total_updated + updated))
+    total_skipped=$((total_skipped + skipped))
     total_failed=$((total_failed + failed))
   else
     total_failed=$((total_failed + ${#active_labels[@]}))
@@ -526,6 +527,11 @@ run_parallel update_brew update_casks update_gh update_mise update_uv \
 if [ "$parallel_rc" -eq 0 ]; then
   update_brew_cleanup
   update_manual
+fi
+
+# A parallel lane reports its step tally to the parent runner.
+if [ -n "${UPDATE_TALLY_FILE:-}" ]; then
+  printf '%s %s %s\n' "$total_updated" "$total_skipped" "$total_failed" > "$UPDATE_TALLY_FILE"
 fi
 
 overall_end=$(date +%s)

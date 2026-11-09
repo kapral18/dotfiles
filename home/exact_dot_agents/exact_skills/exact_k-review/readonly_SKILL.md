@@ -1,6 +1,6 @@
 ---
 name: k-review
-description: "Use to review local changes, a PR, review threads (PR fixes), or a plan, and for independent verify rounds (two fresh reviewers and a fix loop, repeated until a whole-scope round is clean; a returning cause or fix churn parks it for the user)."
+description: "Use to review local changes, a PR, review threads (PR fixes), or a plan, and for independent verify rounds (two fresh reviewers and a fix loop, repeated until a whole-scope round is clean; a cause that returns twice or a mechanism that churns again after its replacement parks it for the user)."
 ---
 
 # Review
@@ -59,7 +59,7 @@ An explicitly requested draft review uses the same depth as a ready PR.
 - Also check for one contract expressed inconsistently in two places, and for gaps (missing consumers, docs, generated outputs, tests).
 - Reuse checks already run on this snapshot; do not rerun them. Run a check only when a finding depends on it.
 - Treat every finding as a hypothesis until a source read, repro, or failing check supports it. Drop unsupported findings.
-  Keep a material unverified one as `verification_needed` with the missing observation.
+  Keep a material unverified one under `Open:` with the missing observation.
 - Merge findings with the same cause.
   Do not invent cleanup findings outside the change; for a change you may edit, also report defects in its impact (`~/AGENTS.md` §3 step 1),
   collecting its impact list with `k-behavior-map` (before a change) when none exists.
@@ -104,7 +104,7 @@ Use when `~/AGENTS.md` §3 step 5 requires a review of a finished change, or whe
    Put previous findings and dispositions in a separate history file, not the initial packet.
    Give its path: each reviewer assesses source first, then reads and reconciles history before returning, within the same invocation.
    Keep stable finding IDs, original triggers, resolution reasons and evidence in that history;
-   later full rounds and verify-again runs reconcile every finding fixed, rejected, or proposed so far.
+   later two-reviewer rounds and verify-again runs reconcile every finding fixed, rejected, or proposed so far.
    Tell the reviewers of a narrowed later round (`review_fixes.md` step 7) that it is narrowed and which files it covers.
 3. Merge criterion/fix results and findings.
    Require evidence for each applicable criterion and claimed fix.
@@ -114,7 +114,7 @@ Use when `~/AGENTS.md` §3 step 5 requires a review of a finished change, or whe
    Criteria constrain scope expansion, not defect discovery: accept new supported defects in scope or impact in every round, including regressions introduced by fixes.
    New behavior outside it stays a proposal.
 4. Apply supported findings within write scope using `~/.agents/skills/k-review/references/review_fixes.md`.
-   Its Fix procedure (the Verify-mode steps) owns scratch copies, checks, fix-diff reviews, further full rounds, and stopping rules.
+   Its Fix procedure (the Verify-mode steps) owns scratch copies, checks, fix-diff reviews, further two-reviewer rounds, and stopping rules.
 5. Copy every file in the reviewed scope, as it stands after the fixes, into the baseline, even when nothing was fixed:
    a fresh directory under `/tmp` for the task's first Verify review, the existing baseline after that.
    For a file with a fix whose review is blocked (`review_fixes.md` step 8), copy the pre-fix copy from the earliest such round that touched it instead,
@@ -124,7 +124,7 @@ Use when `~/AGENTS.md` §3 step 5 requires a review of a finished change, or whe
    An agreed handoff records the needed baseline's path.
 6. Report the review scope, the count of fixed findings, rejected findings with one-line reasons, `Open:` items with their blockers, `Proposed:` items (`~/AGENTS.md` §3 step 8), a `Decision needed:` for each parked cause or mechanism (`review_fixes.md` step 6), and the rounds trend (`review_fixes.md` step 8).
 
-Run full rounds without asking until `review_fixes.md` says to stop.
+Run two-reviewer rounds without asking until `review_fixes.md` says to stop.
 
 ## Posting
 

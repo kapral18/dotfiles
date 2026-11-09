@@ -686,15 +686,22 @@ def cmd_check(ctx: Context, args: argparse.Namespace) -> int:
         if count > AREA_SOFT_LIMIT:
             problems += 1
             print(f"area {area}: {count} entries (soft limit {AREA_SOFT_LIMIT}); keep only critical behaviors")
-    advice = {"merged": "run `promote`", "closed": "run `drop`", "gone": "branch is gone; `promote` or `drop`"}
+    advice = {
+        "merged": "run `promote`",
+        "closed": "run `drop`",
+        "gone": "branch is gone; `promote` or `drop`",
+    }
     for overlay in overlay_dirs(ctx):
         state = branch_state(ctx, overlay, args.offline)
         name = overlay_meta(overlay).get("branch", overlay.name)
         conflicts = len(list(overlay.glob("*/*.merge.md")))
-        if state in advice or conflicts:
+        hint = advice.get(state)
+        if state == "unknown":
+            hint = f"no branch record, so `promote`/`drop` cannot name it; delete {overlay}"
+        if hint or conflicts:
             problems += 1
             extra = f"; {conflicts} conflicts wait for `resolve`" if conflicts else ""
-            print(f"overlay {name}: {state}" + (f" — {advice[state]}" if state in advice else "") + extra)
+            print(f"overlay {name}: {state}" + (f" — {hint}" if hint else "") + extra)
     if problems == 0:
         print("behavior map OK")
     return 1 if problems else 0

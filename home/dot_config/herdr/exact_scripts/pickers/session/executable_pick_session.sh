@@ -224,6 +224,8 @@ mode_flag="${cache_dir}/pick_session_send_mode.$$"
 wt_mode_flag="${cache_dir}/pick_session_wt_mode.$$"
 wt_branch_tmp="${cache_dir}/pick_session_wt_branch.$$.txt"
 only_mode_flag="${cache_dir}/pick_session_only_mode.$$"
+rm -f "$only_mode_flag"
+export PICK_SESSION_ONLY_FILE="$only_mode_flag"
 rm_confirm_flag="${cache_dir}/pick_session_rm_confirm.$$"
 rm_pending_snap="${cache_dir}/pick_session_rm_pending.$$.tsv"
 # fzf SIGKILLs a still-running alt-x helper on exit, skipping its trap, so its
@@ -295,9 +297,10 @@ kill_reload="$(snapshot_reload_command "$hide_selected_cmd {+f} kill {q}")"
 # would already be a literal path that fzf had just deleted. Running
 # `dispatch_async.sh` *during* the transform shell snapshots `{+f}` to a stable
 # mktemp while the file is still alive, sidestepping that race.
-_modal_header='?=help  ctrl-/=preview  alt-y=copy  alt-o=filter  alt-c=new wt  alt-g=GitHub'
+_modal_header="$("$only_cycle_cmd" "$only_mode_flag" --header)"
+_restore_header="transform-header($(printf %q "$only_cycle_cmd") $(printf %q "$only_mode_flag") --header)"
 _modal_rebind='ctrl-s,ctrl-x,alt-x,alt-y,alt-c,alt-o,alt-p,alt-i,alt-g,change'
-send_restore="enable-search+change-prompt($fzf_prompt)+change-ghost($fzf_ghost)+change-header($_modal_header)+clear-query+deselect-all+rebind($_modal_rebind)+unbind(esc)"
+send_restore="enable-search+change-prompt($fzf_prompt)+change-ghost($fzf_ghost)+$_restore_header+clear-query+deselect-all+rebind($_modal_rebind)+unbind(esc)"
 
 #   esc stays unbound outside modals: `start` unbinds it once, so reloads
 #   (live refresh, re-sorting, ctrl-r) never touch it. The alt-x cue and the
@@ -306,7 +309,7 @@ send_restore="enable-search+change-prompt($fzf_prompt)+change-ghost($fzf_ghost)+
 #   the next alt-x forces the pending blocked selection.
 _altx_pending_q="$(printf %q "$rm_pending_snap")"
 altx_src_q="$(printf %q "$sort_source_file")"
-altx_visual_restore="change-prompt($fzf_prompt)+change-ghost($fzf_ghost)+change-header($_modal_header)+unbind(esc)"
+altx_visual_restore="change-prompt($fzf_prompt)+change-ghost($fzf_ghost)+$_restore_header+unbind(esc)"
 altx_check_prompt='⏳ removing…'
 altx_check_cue="change-prompt($altx_check_prompt)+rebind(esc)"
 # fzf --ansi hands {+f} snapshots back color-stripped while the row source

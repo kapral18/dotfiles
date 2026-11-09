@@ -289,7 +289,12 @@ process_custom_package_line() {
       return 1
     fi
     require_cmd python3
-    python3 "$INSTALL_ZIP_BUNDLE" "$repo" "$release_tag" "$pattern" "${HOME}/.local/opt/${tool_name}" "$bin_in_archive" "$BIN_DIR/$output_name"
+    local resolved_tag
+    resolved_tag=$(resolve_release_tag "$repo" "$release_tag") && [[ -n "$resolved_tag" ]] || {
+      echo "Error: Could not resolve release tag for $tool_name" >&2
+      return 1
+    }
+    python3 "$INSTALL_ZIP_BUNDLE" "$repo" "$resolved_tag" "$pattern" "${HOME}/.local/opt/${tool_name}" "$bin_in_archive" "$BIN_DIR/$output_name"
     ;;
   *)
     echo "Error: unknown custom package kind '$kind' in line: $trimmed_line" >&2

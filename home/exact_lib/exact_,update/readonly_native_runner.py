@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shlex
 import shutil
 import signal
@@ -107,7 +108,7 @@ class NativeRunner:
                 "autostart": True,
                 "cmd": ["bash", str(wrapper)],
                 "cwd": os.getcwd(),
-                "env": task_env,
+                "env": {**task_env, "UPDATE_TALLY_FILE": str(self.root / f"{category}.tally")},
             }
             if category in ON_MISE and "mise" in self.args.categories:
                 tasks[category]["deps"] = ["mise"]
@@ -116,15 +117,27 @@ class NativeRunner:
         )
 
     def collect(self) -> None:
-        updated = 0
+        """Sum each lane's step tally. A lane with an unreadable exit status, or a failing one without a failed
+        step in its tally, counts as one failure."""
+        updated = skipped = failed = 0
         for category in self.args.categories:
             try:
                 token = (self.root / f"{category}.rc").read_text(encoding="utf-8") if self.root else ""
             except (OSError, UnicodeError):
                 token = ""
-            if token in ("0", "0\n"):
-                updated += 1
-        Path(self.args.results).write_text(f"{updated} {len(self.args.categories) - updated}\n", encoding="utf-8")
+            if not re.fullmatch(r"(0|[1-9][0-9]*)\n?", token):
+                failed += 1
+                continue
+            try:
+                tally = [int(n) for n in (self.root / f"{category}.tally").read_text(encoding="utf-8").split()]
+            except (OSError, UnicodeError, ValueError):
+                tally = []
+            if len(tally) != 3 or min(tally) < 0:
+                tally = [1, 0, 0] if int(token) == 0 else [0, 0, 1]
+            elif int(token) != 0 and tally[2] == 0:
+                tally[2] = 1
+            updated, skipped, failed = updated + tally[0], skipped + tally[1], failed + tally[2]
+        Path(self.args.results).write_text(f"{updated} {skipped} {failed}\n", encoding="utf-8")
 
     def stop(self) -> bool:
         command = [self.dekit, "-C", str(self.root), "runner"]

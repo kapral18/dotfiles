@@ -48,27 +48,9 @@ local BASE_STROKE_WIDTH = 2
 local DRAG_THRESHOLD = 5 -- Pixels to move before considering it a drag
 local DRAG_DELAY = 0.2 -- Seconds to wait before drag starts
 
+-- States: INACTIVE, MOUSE, GRID. FSM.transition is the only writer of FSM.current;
+-- "PREVIOUS" leaves GRID for the state it was entered from.
 local FSM = {
-  states = {
-    INACTIVE = {
-      transitions = {
-        activate_mouse = "MOUSE",
-        activate_grid = "GRID",
-      },
-    },
-    MOUSE = {
-      transitions = {
-        deactivate = "INACTIVE",
-        activate_grid = "GRID",
-      },
-    },
-    GRID = {
-      transitions = {
-        deactivate = "PREVIOUS",
-        zoom_out = "GRID",
-      },
-    },
-  },
   current = "INACTIVE",
   context = {
     grid = {

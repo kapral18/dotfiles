@@ -8,9 +8,9 @@ The zip is extracted and the directory that contains <bin-in-zip> (plus sibling
 dylibs) is copied to opt_dir. A wrapper at wrapper_path execs that binary with
 DYLD_FALLBACK_LIBRARY_PATH / LD_LIBRARY_PATH set to opt_dir.
 
-Skip when opt_dir/.release-tag already matches <tag> and the wrapper plus binary
-exist. sd-cli --version does not print the GitHub release tag, so this file is
-the idempotency gate.
+Skip when opt_dir/.release holds the same <tag>|<repo>|<pattern>|<bin> record and
+the wrapper plus binary exist. sd-cli --version does not print the GitHub release
+tag, so this record is the idempotency gate.
 """
 
 from __future__ import annotations
@@ -85,12 +85,17 @@ def write_wrapper(wrapper_path: Path, opt_dir: Path, bin_name: str) -> None:
     wrapper_path.chmod(0o755)
 
 
-def already_installed(opt_dir: Path, wrapper_path: Path, bin_name: str, tag: str) -> bool:
-    tag_path = opt_dir / ".release-tag"
+def release_id(repo: str, tag: str, pattern: str, bin_name: str) -> str:
+    """The install record, shared with the file and tar_gz_bin kinds: any field change reinstalls."""
+    return f"{tag}|{repo}|{pattern}|{bin_name}"
+
+
+def already_installed(opt_dir: Path, wrapper_path: Path, bin_name: str, release: str) -> bool:
+    record = opt_dir / ".release"
     binary = opt_dir / bin_name
-    if not tag_path.is_file() or not wrapper_path.is_file() or not binary.is_file():
+    if not record.is_file() or not wrapper_path.is_file() or not binary.is_file():
         return False
-    return tag_path.read_text(encoding="utf-8").strip() == tag
+    return record.read_text(encoding="utf-8").strip() == release
 
 
 def install_bundle(
@@ -109,7 +114,8 @@ def install_bundle(
     wrapper_path = wrapper_path.expanduser()
     if Path(bin_name).name != bin_name:
         raise InstallError(f"error: bin-in-zip must be a basename, got {bin_name!r}")
-    if already_installed(opt_dir, wrapper_path, bin_name, tag):
+    release = release_id(repo, tag, pattern, bin_name)
+    if already_installed(opt_dir, wrapper_path, bin_name, release):
         return "skipped"
 
     with tempfile.TemporaryDirectory(prefix="zip-opt-") as tmp:
@@ -122,7 +128,7 @@ def install_bundle(
         bundle_root = find_bundle_root(extract_dir, bin_name)
         staging = tmp_path / "opt"
         shutil.copytree(bundle_root, staging)
-        (staging / ".release-tag").write_text(tag + "\n", encoding="utf-8")
+        (staging / ".release").write_text(release + "\n", encoding="utf-8")
         binary = staging / bin_name
         binary.chmod(binary.stat().st_mode | 0o111)
         opt_dir.parent.mkdir(parents=True, exist_ok=True)
@@ -137,7 +143,7 @@ def install_bundle(
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("repo", help="GitHub owner/repo")
-    parser.add_argument("tag", help="Release tag")
+    parser.add_argument("tag", help="Resolved release tag")
     parser.add_argument("pattern", help="gh --pattern glob for the zip asset")
     parser.add_argument("opt_dir", type=Path, help="Install directory, e.g. ~/.local/opt/sd-cli")
     parser.add_argument("bin_name", help="Basename of the binary inside the zip")

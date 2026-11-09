@@ -30,7 +30,7 @@ fi
 selection_file=""
 background=0
 branches_file=""
-dispatch_scope="${GH_PICKER_DISPATCH_SCOPE:-}"
+dispatch_scope=""
 dispatch_sock="${GH_PICKER_DISPATCH_SOCK:-}"
 dispatch_cache_file="${GH_PICKER_DISPATCH_CACHE_FILE:-}"
 
@@ -202,10 +202,6 @@ if [ ${#issues[@]} -gt 0 ] && [ -n "$branches_file" ] && [ -f "$branches_file" ]
     issue_branches+=("${issue_repo}#${num}:${branch}")
   done < "$branches_file"
 fi
-
-created=0
-skipped=0
-failed=0
 
 # Detached survival must still be bounded: a hung `,gh-worktree` (network,
 # lock, prompt) would otherwise leave a rogue process + amber spinner forever.
@@ -454,26 +450,17 @@ _create_pr_worktree() {
   # Background `func &` keeps $$ as the parent batch pid; BASHPID is this create job.
   _ledger_append "$BASHPID" "pr" "$repo" "$num" "$loading_pid" || return 1
   ledger_published=1
-  if ! _run_timed ,gh-worktree pr "$repo" "$num" --print-root --no-bootstrap 9>&- > /dev/null 2>&1; then
-    skipped=$((skipped + 1))
-    return
-  fi
+  _run_timed ,gh-worktree pr "$repo" "$num" --print-root --no-bootstrap 9>&- > /dev/null 2>&1 || return
   if _run_timed ,gh-worktree pr "$repo" "$num" --quiet --no-bootstrap 9>&- 2> /dev/null; then
     settled=1
-    created=$((created + 1))
     _patch_cache_entry "pr" "$repo" "$num" "done"
     _notify_fzf_reload
-  else
-    failed=$((failed + 1))
   fi
 }
 
 _create_issue_worktree() {
   local repo="$1" num="$2" branch="$3" loading_pid="" settled=0 ledger_published=0
-  if [ -z "$branch" ]; then
-    skipped=$((skipped + 1))
-    return
-  fi
+  [ -n "$branch" ] || return
   # shellcheck disable=SC2329
   _item_cleanup() {
     _stop_loading "$loading_pid"
@@ -487,17 +474,11 @@ _create_issue_worktree() {
   _start_loading "issue" "$repo" "$num"
   _ledger_append "$BASHPID" "issue" "$repo" "$num" "$loading_pid" || return 1
   ledger_published=1
-  if ! _run_timed ,gh-worktree issue "$repo" "$num" --print-root --no-bootstrap --branch "$branch" 9>&- > /dev/null 2>&1; then
-    skipped=$((skipped + 1))
-    return
-  fi
+  _run_timed ,gh-worktree issue "$repo" "$num" --print-root --no-bootstrap --branch "$branch" 9>&- > /dev/null 2>&1 || return
   if _run_timed ,gh-worktree issue "$repo" "$num" --quiet --branch "$branch" --no-bootstrap 9>&- 2> /dev/null; then
     settled=1
-    created=$((created + 1))
     _patch_cache_entry "issue" "$repo" "$num" "done"
     _notify_fzf_reload
-  else
-    failed=$((failed + 1))
   fi
 }
 

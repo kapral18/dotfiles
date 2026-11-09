@@ -20,20 +20,12 @@ fi
 
 cd "$repo_root"
 
-staged_paths="$(
-  git diff --cached --name-only --diff-filter=ACMR
-)"
-
-if [ -z "$staged_paths" ]; then
-  exit 0
-fi
-
-# Convert string of paths to an array, handling spaces correctly
-mapfile -t paths < <(printf '%s\n' "$staged_paths")
+# Formatting covers staged files that still exist; checks also cover deletions.
+mapfile -t paths < <(git diff --cached --name-only --diff-filter=ACMR)
 
 # Avoid breaking partial-staging: formatting rewrites the working tree file and
 # then stages it. If a file has unstaged changes, abort and let the user decide.
-for path in "${paths[@]}"; do
+for path in "${paths[@]+"${paths[@]}"}"; do
   if ! git diff --quiet -- "$path"; then
     echo "pre-commit: refusing to auto-format with unstaged changes in: $path" >&2
     echo "pre-commit: stage the whole file (or stash changes) then retry." >&2
@@ -43,7 +35,7 @@ done
 
 # Repair only staged files, then run affected checks on the index.
 # The full suite is human-only (`make check-full`) and is never the commit path.
-if ! bin/fmt --check "${paths[@]}"; then
+if [ "${#paths[@]}" -gt 0 ] && ! bin/fmt --check "${paths[@]}"; then
   bin/fmt "${paths[@]}"
   git add -- "${paths[@]}"
 fi

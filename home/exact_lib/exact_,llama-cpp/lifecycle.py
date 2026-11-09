@@ -286,54 +286,64 @@ def start_owned_router(config: Config, owner_path: Path) -> None:
         command.extend(["--api-key", config.api_key])
 
     log_path = config.namespace / "router.log"
-    with log_path.open("ab", buffering=0) as log:
-        process = subprocess.Popen(
-            command,
-            stdin=subprocess.DEVNULL,
-            stdout=log,
-            stderr=subprocess.STDOUT,
-            start_new_session=True,
-        )
+    process: subprocess.Popen[bytes] | None = None
+    # The router runs in its own session, so an interrupted start must stop it here or nothing will.
+    try:
+        # Popen does not kill its child when a signal interrupts it between fork and exec, so the signals wait
+        # until `process` is set; the child gets the caller's mask back before exec.
+        mask = signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGINT, signal.SIGTERM, signal.SIGHUP})
+        try:
+            with log_path.open("ab", buffering=0) as log:
+                process = subprocess.Popen(
+                    command,
+                    stdin=subprocess.DEVNULL,
+                    stdout=log,
+                    stderr=subprocess.STDOUT,
+                    start_new_session=True,
+                    preexec_fn=lambda: signal.pthread_sigmask(signal.SIG_SETMASK, mask),
+                )
+        finally:
+            signal.pthread_sigmask(signal.SIG_SETMASK, mask)
 
-    start_identity = None
-    identity_deadline = time.monotonic() + 2.0
-    while time.monotonic() < identity_deadline and process.poll() is None:
-        start_identity = process_start_identity(process.pid)
-        if start_identity:
-            break
-        time.sleep(0.02)
-    if not start_identity:
-        if process.poll() is None:
+        start_identity = None
+        identity_deadline = time.monotonic() + 2.0
+        while time.monotonic() < identity_deadline and process.poll() is None:
+            start_identity = process_start_identity(process.pid)
+            if start_identity:
+                break
+            time.sleep(0.02)
+        if not start_identity:
+            raise LifecycleError("llama-server exited before its process identity could be recorded")
+
+        owner: dict[str, object] = {
+            "host": config.host,
+            "port": config.port,
+            "pid": process.pid,
+            "preset": str(config.preset),
+            "start_identity": start_identity,
+        }
+        write_state(owner_path, owner)
+
+        deadline = time.monotonic() + 30.0
+        while time.monotonic() < deadline:
+            if router_reachable(config):
+                return
+            return_code = process.poll()
+            if return_code is not None:
+                raise LifecycleError(f"llama-server exited with status {return_code}; see {log_path}")
+            time.sleep(0.05)
+
+        raise LifecycleError(f"llama-server did not become ready; see {log_path}")
+    except BaseException:
+        if process is not None and process.poll() is None:
             process.terminate()
             try:
                 process.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 process.kill()
                 process.wait()
-        raise LifecycleError("llama-server exited before its process identity could be recorded")
-
-    owner: dict[str, object] = {
-        "host": config.host,
-        "port": config.port,
-        "pid": process.pid,
-        "preset": str(config.preset),
-        "start_identity": start_identity,
-    }
-    write_state(owner_path, owner)
-
-    deadline = time.monotonic() + 30.0
-    while time.monotonic() < deadline:
-        if router_reachable(config):
-            return
-        return_code = process.poll()
-        if return_code is not None:
-            owner_path.unlink(missing_ok=True)
-            raise LifecycleError(f"llama-server exited with status {return_code}; see {log_path}")
-        time.sleep(0.05)
-
-    stop_owned_router(owner)
-    owner_path.unlink(missing_ok=True)
-    raise LifecycleError(f"llama-server did not become ready; see {log_path}")
+        owner_path.unlink(missing_ok=True)
+        raise
 
 
 # How long a live owned router may stay unanswering before acquire gives up instead of starting a second one.
@@ -348,32 +358,32 @@ def acquire(config: Config) -> Lease:
         prune_and_count_leases(config.namespace)
         shutdown_path.unlink(missing_ok=True)
         lease = Lease.create(config.namespace)
-        if router_reachable(config):
-            return lease
-        owner = read_owner(owner_path)
-        if owner is not None and owner_process_matches(owner):
-            # A busy router misses the short probe; starting a second one would orphan it.
-            deadline = time.monotonic() + OWNER_WAIT_SECONDS
-            while time.monotonic() < deadline:
-                if router_reachable(config):
-                    return lease
-                time.sleep(0.2)
-            lease.close()
-            raise LifecycleError(
-                f"owned llama-server (pid {owner.get('pid')}) is running but not answering at {config.base_url}"
-            )
-        if not is_loopback(config.host):
-            lease.close()
-            raise LifecycleError(
-                f"llama.cpp router is not reachable at {config.base_url}; "
-                "automatic startup is limited to loopback hosts"
-            )
+        # Creating the lease cancelled any scheduled reaper, so every way out without a lease must settle the router.
         try:
+            if router_reachable(config):
+                return lease
+            owner = read_owner(owner_path)
+            if owner is not None and owner_process_matches(owner):
+                # A busy router misses the short probe; starting a second one would orphan it.
+                deadline = time.monotonic() + OWNER_WAIT_SECONDS
+                while time.monotonic() < deadline:
+                    if router_reachable(config):
+                        return lease
+                    time.sleep(0.2)
+                raise LifecycleError(
+                    f"owned llama-server (pid {owner.get('pid')}) is running but not answering at {config.base_url}"
+                )
+            if not is_loopback(config.host):
+                raise LifecycleError(
+                    f"llama.cpp router is not reachable at {config.base_url}; "
+                    "automatic startup is limited to loopback hosts"
+                )
             start_owned_router(config, owner_path)
-        except Exception:
+            return lease
+        except BaseException:
             lease.close()
+            settle_unleased_router(config)
             raise
-        return lease
 
 
 def marker_matches_owner(marker: dict[str, object], owner: dict[str, object]) -> bool:
@@ -445,23 +455,28 @@ def schedule_shutdown(config: Config, owner: dict[str, object]) -> None:
         (config.namespace / "owner.json").unlink(missing_ok=True)
 
 
-def release(config: Config, lease: Lease) -> None:
+def settle_unleased_router(config: Config) -> None:
+    """With the lifecycle lock held: once no lease remains, schedule or perform the owned router's shutdown."""
     owner_path = config.namespace / "owner.json"
     shutdown_path = config.namespace / "shutdown.json"
+    if prune_and_count_leases(config.namespace) != 0:
+        return
+    owner = read_owner(owner_path)
+    if owner is None:
+        shutdown_path.unlink(missing_ok=True)
+        return
+    if config.grace_seconds > 0:
+        schedule_shutdown(config, owner)
+        return
+    stop_owned_router(owner)
+    owner_path.unlink(missing_ok=True)
+    shutdown_path.unlink(missing_ok=True)
+
+
+def release(config: Config, lease: Lease) -> None:
     with exclusive_lock(config.namespace / "lifecycle.lock"):
         lease.close()
-        if prune_and_count_leases(config.namespace) != 0:
-            return
-        owner = read_owner(owner_path)
-        if owner is None:
-            shutdown_path.unlink(missing_ok=True)
-            return
-        if config.grace_seconds > 0:
-            schedule_shutdown(config, owner)
-            return
-        stop_owned_router(owner)
-        owner_path.unlink(missing_ok=True)
-        shutdown_path.unlink(missing_ok=True)
+        settle_unleased_router(config)
 
 
 def stop(config: Config, force: bool) -> int:
@@ -494,7 +509,6 @@ def stop(config: Config, force: bool) -> int:
 def run(config: Config, command: list[str]) -> int:
     if not command:
         raise LifecycleError("run requires a command after --")
-    lease = acquire(config)
     child: subprocess.Popen[bytes] | None = None
 
     caught: list[int] = []
@@ -518,6 +532,12 @@ def run(config: Config, command: list[str]) -> int:
     previous = {signum: signal.signal(signum, terminate) for signum in trapped}
     try:
         try:
+            lease = acquire(config)
+        except KeyboardInterrupt:
+            return 128 + signal.SIGINT
+        except Terminated as termination:
+            return 128 + termination.signum
+        try:
             child = subprocess.Popen(command)
             return child.wait()
         except OSError as error:
@@ -532,12 +552,11 @@ def run(config: Config, command: list[str]) -> int:
                 child.send_signal(termination.signum)
                 child.wait()
             return 128 + termination.signum
-    finally:
-        try:
-            release(config, lease)
         finally:
-            for signum, handler in previous.items():
-                signal.signal(signum, handler)
+            release(config, lease)
+    finally:
+        for signum, handler in previous.items():
+            signal.signal(signum, handler)
 
 
 def main(argv: list[str]) -> int:

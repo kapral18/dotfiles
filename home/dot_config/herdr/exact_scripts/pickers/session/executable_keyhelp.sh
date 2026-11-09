@@ -60,5 +60,5 @@ Ordering
 Notes
   - actions operate on the selected rows (multi-select aware)
   - killing/removing writes short-lived tombstones to avoid reappearing items
-  - alt-o filter is a transient view; a kill/remove repaint clears it
+  - alt-o filter applies to this picker only and survives every reload until alt-o cycles back to all
 EOF

@@ -16,10 +16,12 @@ FAKE_OP = """#!/bin/sh
 store="$FAKE_OP_STORE"
 case "$1 $2" in
   "account get") exit 0 ;;
-  "document get") [ -f "$store" ] || exit 1; cp "$store" "$5" ;;
+  "document get") [ -z "$FAKE_OP_OFFLINE" ] && [ -f "$store" ] || exit 1; cp "$store" "$5" ;;
   "document edit") cp "$4" "$store" ;;
   "document create") cp "$3" "$store" ;;
-  "item get") [ -f "$store" ] ;;
+  "item list")
+    [ -z "$FAKE_OP_OFFLINE" ] || exit 1
+    if [ -f "$store" ]; then echo '[{"title":"fish-history-sync"}]'; else echo '[]'; fi ;;
 esac
 """
 
@@ -71,6 +73,24 @@ class HistorySyncTests(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("- cmd: ls\n", self.history.read_text())
+
+    def test_unreachable_remote_is_never_overwritten(self) -> None:
+        self.remote.write_text(entry("ls", 1))
+        self.history.write_text(entry("pwd", 2))
+        self.env["FAKE_OP_OFFLINE"] = "1"
+
+        result = self.sync()
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.remote.read_text(), entry("ls", 1))
+
+    def test_first_sync_creates_the_remote(self) -> None:
+        self.history.write_text(entry("pwd", 2))
+
+        result = self.sync()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.remote.read_text(), entry("pwd", 2))
 
     def test_command_appended_during_the_merge_survives(self) -> None:
         self.remote.write_text(entry("ls", 1))

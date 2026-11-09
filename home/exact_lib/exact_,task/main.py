@@ -543,7 +543,9 @@ def hook_prompt(task: Task, data: dict, harness: str) -> dict:
     for key in ("harnesses", "prompts"):
         task.state[key] = {sid: value for sid, value in (task.state.get(key) or {}).items() if sid in kept}
     turn = task.turn(session)
-    compacted = turn.pop("compacted", False)
+    compacted = turn.pop("compacted_prefs", False)
+    # A prompt starts a turn: the card it renders covers a pending zoom-out, and without a card there is nothing to zoom to.
+    turn.pop("compacted_zoom", None)
     # Shell snapshots belong to individual calls; a prompt starts a new turn's attribution.
     turn.update(continues=0, last_unmet=None, steps=0, pending={}, until_stop={}, touched=[], originals={}, wrote=False)
     parts: list[str] = []
@@ -693,9 +695,9 @@ def hook_tool(task: Task, data: dict, harness: str) -> dict:
                 'If the Goal or a defect in the change\'s impact (§3 step 1) needs it, record why with `,task scope add <path> --reason "..."`; if not, undo your change.'
             )
     steps = int(turn.get("steps", 0)) + (0 if before or complete else 1)
-    if card and not before and not complete and (steps >= ZOOM_EVERY or turn.get("compacted")):
+    if card and not before and not complete and (steps >= ZOOM_EVERY or turn.get("compacted_zoom")):
         steps = 0
-        turn.pop("compacted", None)
+        turn.pop("compacted_zoom", None)
         unmet = ", ".join(item["id"] for item in open_items(card)) or "none"
         log_guard(where(task), session, harness, "zoom-out", True)
         notes.append(
@@ -711,7 +713,8 @@ def hook_tool(task: Task, data: dict, harness: str) -> dict:
 
 def hook_compact(task: Task, data: dict, harness: str) -> dict:
     session = task.session(data.get("session"))
-    task.turn(session)["compacted"] = True
+    # Each consumer clears its own flag: the next prompt re-injects preferences, the next tool call asks for a zoom-out.
+    task.turn(session).update(compacted_prefs=True, compacted_zoom=True)
     task.save_state()
     card = task.card_for(session)
     if not card:
@@ -764,10 +767,13 @@ def record_status(task: Task, session: str, harness: str, card: dict | None, ans
     """What the session waits on when its turn ends, for `,task board`."""
     lists = answer_lists(answer)
     unmet = open_items(card) if card else []
+    blocked = [item for item in card["done"] if item["status"] == "blocked"] if card else []
     if lists["Decision needed"]:
         kind, detail = "question", lists["Decision needed"][0]
     elif lists["Open"]:
         kind, detail = "blocked", lists["Open"][0]
+    elif blocked:
+        kind, detail = "blocked", f"{blocked[0]['id']}: {blocked[0].get('note') or 'blocked'}"
     elif unmet:
         kind, detail = "unfinished", "open: " + ", ".join(item["id"] for item in unmet)
     elif card:
@@ -1018,13 +1024,17 @@ def cmd_hook(args: argparse.Namespace) -> int:
         if event == "start":
             result = hook_prompt(task, {**payload, "text": ""}, "codex")
         elif event == "compact":
-            # Codex reports compaction once it is done: the card comes back here as the current intent, so no zoom-out repeats it.
+            # Codex reports compaction once it is done: the preferences and card come back here, so no zoom-out repeats them.
             card = task.card_for(task.session(payload.get("session")))
-            result = (
-                {"context": "The conversation was compacted. Intent card for this task (keep to it):\n" + render(card)}
-                if card
-                else {}
-            )
+            parts = []
+            prefs = preferences(task)
+            if prefs:
+                parts.append(
+                    "User preferences (saved earlier; follow them):\n" + "\n".join(f"- {p['text']}" for p in prefs)
+                )
+            if card:
+                parts.append("The conversation was compacted. Intent card for this task (keep to it):\n" + render(card))
+            result = {"context": "\n\n".join(parts)} if parts else {}
         elif event == "tool_after":
             # Codex reports the edit after it ran: the scope and zoom-out notes go back as context, never as a refusal.
             result = hook_tool(task, payload, "codex")

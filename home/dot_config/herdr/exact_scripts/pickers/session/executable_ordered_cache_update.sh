@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# The ordered cache is shared by every picker; one picker's alt-o view filter must not reach it.
+unset PICK_SESSION_ONLY_FILE
 # shellcheck source=../lib/herdr_ws.sh
 . "$HOME/.config/herdr/scripts/pickers/lib/herdr_ws.sh"
 

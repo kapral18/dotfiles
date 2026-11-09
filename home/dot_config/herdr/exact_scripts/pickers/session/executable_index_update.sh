@@ -208,15 +208,15 @@ publish_merged_preserving_discovered() {
       if file_has_discovered_rows "$cache_file" && ! file_has_discovered_rows "$tmp_combined"; then
         return 0
       fi
-      publish_cache_from "$tmp_combined" || true
-      return 0
+      publish_cache_from "$tmp_combined"
+      return
     fi
     if file_has_discovered_rows "$cache_file"; then
       return 0
     fi
   fi
 
-  publish_cache_from "$src" || true
+  publish_cache_from "$src"
 }
 
 build_cache_refreshing_sessions_preserving_others() {
@@ -327,8 +327,7 @@ if [ "$quick_only" -eq 1 ]; then
   if [ "$gen_rc" -eq 0 ]; then
     quick_ok=1
     if [ -s "$tmp_quick" ]; then
-      publish_merged_preserving_discovered "$tmp_quick" || true
-      quick_published=1
+      publish_merged_preserving_discovered "$tmp_quick" && quick_published=1
     fi
   else
     notify_error "quick scan" "$tmp_err_quick"
@@ -350,8 +349,7 @@ else
   if wait "$pid_quick"; then
     quick_ok=1
     if [ -s "$tmp_quick" ]; then
-      publish_merged_preserving_discovered "$tmp_quick" || true
-      quick_published=1
+      publish_merged_preserving_discovered "$tmp_quick" && quick_published=1
     fi
   else
     notify_error "quick scan" "$tmp_err_quick"
@@ -377,8 +375,7 @@ else
           union_cached_worktrees_into_partial "$tmp_sessions"
           # Merge partial full-scan rows with current cache so in-flight
           # results do not drop already-known dirs/worktrees/sessions.
-          publish_merged_preserving_discovered "$tmp_sessions" || true
-          quick_published=1
+          publish_merged_preserving_discovered "$tmp_sessions" && quick_published=1
         fi
         last_stream_size="$cur_size"
       fi
@@ -407,8 +404,7 @@ else
   fi
 
   if [ "$full_ok" -ne 1 ] && [ "$quick_ok" -eq 1 ] && [ "$quick_published" -eq 0 ] && [ -s "$tmp_quick" ]; then
-    publish_merged_preserving_discovered "$tmp_quick" || true
-    quick_published=1
+    publish_merged_preserving_discovered "$tmp_quick" && quick_published=1
   fi
 
   if [ "$full_ok" -ne 1 ] && [ "$quick_ok" -ne 1 ]; then

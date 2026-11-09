@@ -55,6 +55,7 @@ import json
 import os
 import signal
 import sys
+import time
 
 host = "127.0.0.1"
 port = 8080
@@ -65,8 +66,6 @@ for index, value in enumerate(sys.argv):
         port = int(sys.argv[index + 1])
 
 log = os.environ["FAKE_LLAMA_SERVER_LOG"]
-with open(log, "a", encoding="utf-8") as handle:
-    handle.write(f"start {os.getpid()}\\n")
 
 class Handler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
@@ -89,6 +88,9 @@ def stop(_signum, _frame):
     raise SystemExit(0)
 
 signal.signal(signal.SIGTERM, stop)
+with open(log, "a", encoding="utf-8") as handle:
+    handle.write(f"start {os.getpid()}\\n")
+time.sleep(float(os.environ.get("FAKE_LLAMA_SERVER_DELAY", "0")))
 http.server.ThreadingHTTPServer((host, port), Handler).serve_forever()
 """,
         encoding="utf-8",
@@ -175,6 +177,23 @@ class TestLlamaCppLifecycle(unittest.TestCase):
         self.assertEqual(128 + signal.SIGHUP, process.returncode, process.stderr.read())
         self.assertEqual(2, len(self.server_log.read_text().splitlines()))
         self.assertFalse(_router_reachable(port))
+
+    def test_SHOULD_stop_a_starting_router_when_the_terminal_closes_during_startup(self) -> None:
+        port = _free_port()
+        process = subprocess.Popen(
+            self.lifecycle_command(sys.executable, "-c", "pass"),
+            env={**self.env(port), "FAKE_LLAMA_SERVER_DELAY": "30"},
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+        )
+        self.addCleanup(_stop_process, process)
+        _wait_for(lambda: self.server_log.exists() and "start " in self.server_log.read_text(), "router did not start")
+
+        process.send_signal(signal.SIGHUP)
+        process.wait(timeout=15)
+
+        self.assertEqual(128 + signal.SIGHUP, process.returncode, process.stderr.read())
+        _wait_for(lambda: "term " in self.server_log.read_text(), "starting router was left running")
 
     def test_SHOULD_still_wait_and_release_when_the_terminal_sends_repeated_SIGHUPs(self) -> None:
         port = _free_port()

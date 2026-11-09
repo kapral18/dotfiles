@@ -137,7 +137,6 @@ class TestGhPickerDispatchState(unittest.TestCase):
                 "XDG_CACHE_HOME": str(fixture["cache_home"]),
                 "PATCH_LOG": str(fixture["patch_log"]),
                 "CURL_LOG": str(fixture["curl_log"]),
-                "GH_PICKER_DISPATCH_SCOPE": "all",
                 "GH_PICKER_DISPATCH_SOCK": "dispatch.sock",
                 "GH_PICKER_DISPATCH_CACHE_FILE": str(fixture["dispatch_cache"]),
                 "PATH": f"{fixture['home'] / 'bin'}:{os.environ['PATH']}",
@@ -153,8 +152,8 @@ class TestGhPickerDispatchState(unittest.TestCase):
             curl_log = fixture["curl_log"].read_text()
             assert "--unix-socket dispatch.sock" in curl_log
             assert "--unix-socket global.sock" not in curl_log
-            assert "GH_PICKER_SCOPE=all" in curl_log
-            assert "GH_PICKER_SCOPE=focus" not in curl_log
+            # The scope is snapshotted from the scope file when the batch starts.
+            assert "GH_PICKER_SCOPE=focus" in curl_log
 
     def test_single_picker_fallback_still_uses_shared_global_state_when_dispatch_missing(self):
         script = PICKERS / "github/executable_gh_batch_worktree.sh"
@@ -176,7 +175,6 @@ class TestGhPickerDispatchState(unittest.TestCase):
             # Parent shells may export dispatch overrides from prior probes; the
             # fallback path must see a clean env so it reads the shared globals.
             for key in (
-                "GH_PICKER_DISPATCH_SCOPE",
                 "GH_PICKER_DISPATCH_SOCK",
                 "GH_PICKER_DISPATCH_CACHE_FILE",
                 "FZF_SOCK",
@@ -251,7 +249,6 @@ class TestGhPickerDispatchState(unittest.TestCase):
                 "CURL_LOG": str(fixture["curl_log"]),
                 "WORKTREE_LOG": str(worktree_log),
                 "EDITOR": str(editor),
-                "GH_PICKER_DISPATCH_SCOPE": "all",
                 "GH_PICKER_DISPATCH_SOCK": "dispatch.sock",
                 "GH_PICKER_DISPATCH_CACHE_FILE": str(fixture["dispatch_cache"]),
                 "PATH": f"{fixture['home'] / 'bin'}:/opt/homebrew/bin:/usr/bin:/bin:{os.environ['PATH']}",
@@ -320,7 +317,6 @@ class TestGhPickerDispatchState(unittest.TestCase):
                 "XDG_CACHE_HOME": str(fixture["cache_home"]),
                 "PATCH_LOG": str(fixture["patch_log"]),
                 "CURL_LOG": str(fixture["curl_log"]),
-                "GH_PICKER_DISPATCH_SCOPE": "all",
                 "GH_PICKER_DISPATCH_SOCK": "dispatch.sock",
                 "GH_PICKER_DISPATCH_CACHE_FILE": str(fixture["dispatch_cache"]),
                 "PATH": f"{fixture['home'] / 'bin'}:{os.environ['PATH']}",
@@ -362,7 +358,6 @@ class TestGhPickerDispatchState(unittest.TestCase):
                 "XDG_CACHE_HOME": str(fixture["cache_home"]),
                 "PATCH_LOG": str(fixture["patch_log"]),
                 "CURL_LOG": str(fixture["curl_log"]),
-                "GH_PICKER_DISPATCH_SCOPE": "all",
                 "GH_PICKER_DISPATCH_SOCK": "dispatch.sock",
                 "GH_PICKER_DISPATCH_CACHE_FILE": str(fixture["dispatch_cache"]),
                 "PATH": f"{fixture['home'] / 'bin'}:{os.environ['PATH']}",
@@ -419,7 +414,6 @@ class TestGhPickerDispatchState(unittest.TestCase):
                 "PATCH_LOG": str(fixture["patch_log"]),
                 "CURL_LOG": str(fixture["curl_log"]),
                 "SPINNER_FD_LOG": str(spinner_fd_log),
-                "GH_PICKER_DISPATCH_SCOPE": "all",
                 "GH_PICKER_DISPATCH_SOCK": "dispatch.sock",
                 "GH_PICKER_DISPATCH_CACHE_FILE": str(fixture["dispatch_cache"]),
                 "PATH": f"{fixture['home'] / 'bin'}:{os.environ['PATH']}",
@@ -466,7 +460,6 @@ class TestGhPickerDispatchState(unittest.TestCase):
                 "XDG_CACHE_HOME": str(fixture["cache_home"]),
                 "PATCH_LOG": str(fixture["patch_log"]),
                 "CURL_LOG": str(fixture["curl_log"]),
-                "GH_PICKER_DISPATCH_SCOPE": "all",
                 "GH_PICKER_DISPATCH_SOCK": "dispatch.sock",
                 "GH_PICKER_DISPATCH_CACHE_FILE": str(fixture["dispatch_cache"]),
                 "PATH": f"{fixture['home'] / 'bin'}:{os.environ['PATH']}",
@@ -549,7 +542,6 @@ printf 'survived\n'
                 "XDG_CACHE_HOME": str(fixture["cache_home"]),
                 "PATCH_LOG": str(fixture["patch_log"]),
                 "CURL_LOG": str(fixture["curl_log"]),
-                "GH_PICKER_DISPATCH_SCOPE": "all",
                 "GH_PICKER_DISPATCH_SOCK": "dispatch.sock",
                 "GH_PICKER_DISPATCH_CACHE_FILE": str(fixture["dispatch_cache"]),
                 "PATH": f"{fixture['home'] / 'bin'}:{os.environ['PATH']}",
@@ -626,7 +618,6 @@ printf 'survived\n'
                 "PUBLICATION_LOG": str(publication_log),
                 "RELEASE_PUBLICATION": str(release_publication),
                 "WORKTREE_LOG": str(worktree_log),
-                "GH_PICKER_DISPATCH_SCOPE": "all",
                 "GH_PICKER_DISPATCH_SOCK": "dispatch.sock",
                 "GH_PICKER_DISPATCH_CACHE_FILE": str(fixture["dispatch_cache"]),
                 "GH_BATCH_TOTAL_TIMEOUT_SECS": "10",
@@ -720,7 +711,6 @@ printf 'survived\n'
                 "DROP_STARTED": str(drop_started),
                 "RELEASE_DROP": str(release_drop),
                 "WORKTREE_LOG": str(worktree_log),
-                "GH_PICKER_DISPATCH_SCOPE": "all",
                 "GH_PICKER_DISPATCH_SOCK": "dispatch.sock",
                 "GH_PICKER_DISPATCH_CACHE_FILE": str(fixture["dispatch_cache"]),
                 "GH_BATCH_TOTAL_TIMEOUT_SECS": "10",
@@ -838,7 +828,6 @@ printf 'survived\n'
                 "PATCH_LOG": str(fixture["patch_log"]),
                 "CURL_LOG": str(fixture["curl_log"]),
                 "WORKTREE_LOG": str(worktree_log),
-                "GH_PICKER_DISPATCH_SCOPE": "all",
                 "GH_PICKER_DISPATCH_SOCK": "dispatch.sock",
                 "GH_PICKER_DISPATCH_CACHE_FILE": str(fixture["dispatch_cache"]),
                 "PATH": f"{fixture['home'] / 'bin'}:{os.environ['PATH']}",
@@ -894,7 +883,6 @@ printf 'survived\n'
                 "XDG_CACHE_HOME": str(fixture["cache_home"]),
                 "PATCH_LOG": str(fixture["patch_log"]),
                 "CURL_LOG": str(fixture["curl_log"]),
-                "GH_PICKER_DISPATCH_SCOPE": "all",
                 "GH_PICKER_DISPATCH_SOCK": "dispatch.sock",
                 "GH_PICKER_DISPATCH_CACHE_FILE": str(fixture["dispatch_cache"]),
                 "PATH": f"{fixture['home'] / 'bin'}:{os.environ['PATH']}",
@@ -955,7 +943,6 @@ printf 'survived\n'
                 "XDG_CACHE_HOME": str(fixture["cache_home"]),
                 "PATCH_LOG": str(fixture["patch_log"]),
                 "CURL_LOG": str(fixture["curl_log"]),
-                "GH_PICKER_DISPATCH_SCOPE": "all",
                 "GH_PICKER_DISPATCH_SOCK": "dispatch.sock",
                 "GH_PICKER_DISPATCH_CACHE_FILE": str(fixture["dispatch_cache"]),
                 "GH_BATCH_ITEM_TIMEOUT_SECS": "10",
@@ -1017,7 +1004,6 @@ printf 'survived\n'
                 "XDG_CACHE_HOME": str(fixture["cache_home"]),
                 "PATCH_LOG": str(fixture["patch_log"]),
                 "CURL_LOG": str(fixture["curl_log"]),
-                "GH_PICKER_DISPATCH_SCOPE": "all",
                 "GH_PICKER_DISPATCH_SOCK": "dispatch.sock",
                 "GH_PICKER_DISPATCH_CACHE_FILE": str(fixture["dispatch_cache"]),
                 "PATH": f"{fixture['home'] / 'bin'}:{os.environ['PATH']}",
@@ -1060,7 +1046,6 @@ printf 'survived\n'
                 "XDG_CACHE_HOME": str(fixture["cache_home"]),
                 "PATCH_LOG": str(fixture["patch_log"]),
                 "CURL_LOG": str(fixture["curl_log"]),
-                "GH_PICKER_DISPATCH_SCOPE": "all",
                 "GH_PICKER_DISPATCH_SOCK": "dispatch.sock",
                 "GH_PICKER_DISPATCH_CACHE_FILE": str(fixture["dispatch_cache"]),
                 "PATH": f"{fixture['home'] / 'bin'}:{os.environ['PATH']}",
@@ -1089,7 +1074,6 @@ printf 'survived\n'
             "XDG_CACHE_HOME": str(fixture["cache_home"]),
             "PATCH_LOG": str(fixture["patch_log"]),
             "CURL_LOG": str(fixture["curl_log"]),
-            "GH_PICKER_DISPATCH_SCOPE": "all",
             "GH_PICKER_DISPATCH_SOCK": "dispatch.sock",
             "GH_PICKER_DISPATCH_CACHE_FILE": str(fixture["dispatch_cache"]),
             "PATH": f"{fixture['home'] / 'bin'}:/opt/homebrew/bin:/usr/bin:/bin:{os.environ['PATH']}",

@@ -7,37 +7,11 @@ import subprocess
 import sys
 
 import frecency
+import only_filter
 from pick_session_grouping import (
     cached_resolve,
     grouped_output,
 )
-
-
-def _row_matches_only(line, only_filter):
-    """Return True if a TSV row passes the active --only view filter.
-
-    Reads the cache `meta` column (index 3): `status=...,dirty` for dirty,
-    `pr=NUM:STATE:REVIEW:...` with REVIEW in {CHANGES_REQUESTED, REVIEW_REQUIRED}
-    for review-needed.
-    """
-    parts = line.split("\t")
-    if len(parts) < 4:
-        return False
-    meta = parts[3] or ""
-    if only_filter == "dirty":
-        for segment in meta.split("|"):
-            if segment.startswith("status=") and "dirty" in segment[len("status=") :].split(","):
-                return True
-        return False
-    if only_filter == "review":
-        for segment in meta.split("|"):
-            if not segment.startswith("pr="):
-                continue
-            fields = segment[len("pr=") :].split(":")
-            if len(fields) >= 3 and fields[2].upper() in ("CHANGES_REQUESTED", "REVIEW_REQUIRED"):
-                return True
-        return False
-    return True
 
 
 def main():
@@ -54,7 +28,6 @@ def main():
         passthrough_rows = 0
     force_order_raw = (os.environ.get("PICK_SESSION_FILTER_FORCE_ORDER", "") or "").strip().lower()
     force_order = force_order_raw in ("1", "true", "yes", "on")
-    only_filter = (os.environ.get("PICK_SESSION_ONLY", "") or "").strip().lower()
 
     resolve_path = cached_resolve({})
 
@@ -84,8 +57,7 @@ def main():
 
     lines = [line.rstrip("\n") for line in base_out.splitlines() if line.rstrip("\n")]
 
-    if only_filter in ("dirty", "review"):
-        lines = [line for line in lines if _row_matches_only(line, only_filter)]
+    lines = only_filter.apply(lines)
 
     if (not force_order) and passthrough_rows > 0 and len(lines) >= passthrough_rows:
         for line in lines:

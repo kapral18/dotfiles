@@ -270,6 +270,13 @@ exit "${{UPDATE_TEST_{category.upper()}_RC:-0}}"
         self.assertFalse(Path(calls[0]["root"]).exists())
         self.assertEqual(set(self.steps.read_text().splitlines()), {"gh", "uv"})
 
+    def test_when_a_parallel_lane_skips_should_count_it_as_skipped(self) -> None:
+        (self.bin / "uv").unlink()
+        result = self.run_update()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("1 updated", result.stdout)
+        self.assertIn("1 skipped", result.stdout)
+
     def test_when_bypassed_should_run_only_selected_sequential_categories(self) -> None:
         cases = (
             (["--only", "gh"], {"gh"}),

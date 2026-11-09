@@ -150,10 +150,10 @@ fi
 
 items_cache="${cache_dir}/gh_picker.tsv"
 status_header="$(python3 "$dashboard_ui" status --cache-file "$items_cache" --scope "$scope" 2> /dev/null || printf '%s' 'GitHub dashboard')"
-# Batch dispatches inherit this immutable packet so completion markers/reloads
-# always target the picker that initiated the action, even if another picker
-# rewrites shared globals before the background batch finishes.
-export GH_PICKER_DISPATCH_SCOPE="$scope"
+# Batch dispatches inherit this packet so completion markers/reloads target the
+# picker that initiated the action even if another picker rewrites shared
+# globals before the background batch finishes. The scope is not part of it:
+# a batch snapshots the scope file when it starts, so it follows alt-0/1/2.
 export GH_PICKER_DISPATCH_CACHE_FILE="$items_cache"
 
 # Only POSTs the reload when the fetch actually succeeded. Otherwise (e.g. the

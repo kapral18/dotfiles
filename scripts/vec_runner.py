@@ -122,30 +122,24 @@ def _existing_vec_dim(db: sqlite3.Connection) -> int | None:
     return int(match.group(1)) if match else None
 
 
-def _capsules_dim(db: sqlite3.Connection) -> int | None:
-    """Sample one capsules row to learn the canonical embedding dim.
+def _embedded_dims(db: sqlite3.Connection) -> set[int]:
+    rows = db.execute(
+        "SELECT DISTINCT embedding_dim FROM capsules WHERE embedding IS NOT NULL AND embedding_dim > 0"
+    ).fetchall()
+    return {int(row[0]) for row in rows}
 
-    Returns None if no embedded capsules exist yet.
-    """
+
+def _majority_embedded_dim(db: sqlite3.Connection) -> int | None:
+    """Dim shared by the most embedded capsules; a model swap moves it once, at the re-embed midpoint."""
     row = db.execute(
-        "SELECT embedding_dim FROM capsules WHERE embedding IS NOT NULL AND embedding_dim > 0 LIMIT 1"
+        "SELECT embedding_dim FROM capsules WHERE embedding IS NOT NULL AND embedding_dim > 0 "
+        "GROUP BY embedding_dim ORDER BY COUNT(*) DESC, embedding_dim DESC LIMIT 1"
     ).fetchone()
     return int(row[0]) if row else None
 
 
-def _ensure_vec_index(db: sqlite3.Connection) -> int | None:
-    """Lazily create vec_index and sync with `capsules`. Returns the
-    embedding dim used by the index, or None if no embeddings exist
-    in the KB yet (caller should treat that as an empty result set).
-
-    Resilience: if a model swap changed the dim, we drop and rebuild
-    the index. This is rare and the rebuild cost is bounded by the
-    KB size.
-    """
-    cap_dim = _capsules_dim(db)
-    if cap_dim is None:
-        return None
-
+def _ensure_vec_index(db: sqlite3.Connection, cap_dim: int) -> None:
+    """Create or rebuild vec_index for `cap_dim` and sync it with the capsules of that dim."""
     existing_dim = _existing_vec_dim(db)
     if existing_dim is not None and existing_dim != cap_dim:
         db.execute("DROP TABLE vec_index")
@@ -165,9 +159,10 @@ def _ensure_vec_index(db: sqlite3.Connection) -> int | None:
         """
         DELETE FROM vec_index
         WHERE id NOT IN (
-            SELECT id FROM capsules WHERE embedding IS NOT NULL AND embedding_dim > 0
+            SELECT id FROM capsules WHERE embedding IS NOT NULL AND embedding_dim = ?
         )
-        """
+        """,
+        (cap_dim,),
     )
     # An amend keeps the capsule id but rewrites its embedding, so presence
     # alone is not enough: drop indexed rows whose vector no longer matches
@@ -202,7 +197,6 @@ def _ensure_vec_index(db: sqlite3.Connection) -> int | None:
             [(r[0], r[1]) for r in new_rows],
         )
     db.commit()
-    return cap_dim
 
 
 def _build_filter_clause(filters: dict[str, Any]) -> tuple[str, list]:
@@ -246,11 +240,14 @@ def _knn(db: sqlite3.Connection, req: dict[str, Any]) -> dict[str, Any]:
     limit = int(req.get("limit", 5))
     filters = req.get("filters") or {}
 
-    dim = _capsules_dim(db)
-    if dim is None:
+    dims = _embedded_dims(db)
+    if not dims:
         return {"hits": []}
-    if len(qvec) != dim:
-        _print_error_and_exit(f"query_vector dim {len(qvec)} != index dim {dim}; re-embed required")
+    dim = len(qvec)
+    if dim not in dims:
+        _print_error_and_exit(
+            f"query_vector dim {dim} matches no embedded capsule dim {sorted(dims)}; re-embed required"
+        )
 
     where, params = _build_filter_clause(filters)
     query_blob = _serialize_f32([float(x) for x in qvec])
@@ -266,7 +263,7 @@ def _knn(db: sqlite3.Connection, req: dict[str, Any]) -> dict[str, Any]:
             (query_blob, dim, *params, limit),
         ).fetchall()
     else:
-        _ensure_vec_index(db)
+        _ensure_vec_index(db, dim)
         rows = db.execute(
             """
             SELECT id, distance
@@ -295,9 +292,10 @@ def _pairs(db: sqlite3.Connection, req: dict[str, Any]) -> dict[str, Any]:
     threshold = float(req.get("threshold", 0.85))
     threshold = max(0.0, min(1.0, threshold))
 
-    dim = _ensure_vec_index(db)
+    dim = _majority_embedded_dim(db)
     if dim is None:
         return {"pairs": []}
+    _ensure_vec_index(db, dim)
 
     seen: set[tuple[str, str]] = set()
     pairs: list[dict[str, Any]] = []

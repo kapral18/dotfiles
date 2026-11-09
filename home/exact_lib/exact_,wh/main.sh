@@ -466,7 +466,8 @@ PY
 
   # A clipboard envelope is a directory archive rooted at CLIP_ENVELOPE_NAME
   # holding meta.json + payload; handle it as clipboard rather than a saved dir.
-  if [ "$dirname" = "$CLIP_ENVELOPE_NAME" ] && [ -f "$EXTRACT_STAGE/$dirname/payload" ]; then
+  if [ "$dirname" = "$CLIP_ENVELOPE_NAME" ] && [ -f "$EXTRACT_STAGE/$dirname/payload" ] \
+    && grep -q '"kind"[[:space:]]*:[[:space:]]*"clip"' "$EXTRACT_STAGE/$dirname/meta.json" 2> /dev/null; then
     restore_received_clipboard "$EXTRACT_STAGE/$dirname" "${CLIP_DEST:-$PWD}" "${CLIP_SAVE:-0}"
     return
   fi
