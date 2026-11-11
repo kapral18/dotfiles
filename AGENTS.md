@@ -9,8 +9,15 @@ Before editing any file under `$HOME`:
 1. Resolve symlinks (`realpath <path>`); `chezmoi source-path` does not follow them.
 2. Run `chezmoi source-path <resolved-path>`.
 3. Managed: edit only the source under `home/`, then `chezmoi apply --no-tty <target>`.
-4. Not managed and writable: edit it directly.
-5. Not managed but read-only (`r--r--r--`): stop and search `home/` for the filename. Never `chmod` a deployed file.
+4. Not managed: `chezmoi source-path` reports only files chezmoi copies itself.
+   A run script or a tool it calls writes other targets: Claude, Codex and Pi settings, MCP configs, crontab, herdr integrations.
+   Search the scripts for the target's directory, e.g. `rg -l '\.claude/' home/.chezmoiscripts`, and read the target's `home/.chezmoiignore` entry and any comment above it.
+   If a script writes the target (`--target`, `install`, a merge), edit that script's input under `home/`, then run `chezmoi apply --no-tty`.
+   The script overwrites the target or the keys it declares, so an edit made only to the deployed file is lost on the next run.
+   Machine-local Claude settings that must stay out of git go in `~/.claude.local.json`;
+   the Claude settings script merges it over the source.
+5. Not managed, no script writes it, and writable: edit it directly.
+6. Not managed but read-only (`r--r--r--`): stop and search `home/` for the filename. Never `chmod` a deployed file.
 
 Name prefixes: `exact_` exact directory (apply deletes untracked files), `readonly_`, `executable_`, `private_`, `dot_` (leading `.`), `.tmpl` template.
 

@@ -61,3 +61,25 @@ chezmoi_install_if_changed() {
   install -m "$mode" "$src" "$target"
   chezmoi_record_checksum "$target"
 }
+
+# Recursively merge a source JSON object into the target: source values win,
+# keys only the target holds (runtime or tool-written state) are kept, and
+# keys the previous source declared but this one drops are removed.
+#   chezmoi_merge_json_if_changed <src_path> <target_path> <previous_src_path>
+chezmoi_merge_json_if_changed() {
+  local src="$1" target="$2" previous="$3" merged
+  local target_in=/dev/null previous_in=/dev/null
+
+  [ -f "$target" ] && target_in="$target"
+  [ -f "$previous" ] && previous_in="$previous"
+  merged="$(jq -n --slurpfile t "$target_in" --slurpfile s "$src" --slurpfile p "$previous_in" '
+    def keypaths: [paths | select(all(.[]; type == "string"))];
+    ($s[0] | keypaths) as $kept
+    | reduce ((($p[0] | objects) // {} | keypaths) - $kept | sort_by(-length))[] as $path (
+        ($t[0] | objects) // {};
+        . as $acc
+        | try (if (getpath($path) | type == "object" and length > 0) then . else delpaths([$path]) end) catch $acc
+      )
+    | . * $s[0]')"
+  chezmoi_write_if_changed "$merged" "$target" 0644
+}

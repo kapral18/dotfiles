@@ -366,7 +366,7 @@ def record_artifact(ledger: Path, spec: dict[str, Any]) -> bool:
         raise ValueError(f"artifact target is not a file: {target}")
     row = {
         **normalized,
-        "input_hashes": {path: _file_hash(Path(path)) for path in normalized["inputs"]},
+        "input_hashes": {path: _current_hash(path) for path in normalized["inputs"]},
         "transform_hashes": {path: _file_hash(Path(path)) for path in normalized["transforms"]},
         "expected_semantic_hash": semantic_hash(target.read_bytes(), normalized["ownership"]),
     }
@@ -559,6 +559,9 @@ def build_parser() -> argparse.ArgumentParser:
     record.add_argument("--producer", required=True)
     record.add_argument("--target", required=True)
     record.add_argument("--input", action="append", required=True, dest="inputs")
+    record.add_argument(
+        "--optional-input", action="append", dest="optional_inputs", help="May be absent; hashed as null"
+    )
     record.add_argument("--transform", action="append", required=True, dest="transforms")
     record.add_argument("--reference", action="append", dest="references")
     record.add_argument("--ownership-adapter", required=True, choices=sorted(SUPPORTED_ADAPTERS))
@@ -586,13 +589,15 @@ def main(argv: list[str] | None = None) -> int:
             ownership = _ownership_from_args(args)
             if ownership["adapter"] == "json-declared" and not args.baseline:
                 raise ValueError("json-declared requires --baseline")
+            for path in args.inputs:
+                _file_hash(Path(path).expanduser())
             record_artifact(
                 args.ledger,
                 {
                     "artifact_id": args.artifact_id,
                     "producer": args.producer,
                     "target": args.target,
-                    "inputs": args.inputs,
+                    "inputs": args.inputs + (args.optional_inputs or []),
                     "transforms": args.transforms,
                     "references": args.references or [],
                     "ownership": ownership,

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import subprocess
 import tempfile
@@ -79,6 +80,48 @@ class TestChezmoiWriteHelpers(unittest.TestCase):
                         (manifest.stat().st_ino, manifest.stat().st_mtime_ns),
                         (manifest_before.st_ino, manifest_before.st_mtime_ns),
                     )
+
+
+class TestChezmoiMergeJson(unittest.TestCase):
+    """WHEN a declared JSON source replaces the previous one in a target that also holds tool-written keys."""
+
+    def test_SHOULD_apply_declared_values_drop_undeclared_ones_and_keep_tool_keys_at_every_depth(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "source.json"
+            target = root / "target.json"
+            previous = root / "previous.json"
+            previous.write_text(json.dumps({"dropped": {"k": ""}, "modelSettings": {"a": {"gone": 1}}}))
+            source.write_text(json.dumps({"model": "a", "modelSettings": {"a": {"effort": "low"}}}))
+            target.write_text(
+                json.dumps(
+                    {
+                        "model": "old",
+                        "dropped": {"k": ""},
+                        "hooks": {"SessionStart": [{"command": "x"}]},
+                        "modelSettings": {"a": {"effort": "high", "gone": 1, "window": 1}, "b": {"effort": "max"}},
+                    }
+                )
+            )
+            env = os.environ.copy()
+            env.update({"XDG_STATE_HOME": str(root / "state"), "LIB": str(LIB)})
+            result = subprocess.run(
+                ["bash", "-c", f'source "$LIB"; chezmoi_merge_json_if_changed "{source}" "{target}" "{previous}"'],
+                env=env,
+                capture_output=True,
+                text=True,
+            )
+            merged = json.loads(target.read_text())
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            merged,
+            {
+                "model": "a",
+                "hooks": {"SessionStart": [{"command": "x"}]},
+                "modelSettings": {"a": {"effort": "low", "window": 1}, "b": {"effort": "max"}},
+            },
+        )
 
 
 class TestChezmoiManagedConfigLedger(unittest.TestCase):

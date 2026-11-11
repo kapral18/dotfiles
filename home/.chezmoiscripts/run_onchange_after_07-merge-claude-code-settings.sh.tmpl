@@ -3,6 +3,7 @@
 set -euo pipefail
 
 # claude code settings desired hash: {{ include "dot_claude/settings.json" | sha256sum }}
+# machine-local settings hash: {{ $local := joinPath .chezmoi.homeDir ".claude.local.json" }}{{ if stat $local }}{{ include $local | sha256sum }}{{ end }}
 # chezmoi_lib.sh hash: {{ include "../scripts/chezmoi_lib.sh" | sha256sum }}
 # managed_config_manifest.py hash: {{ include "../scripts/managed_config_manifest.py" | sha256sum }}
 # generated_artifact_ledger.py hash: {{ include "../scripts/generated_artifact_ledger.py" | sha256sum }}
@@ -12,12 +13,22 @@ source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
 source "$source_dir/../scripts/chezmoi_lib.sh"
 
 src="$source_dir/dot_claude/settings.json"
+local_src="$HOME/.claude.local.json"
+desired="${XDG_STATE_HOME:-$HOME/.local/state}/chezmoi/claude-settings.desired.json"
 
-chezmoi_install_if_changed "$src" "$HOME/.claude/settings.json"
+mkdir -p "$(dirname "$desired")"
+if [ -f "$local_src" ]; then
+  jq -s '.[0] * (.[1] // {})' "$src" "$local_src" >"$desired.tmp"
+else
+  jq . "$src" >"$desired.tmp"
+fi
+
+chezmoi_merge_json_if_changed "$desired.tmp" "$HOME/.claude/settings.json" "$desired"
+mv "$desired.tmp" "$desired"
 chezmoi_record_artifact --id claude-settings \
   --producer 07-merge-claude-code-settings \
-  --target "$HOME/.claude/settings.json" --ownership-adapter json-declared --baseline "$src" \
-  --input "$src" \
+  --target "$HOME/.claude/settings.json" --ownership-adapter json-declared --baseline "$desired" \
+  --input "$src" --optional-input "$local_src" \
   --transform "$source_dir/../scripts/chezmoi_lib.sh" \
   --transform "$source_dir/.chezmoiscripts/run_onchange_after_07-merge-claude-code-settings.sh.tmpl" \
   --consumer claude

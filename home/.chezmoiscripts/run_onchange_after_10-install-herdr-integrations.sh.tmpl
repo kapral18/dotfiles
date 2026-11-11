@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Reruns when herdr changes or 07-merge-claude-code-settings reinstalls
-# ~/.claude/settings.json, which drops herdr's SessionStart hook entry.
+# Reruns after 07-merge-claude-code-settings changes: its merge replaces arrays,
+# so a source-declared `hooks.SessionStart` would drop herdr's entry.
 # herdr version: {{ if lookPath "herdr" }}{{ output "herdr" "--version" | trim }}{{ end }}
 # claude settings merge hash: {{ includeTemplate ".chezmoiscripts/run_onchange_after_07-merge-claude-code-settings.sh.tmpl" . | sha256sum }}
 set -euo pipefail
