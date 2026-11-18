@@ -1,5 +1,9 @@
-export const literalInvocation = (source: string): string[] | undefined => {
-  const words: string[] = []
+// The literal commands of a shell line: one word list per command joined by `;`, `&&`, `||` or a newline.
+// Undefined for anything else (expansions, pipes, redirects, a background `&`, globs, heredocs, an assignment prefix):
+// the guards make no claim about syntax they do not read.
+export const literalInvocations = (source: string): string[][] | undefined => {
+  const commands: string[][] = []
+  let words: string[] = []
   let word = ''
   let quote = ''
   let started = false
@@ -7,6 +11,11 @@ export const literalInvocation = (source: string): string[] | undefined => {
     if (started) words.push(word)
     word = ''
     started = false
+  }
+  const end = () => {
+    finish()
+    if (words.length) commands.push(words)
+    words = []
   }
   for (let i = 0; i < source.length; i++) {
     const c = source[i] ?? ''
@@ -38,14 +47,23 @@ export const literalInvocation = (source: string): string[] | undefined => {
       finish()
       continue
     }
-    if (';&|<>()#*?[]{}~\r\n'.includes(c)) return undefined
+    if (c === ';' || c === '\n') {
+      end()
+      continue
+    }
+    if ((c === '&' || c === '|') && source[i + 1] === c) {
+      i++
+      end()
+      continue
+    }
+    if ('&|<>()#*?[]{}~\r'.includes(c)) return undefined
     word += c
     started = true
   }
   if (quote) return undefined
-  finish()
-  if (!words.length || /^[A-Za-z_][A-Za-z0-9_]*=/.test(words[0] ?? '')) return undefined
-  return words
+  end()
+  if (!commands.length || commands.some(command => /^[A-Za-z_][A-Za-z0-9_]*=/.test(command[0] ?? ''))) return undefined
+  return commands
 }
 
 export const base = (word: string | undefined) => (word ?? '').replace(/^.*\//, '')

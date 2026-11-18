@@ -46,6 +46,8 @@ MAX_CONTINUES = 3
 CARD_SOFT_LIMIT = 2048
 SCOPE_CHANGES_SHOWN = 5
 SNAPSHOT_VERSION = 4
+# Harnesses whose command hooks send their own JSON payload (`,task hook <harness>`).
+NATIVE_HARNESSES = ("codex", "claude")
 SHELL_TOOLS = frozenset({"bash", "shell", "exec_command", "write_stdin", "python", "powershell", "eval"})
 WRITE_TOOLS = frozenset({"edit", "write", "multiedit", "notebookedit", "apply_patch", "applypatch", "patch"})
 SECTIONS = {
@@ -965,35 +967,67 @@ HOOKS = {
 }
 
 
-def codex_event(data: dict) -> tuple[str, dict]:
-    """Map a Codex hook payload to a hook event and its input."""
+def native_event(data: dict, harness: str) -> list[tuple[str, dict]]:
+    """Map a Codex or Claude command-hook payload to the hook events it raises, in order."""
     name = data.get("hook_event_name", "")
     session = str(data.get("session_id") or "")
     if name == "UserPromptSubmit":
         # Codex runs this hook only for the user's own input (core hook_runtime: TurnInput::UserInput).
-        return "prompt", {"session": session, "text": data.get("prompt", ""), "origin": "human"}
+        return [("prompt", {"session": session, "text": data.get("prompt", ""), "origin": "human"})]
     if name == "SessionStart":
-        return ("compact" if data.get("source") == "compact" else "start"), {"session": session}
-    if name in ("PreToolUse", "PostToolUse"):
+        return [("compact" if data.get("source") == "compact" else "start", {"session": session})]
+    if name in ("PreToolUse", "PostToolUse", "PostToolUseFailure"):
+        # Claude marks a subagent's call with agent_id; only the main loop's calls are tracked.
+        if harness == "claude" and data.get("agent_id"):
+            return []
         tool_input = data.get("tool_input") or {}
         if not isinstance(tool_input, dict):
             tool_input = {"command": str(tool_input)}
-        paths = [tool_input.get(key) for key in ("file_path", "path") if isinstance(tool_input.get(key), str)]
+        paths = [
+            tool_input.get(key)
+            for key in ("file_path", "path", "notebook_path")
+            if isinstance(tool_input.get(key), str)
+        ]
         patch = tool_input.get("patch") or tool_input.get("input") or tool_input.get("command") or ""
-        return ("tool" if name == "PreToolUse" else "tool_after"), {
+        before = name == "PreToolUse"
+        payload = {
             "session": session,
             "tool": data.get("tool_name", ""),
             "call_id": data.get("tool_use_id"),
-            "phase": "before" if name == "PreToolUse" else "after",
+            "phase": "before" if before else "after",
             "paths": paths,
             "patch": patch if isinstance(patch, str) else "",
         }
+        response = data.get("tool_response")
+        response = response if isinstance(response, dict) else {}
+        if response.get("backgroundTaskId"):
+            payload.update(
+                background=True,
+                background_id=response["backgroundTaskId"],
+                until_stop=response.get("backgroundEndsWithFinalResponse") is True,
+            )
+        events = [("tool" if before else "tool_after", payload)]
+        # GetTask can consume a background shell's completion notice, so its terminal result also settles the snapshot.
+        if not before and payload["tool"] == "GetTask" and response.get("status") not in (None, "working"):
+            events.append(
+                (
+                    "tool_after",
+                    {
+                        "session": session,
+                        "tool": "Bash",
+                        "call_id": data.get("tool_use_id"),
+                        "phase": "complete",
+                        "background_id": tool_input.get("taskId"),
+                    },
+                )
+            )
+        return events
     if name == "Stop":
-        return "stop", {"session": session, "answer": data.get("last_assistant_message") or ""}
-    return "", {}
+        return [("stop", {"session": session, "answer": data.get("last_assistant_message") or ""})]
+    return []
 
 
-def codex_output(name: str, event: str, result: dict) -> dict:
+def native_output(name: str, event: str, result: dict) -> dict:
     if event == "prompt" and result.get("context"):
         return {"hookSpecificOutput": {"hookEventName": name, "additionalContext": result["context"]}}
     if event in ("compact", "start"):
@@ -1014,40 +1048,48 @@ def codex_output(name: str, event: str, result: dict) -> dict:
     return {}
 
 
+def native_result(task: Task, event: str, payload: dict, harness: str) -> dict:
+    if event == "start":
+        return hook_prompt(task, {**payload, "text": ""}, harness)
+    if event == "compact":
+        # The harness reports compaction once it is done: the preferences and card come back here, so no zoom-out repeats them.
+        card = task.card_for(task.session(payload.get("session")))
+        parts = []
+        prefs = preferences(task)
+        if prefs:
+            parts.append(
+                "User preferences (saved earlier; follow them):\n" + "\n".join(f"- {p['text']}" for p in prefs)
+            )
+        if card:
+            parts.append("The conversation was compacted. Intent card for this task (keep to it):\n" + render(card))
+        return {"context": "\n\n".join(parts)} if parts else {}
+    if event == "tool_after":
+        # The call already ran: the scope and zoom-out notes go back as context, never as a refusal.
+        result = hook_tool(task, payload, harness)
+        result.pop("deny", None)
+        return result
+    if event == "tool":
+        # PreToolUse only refuses the first uncarded edit; PostToolUse counts the step and adds the notes.
+        result = hook_tool(task, payload, harness)
+        result.pop("note", None)
+        return result
+    return HOOKS[event](task, payload, harness) if event in HOOKS else {}
+
+
 def cmd_hook(args: argparse.Namespace) -> int:
     data = args.data
     cwd = Path(data.get("cwd") or os.getcwd())
-    task = Task(cwd, data.get("session_id") if args.event == "codex" else data.get("session"))
-    if args.event == "codex":
+    native = args.event in NATIVE_HARNESSES
+    task = Task(cwd, data.get("session_id") if native else data.get("session"))
+    if native:
         name = data.get("hook_event_name", "")
-        event, payload = codex_event(data)
-        if event == "start":
-            result = hook_prompt(task, {**payload, "text": ""}, "codex")
-        elif event == "compact":
-            # Codex reports compaction once it is done: the preferences and card come back here, so no zoom-out repeats them.
-            card = task.card_for(task.session(payload.get("session")))
-            parts = []
-            prefs = preferences(task)
-            if prefs:
-                parts.append(
-                    "User preferences (saved earlier; follow them):\n" + "\n".join(f"- {p['text']}" for p in prefs)
-                )
-            if card:
-                parts.append("The conversation was compacted. Intent card for this task (keep to it):\n" + render(card))
-            result = {"context": "\n\n".join(parts)} if parts else {}
-        elif event == "tool_after":
-            # Codex reports the edit after it ran: the scope and zoom-out notes go back as context, never as a refusal.
-            result = hook_tool(task, payload, "codex")
-            result.pop("deny", None)
-        elif event == "tool":
-            # PreToolUse only refuses the first uncarded edit; PostToolUse counts the step and adds the notes.
-            result = hook_tool(task, payload, "codex")
-            result.pop("note", None)
-        elif event in HOOKS:
-            result = HOOKS[event](task, payload, "codex")
+        events = native_event(data, args.event)
+        results = [(event, native_result(task, event, payload, args.event)) for event, payload in events]
+        notes = [result["note"] for event, result in results if event == "tool_after" and result.get("note")]
+        if notes:
+            out = native_output(name, "tool_after", {"note": "\n\n".join(notes)})
         else:
-            result = {}
-        out = codex_output(name, event, result)
+            out = native_output(name, *results[0]) if results else {}
     else:
         out = HOOKS[args.event](task, data, args.harness)
     sys.stdout.write(json.dumps(out, ensure_ascii=False) + "\n")
@@ -1807,7 +1849,7 @@ def build_parser() -> argparse.ArgumentParser:
     report.set_defaults(func=cmd_steering_report)
 
     hook = sub.add_parser("hook", help="harness adapter entry point: JSON in, JSON out")
-    hook.add_argument("event", choices=[*HOOKS, "codex"])
+    hook.add_argument("event", choices=[*HOOKS, *NATIVE_HARNESSES])
     hook.add_argument("--harness", default="unknown")
     hook.add_argument("--input", help="JSON input (default: stdin)")
     hook.add_argument("--input-file", help="file holding the JSON input")

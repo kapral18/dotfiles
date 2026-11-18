@@ -3,8 +3,60 @@
   "env": {
     "CLAUDE_CODE_DISABLE_ADVISOR_TOOL": "1",
     "CLAUDE_CODE_DISABLE_AGENT_PROGRESS_SUMMARIES": "1",
+    "CLAUDE_CODE_EXPERIMENTAL_CODE_MODE": "1",
     "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "1",
-    "CLAUDE_CODE_PLUGIN_DIRS": "~/.claude/mods/stop-review:~/.claude/mods/intent-guard:~/.claude/mods/behavior-map-guard:~/.claude/mods/sop-guard"
+    "CLAUDE_CODE_PLUGIN_DIRS": "~/.claude/mods/stop-review:~/.claude/mods/intent-guard"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$HOME\" && \"$HOME/.local/share/mise/shims/bun\" \"$HOME/.claude/guards/guards.ts\"",
+            "timeout": 40,
+            "onFailure": "continue"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$HOME\" && \"$HOME/.local/share/mise/shims/bun\" \"$HOME/.claude/guards/guards.ts\"",
+            "timeout": 40,
+            "onFailure": "continue"
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$HOME\" && \"$HOME/.local/share/mise/shims/bun\" \"$HOME/.claude/guards/guards.ts\"",
+            "timeout": 40,
+            "onFailure": "continue"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$HOME\" && \"$HOME/.local/share/mise/shims/bun\" \"$HOME/.claude/guards/guards.ts\"",
+            "timeout": 10,
+            "onFailure": "continue"
+          }
+        ]
+      }
+    ]
   },
   "alwaysThinkingEnabled": false,
   "permissions": {

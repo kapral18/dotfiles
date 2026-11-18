@@ -7,13 +7,50 @@ const stop = (last_assistant_message: string, stop_hook_active = false) => ({ st
 // A subagent still in flight at Stop, which pauses the turn.
 const running = [{ id: 'a1', type: 'subagent', status: 'running', description: 'review' }]
 
-// The engine beneath the plugin; `tree` is what each working-tree snapshot reads.
-const engine = (on: On, tree: string[] = []) => {
+// The engine's main transcript, each main-agent tool call `answer` ran as a row with its outcome,
+// and the guards' call log, a line for each call of any agent that ran, and for a failed Bash call (a refused call, or a failed edit, gets none).
+type Answer = { deny?: string; result?: never; isError?: true }
+const LOG = '/tmp/claude-guards/stop-review.s1.calls'
+const transcript = (on: On, answer: (e: { tool: string; agentId?: string; tool_use_id: string } & Record<string, unknown>) => Answer) => {
+  const rows: unknown[] = []
+  let log = ''
+  on('tool.call', ($, e) => {
+    const out = answer(e as never)
+    const { tool, tool_use_id, agentId, ...input } = e as unknown as Record<string, unknown>
+    const failed = out.deny !== undefined || out.isError === true
+    if (!failed || (tool === 'Bash' && out.deny === undefined)) log += `${JSON.stringify({ tool, path: input.file_path, agent: agentId })}\n`
+    if (agentId === undefined) rows.push({ role: 'assistant', text: '', toolUses: [{ tool, tool_use_id, input, ...(failed ? { isError: true } : {}) }] })
+    return out
+  })
+  on('session.messages', () => ({ value: rows as never }))
+  on('session.id', () => ({ value: 's1' }))
+  on('env.get', ($, e) => ({ value: e.name === 'TMPDIR' ? '/tmp/' : undefined }))
+  on('fs.stat', ($, e) => {
+    if (e.path !== LOG || log === '') throw new Error('ENOENT')
+    return { value: { kind: 'file', size: log.length, mtimeMs: 0, isLink: false } }
+  })
+  on('fs.read', ($, e) => ({ value: log.slice(e.offset ?? 0, (e.offset ?? 0) + (e.length ?? log.length)) }))
+}
+
+// The engine beneath the plugin and its repo: markers and writes share one clock, and a check sees writes newer than its marker;
+// `commit` (or a discard) changes the repo state without leaving a newer file.
+const engine = (on: On, isRepo = true) => {
+  let clock = 0
+  let head = 0
+  const writes: number[] = []
+  const repo = { write: () => void writes.push(++clock), commit: () => void head++ }
   on('turn.start', ($, e) => ({ turnId: e.turnId }))
-  on('process.run', () => ({ value: tree[0] === 'fail' ? ran('', 3) : ran(tree.shift() ?? 'same') }))
-  on('tool.call', ($, e) => (e.tool === 'Edit' && e.file_path.endsWith('denied.ts') ? { deny: 'no' } : { result: {} as never }))
+  on('process.run', ($, e) => {
+    if (e.argv[0] !== 'sh') return { value: ran('') }
+    if (String(e.argv[2]).includes('mktemp')) return { value: isRepo ? ran(`/tmp/stop-review.${++clock}\0/repo`) : ran('', 3) }
+    if (String(e.argv[2]).includes('status')) return { value: ran(`head ${head}\n${writes.length > 0 ? ' M a.ts\0' : ''}`) }
+    const made = Number(String(e.argv[5]).split('.').pop())
+    return { value: ran(writes.some(at => at > made) ? './a.ts' : '') }
+  })
+  transcript(on, e => (e.tool === 'Edit' && String(e.file_path).endsWith('denied.ts') ? { deny: 'no' } : { result: {} as never }))
   on('classic.Stop', () => ({}))
   on('settings.read', () => ({ value: {} }))
+  return repo
 }
 
 test('sends a turn that edited files back once when Checked: is missing', async ($, on) => {
@@ -41,12 +78,14 @@ test('accepts a bold Checked header without a colon, but not a sentence that sta
 })
 
 test('passes a turn without changes, or with only scratch, plan, or refused edits', async ($, on) => {
-  engine(on)
+  const repo = engine(on)
   await $.turn.start({ text: 'explain', turnId: 't1' })
   expect((await $.classic.Stop(stop('Answer.'))).block).toBeUndefined()
   await $.tool.call(edit('/tmp/x/a.ts'))
   await $.tool.call(edit('/Users/u/.claude/plans/p.md'))
   await $.tool.call(edit('/repo/denied.ts'))
+  await $.tool.call({ tool: 'Read', file_path: '/repo/a.ts' })
+  repo.write() // Another session writes while this one reads.
   expect((await $.classic.Stop(stop('Answer.'))).block).toBeUndefined()
 })
 
@@ -60,14 +99,28 @@ test('requires a Checked report outside quoted or fenced examples', async ($, on
   }
 })
 
-test('catches a change made through Bash by comparing working-tree snapshots', async ($, on) => {
-  engine(on, ['before', 'after', 'same', 'same'])
+test('catches a change made through Bash by its change time', async ($, on) => {
+  const repo = engine(on)
   await $.turn.start({ text: 'sed it', turnId: 't1' })
   await $.tool.call({ tool: 'Bash', command: "sed -i '' s/a/b/ a.ts" })
+  repo.write()
   expect((await $.classic.Stop(stop('Done.'))).block).toMatch(/Checked:/)
   await $.turn.start({ text: 'look', turnId: 't2' })
   await $.tool.call({ tool: 'Bash', command: 'git log -1' })
   expect((await $.classic.Stop(stop('Answer.'))).block).toBeUndefined()
+})
+
+test('after a reload mid-turn, the main agent\'s edits since the last prompt count', async ($, on) => {
+  engine(on)
+  await $.tool.call(edit('/repo/a.ts'))
+  expect((await $.classic.Stop(stop('Done.'))).block).toMatch(/no `Checked:` list/)
+})
+
+test('after a reload mid-turn, a passed answer adopts those edits', async ($, on) => {
+  engine(on)
+  await $.tool.call(edit('/repo/a.ts'))
+  expect((await $.classic.Stop(stop('Done.\n\nChecked:\n- tests pass'))).block).toBeUndefined()
+  expect((await $.classic.Stop(stop('', true))).block).toBeUndefined()
 })
 
 test('a new turn forgets the edits of the last one', async ($, on) => {
@@ -93,16 +146,50 @@ test('waits out a pause on a subagent, then checks the answer that ends the turn
 })
 
 test('a typed prompt during a pause starts a new turn', async ($, on) => {
-  engine(on)
+  const repo = engine(on)
   await $.turn.start({ text: 'fix it', turnId: 't1' })
   await $.tool.call(edit('/repo/a.ts'))
   await $.classic.Stop({ ...stop('Reviewers are running.'), background_tasks: running })
   await $.turn.start({ text: 'what is left?', turnId: 't2' })
   expect((await $.classic.Stop(stop('Nothing.'))).block).toBeUndefined()
+  // A subagent's edit during the pause carries into the typed prompt's turn.
+  await $.classic.Stop({ ...stop('Waiting on the fix.'), background_tasks: running })
+  await $.tool.call({ ...edit('/elsewhere/b.ts'), agentId: 'a1' } as never)
+  await $.turn.start({ text: 'status?', turnId: 't3' })
+  expect((await $.classic.Stop(stop('Fixed.'))).block).toMatch(/no `Checked:` list/)
+  await $.classic.Stop(stop('Fixed.\n\nChecked:\n- b.ts edited', true))
+  // So does its shell write, though the new turn starts after it; a carried read leaves the new turn's marker.
+  repo.write()
+  await $.classic.Stop({ ...stop('Waiting on the build.'), background_tasks: running })
+  await $.tool.call({ tool: 'Read', file_path: '/repo/a.ts', agentId: 'a1' } as never)
+  await $.turn.start({ text: 'anything?', turnId: 't4' })
+  expect((await $.classic.Stop(stop('No.'))).block).toBeUndefined()
+  await $.classic.Stop({ ...stop('Waiting on the build.'), background_tasks: running })
+  await $.tool.call({ tool: 'Bash', command: "sed -i '' s/a/b/ a.ts", agentId: 'a1' } as never)
+  repo.write()
+  await $.turn.start({ text: 'done yet?', turnId: 't5' })
+  expect((await $.classic.Stop(stop('Built.'))).block).toMatch(/no `Checked:` list/)
 })
 
-test('does not guess when the snapshot fails outside a git repo', async ($, on) => {
-  engine(on, ['fail'])
+test('counts a commit or a discard since turn start as a change', async ($, on) => {
+  const repo = engine(on)
+  await $.turn.start({ text: 'commit it', turnId: 't1' })
+  await $.tool.call({ tool: 'Bash', command: 'git commit -am wip' })
+  repo.commit()
+  expect((await $.classic.Stop(stop('Committed.'))).block).toMatch(/no `Checked:` list/)
+})
+
+test('counts a new write to a file that was already changed before the turn', async ($, on) => {
+  const repo = engine(on)
+  repo.write()
+  await $.turn.start({ text: 'tweak it', turnId: 't1' })
+  await $.tool.call(bash("sed -i '' s/a/b/ a.ts"))
+  repo.write()
+  expect((await $.classic.Stop(stop('Tweaked.'))).block).toMatch(/no `Checked:` list/)
+})
+
+test('does not guess outside a git repo', async ($, on) => {
+  engine(on, false)
   await $.turn.start({ text: 'touch it', turnId: 't1' })
   await $.tool.call({ tool: 'Bash', command: 'touch x' })
   expect((await $.classic.Stop(stop('Done.'))).block).toBeUndefined()
@@ -112,7 +199,7 @@ test('leaves an answer another Stop hook sends back, such as /goal, and checks t
   let isGoalMet = false
   on('turn.start', ($, e) => ({ turnId: e.turnId }))
   on('process.run', () => ({ value: ran('same') }))
-  on('tool.call', () => ({ result: {} as never }))
+  transcript(on, () => ({ result: {} as never }))
   on('classic.Stop', () => (isGoalMet ? {} : { block: 'goal not met yet' }))
   on('settings.read', () => ({ value: {} }))
   await $.turn.start({ text: 'fix', turnId: 't1' })
@@ -133,17 +220,21 @@ test('leaves an answer another Stop hook sends back, such as /goal, and checks t
 const toolEngine = (on: On) => {
   on('turn.start', ($, e) => ({ turnId: e.turnId }))
   on('process.run', () => ({ value: ran('same') }))
-  on('tool.call', () => ({ result: {} as never }))
+  transcript(on, () => ({ result: {} as never }))
   on('classic.Stop', () => ({}))
   on('settings.read', () => ({ value: {} }))
 }
 const bash = (command: string) => ({ tool: 'Bash', command, description: 'test' }) as const
 
-test('counts a subagent edit as a change', async ($, on) => {
-  toolEngine(on)
+test('counts a later edit by an agent from an earlier turn', async ($, on) => {
+  engine(on)
   await $.turn.start({ text: 'delegate', turnId: 't1' })
-  await $.tool.call(bash('make check'))
-  await $.tool.call({ ...edit('/repo/a.ts'), agentId: 'worker-1' } as never)
+  await $.tool.call({ tool: 'Agent', prompt: 'fix it', run_in_background: true } as never)
+  await $.tool.call({ ...edit('/elsewhere/old.ts'), agentId: 'bg-1' } as never)
+  expect((await $.classic.Stop(stop('Started it.\n\nChecked:\n- old.ts edited'))).block).toBeUndefined()
+  await $.turn.start({ text: 'something else', turnId: 't2' })
+  expect((await $.classic.Stop(stop('Nothing changed.'))).block).toBeUndefined()
+  await $.tool.call({ ...edit('/elsewhere/a.ts'), agentId: 'bg-1' } as never)
   expect((await $.classic.Stop(stop('Done.'))).block).toMatch(/no `Checked:` list/)
 })
 
@@ -419,18 +510,10 @@ test('a subagent start does not reset the main turn', async ($, on) => {
   expect((await $.classic.Stop(stop('Done.'))).block).toMatch(/no `Checked:` list/)
 })
 
-test('compares against the tree before the turn\'s first Bash call', async ($, on) => {
-  engine(on, ['before', 'after', 'after'])
-  await $.turn.start({ text: 'sed it', turnId: 't1' })
-  await $.tool.call({ tool: 'Bash', command: "sed -i '' s/a/b/ a.ts" })
-  await $.tool.call({ tool: 'Bash', command: 'git diff --stat' })
-  expect((await $.classic.Stop(stop('Done.'))).block).toMatch(/no `Checked:` list/)
-})
-
 test('does not count a failed edit as a change', async ($, on) => {
   on('turn.start', ($, e) => ({ turnId: e.turnId }))
   on('process.run', () => ({ value: ran('same') }))
-  on('tool.call', () => ({ result: {} as never, isError: true as const }))
+  transcript(on, () => ({ result: {} as never, isError: true }))
   on('classic.Stop', () => ({}))
   on('settings.read', () => ({ value: {} }))
   await $.turn.start({ text: 'fix it', turnId: 't1' })
@@ -462,7 +545,7 @@ test('an engine nudge after a paused Stop, such as a /goal check-in, is no send-
 })
 
 test('after an answer passes, a later Stop in the turn needs Checked: only for later changes', async ($, on) => {
-  engine(on, ['before', 'before', 'before', 'after'])
+  const repo = engine(on)
   await $.turn.start({ text: 'fix it', turnId: 't1' })
   await $.tool.call(edit('/repo/a.ts'))
   expect((await $.classic.Stop(stop('Done.\n\nChecked:\n- make check passed'))).block).toBeUndefined()
@@ -471,15 +554,17 @@ test('after an answer passes, a later Stop in the turn needs Checked: only for l
   expect((await $.classic.Stop(stop('', true))).block).toBeUndefined()
   // Work after the passed answer changes the tree, so its answer needs Checked: again.
   await $.tool.call({ tool: 'Bash', command: "sed -i '' s/a/b/ a.ts" })
+  repo.write()
   expect((await $.classic.Stop(stop('Fixed the rest.', true))).block).toMatch(/no `Checked:` list/)
 })
 
 test('after an answer passes, a background job\'s later write still counts as a change', async ($, on) => {
-  engine(on, ['before', 'before', 'written'])
+  const repo = engine(on)
   await $.turn.start({ text: 'start the build', turnId: 't1' })
   await $.tool.call({ tool: 'Bash', command: 'make build &' })
   expect((await $.classic.Stop(stop('Started.\n\nChecked:\n- make build is running'))).block).toBeUndefined()
   // A /goal check-in continues the turn after the job wrote its output.
+  repo.write()
   expect((await $.classic.Stop(stop('The build finished.', true))).block).toMatch(/no `Checked:` list/)
 })
 

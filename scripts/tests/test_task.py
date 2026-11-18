@@ -264,7 +264,7 @@ class TestTask(unittest.TestCase):
             stream.write(json.dumps(row) + "\n")
         return row["uuid"]
 
-    def tool_output(self, output, stamp=None, *, tool="Bash", tool_input=None):
+    def tool_output(self, output, stamp=None, *, tool="Bash", tool_input=None, **result_fields):
         self.transcript_row(
             "assistant",
             [
@@ -281,6 +281,7 @@ class TestTask(unittest.TestCase):
             "user",
             [{"type": "tool_result", "tool_use_id": "probe", "content": output}],
             stamp=stamp,
+            **result_fields,
         )
 
     def test_SHOULD_verify_a_long_tool_quote_without_accepting_chat_as_evidence(self):
@@ -293,6 +294,10 @@ class TestTask(unittest.TestCase):
         self.assertEqual(self.run_task("check", "D1", "--claim", "C1").returncode, 0)
         refused = self.run_task("claim", "add", "invented", "--quote", "invented proof")
         self.assertNotEqual(refused.returncode, 0)
+        # Code Mode runs the call inside a script: the result block is empty and the row holds the output.
+        self.tool_output("", isVirtual=True, toolUseResult={"stdout": "code mode result 9", "stderr": ""})
+        inner = self.run_task("claim", "add", "result is 9", "--quote", "code mode result 9")
+        self.assertEqual(inner.returncode, 0, inner.stderr)
 
     def test_SHOULD_keep_read_tool_results_without_accepting_shell_ledger_echoes(self):
         self.set_card()
@@ -407,6 +412,10 @@ class TestTask(unittest.TestCase):
         self.run_task("claim", "add", "new label", "--quote", "old result")
         refused = self.run_task("stance", "set", "proposal", "drop it", "--because", "C2")
         self.assertNotEqual(refused.returncode, 0)
+        # Code Mode records a script's calls when the script ends, so an inner result is never newer evidence.
+        self.tool_output("", isVirtual=True, toolUseResult={"stdout": "late result", "stderr": ""})
+        self.assertEqual(self.run_task("claim", "add", "late label", "--quote", "late result").returncode, 0)
+        self.assertNotEqual(self.run_task("stance", "set", "proposal", "drop it", "--because", "C3").returncode, 0)
         card = json.loads(self.run_task("card", "show", "--json").stdout)
         self.assertEqual([s["value"] for s in card["stances"]], ["keep it"])
 
@@ -1594,6 +1603,27 @@ class TestTask(unittest.TestCase):
         (self.repo / "README.md").write_text("changed")
         result = self.hook("codex", **base, hook_event_name="PostToolUse", tool_input={"command": "write file"})
         self.assertIn("README.md", result["hookSpecificOutput"]["additionalContext"])
+
+    def test_SHOULD_settle_claude_background_shells_through_get_task(self):
+        self.set_card()
+        base = {"session_id": "s1", "cwd": str(self.repo), "tool_use_id": "c1", "tool_name": "Bash"}
+        subagent = self.hook("claude", **base, agent_id="a1", hook_event_name="PreToolUse", tool_input={})
+        self.assertEqual(subagent, {})
+        self.hook("claude", **base, hook_event_name="PreToolUse", tool_input={"command": "job"})
+        started = {"stdout": "", "stderr": "", "interrupted": False, "backgroundTaskId": "job-1"}
+        self.hook("claude", **base, hook_event_name="PostToolUse", tool_input={}, tool_response=started)
+        (self.repo / "README.md").write_text("changed")
+        done = self.hook(
+            "claude",
+            session_id="s1",
+            cwd=str(self.repo),
+            tool_use_id="c2",
+            tool_name="GetTask",
+            hook_event_name="PostToolUse",
+            tool_input={"taskId": "job-1"},
+            tool_response={"taskId": "job-1", "status": "completed"},
+        )
+        self.assertIn("README.md", done["hookSpecificOutput"]["additionalContext"])
 
     def test_SHOULD_preserve_concurrent_session_registrations(self):
         with ThreadPoolExecutor(max_workers=10) as pool:

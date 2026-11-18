@@ -1,7 +1,5 @@
-import type { Register } from 'claude-code'
-
-// A copy of sop-guard's scanner; scripts/tests/test_claude_mods.py keeps them equal.
-import { base, literalInvocation } from './shell'
+import { deny, type HookInput, type HookOutput, main } from '../../home/dot_claude/exact_guards/hook'
+import { base, literalInvocations } from '../../home/dot_claude/exact_guards/shell'
 
 // make flags whose next word is their value, not a target.
 const MAKE_VALUE_FLAGS = new Set(['-C', '-f', '-I', '-o', '-W', '--directory', '--file'])
@@ -55,11 +53,12 @@ const isReservedCheck = ([name, ...args]: string[]) => {
   return script.endsWith('scripts/test_runner.py') || script.endsWith('scripts/check.py') && args.slice(scriptAt + 1).includes('--full')
 }
 
-export const register: Register = on => {
-  on('tool.call', { tool: 'Bash' }, ($, e, next) => {
-    const words = literalInvocation(e.command)
-    return words && isReservedCheck(unwrapTimeout(words))
-      ? { deny: `${$.plugin.name}: AGENTS.md reserves make check-full, make test, and bin/check --full for the human, and the user reserved scripts/test_runner.py and scripts/check.py --full. Run make check.` }
-      : next(e)
-  }).catch(($, e, next) => next(e))
+export const handle = (input: HookInput): HookOutput => {
+  const command = input.tool_input?.command
+  const commands = (typeof command === 'string' && literalInvocations(command)) || []
+  return commands.some(words => isReservedCheck(unwrapTimeout(words)))
+    ? deny('dotfiles-guard: AGENTS.md reserves make check-full, make test, and bin/check --full for the human, and the user reserved scripts/test_runner.py and scripts/check.py --full. Run make check.')
+    : undefined
 }
+
+if (import.meta.main) await main(handle)

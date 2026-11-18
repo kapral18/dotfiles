@@ -35,12 +35,16 @@ export const LIST_WANTED =
 // ~/AGENTS.md §8 budgets, lists and tables included: a change report, else an investigation.
 const CHANGE_BUDGET = 250
 const BUDGET = 200
-// The working tree's state: changed paths, a hash of the tracked diff, and a hash of untracked contents.
-const SNAPSHOT =
-  'git rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 3\n' +
-  'git --no-optional-locks status --porcelain=v1\n' +
-  'git diff HEAD --no-ext-diff --binary 2>/dev/null | git hash-object --stdin\n' +
-  'git ls-files -z --others --exclude-standard | xargs -0 shasum -- 2>/dev/null | git hash-object --stdin'
+// Each script runs in the repo the turn started in ($1), whatever the session's directory is now.
+// A marker file whose change time is now, then the repo's top level: files changed after the marker are the turn's.
+const MARK = 'cd "$1" 2>/dev/null && root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 3\nm=$(mktemp "${TMPDIR:-/tmp}/stop-review.XXXXXX") || exit 3\nprintf \'%s\\0%s\' "$m" "$root"'
+// The repo's state: HEAD (an empty line before the first commit), then every changed, staged and untracked path with its status.
+const STATE = 'cd "$1" || exit 3\ngit rev-parse -q --verify HEAD || echo\ngit --no-optional-locks status --porcelain=v1 -z --untracked-files=all'
+// Prints the first listed path whose change time is newer than the marker ($2).
+// The change time, not the content time: `mv` and `cp -p` keep a file's mtime. `find` fails on a deleted path but still checks the rest.
+const NEWER = 'cd "$1" || exit 3\nm=$2\nshift 2\nfind "$@" -maxdepth 0 -cnewer "$m" -print -quit 2>/dev/null\nexit 0'
+// The paths each `find` gets, to stay under the argument limit.
+const CHUNK = 500
 
 // The ~/AGENTS.md §1 limits on acting without asking, kept whole so a send-back never pushes past them; ,task's hook_stop words them the same.
 export const STEP =
@@ -85,9 +89,36 @@ const deferral = (heading: string) =>
   'cleanup you can do is never one of them (§3 step 7).'
 
 // A function declaration: the engine follows $ past an import only into one.
-export async function snapshot($: EngineInterface) {
-  const run = await $.process.run(['sh', '-c', SNAPSHOT], { timeoutMs: 20000 })
+// The marker and the repo's top level, from `dir` (the session's directory by default); undefined outside a git repo.
+export async function mark($: EngineInterface, dir = '.') {
+  const run = await $.process.run(['sh', '-c', MARK, 'sh', dir], { timeoutMs: 5000 })
+  const [marker, root] = run.stdout.split('\0')
+  return run.exitCode === 0 && marker && root ? { marker, root } : undefined
+}
+
+// A function declaration: the engine follows $ past an import only into one.
+export async function repoState($: EngineInterface, root: string) {
+  const run = await $.process.run(['sh', '-c', STATE, 'sh', root], { timeoutMs: 20000 })
   return run.exitCode === 0 ? run.stdout : undefined
+}
+
+// A function declaration: the engine follows $ past an import only into one.
+// Whether a path in `state` (a repoState read) changed after the marker. A rename's old path follows its new one and is skipped.
+export async function changedSince($: EngineInterface, root: string, marker: string, state: string) {
+  const tokens = state.slice(state.indexOf('\n') + 1).split('\0')
+  const paths: string[] = []
+  for (let i = 0; i < tokens.length; i++) {
+    const entry = tokens[i] ?? ''
+    if (entry.length < 4) continue
+    // A `./` prefix keeps a name like `-x` from reading as an option.
+    paths.push(`./${entry.slice(3)}`)
+    if ('RC'.includes(entry[0] ?? ' ') || 'RC'.includes(entry[1] ?? ' ')) i++
+  }
+  for (let i = 0; i < paths.length; i += CHUNK) {
+    const run = await $.process.run(['sh', '-c', NEWER, 'sh', root, marker, ...paths.slice(i, i + CHUNK)], { timeoutMs: 20000 })
+    if (run.exitCode === 0 && run.stdout.trim() !== '') return true
+  }
+  return false
 }
 
 type Container = { kind: 'quote' } | { kind: 'list'; indent: number; isEmpty: boolean }

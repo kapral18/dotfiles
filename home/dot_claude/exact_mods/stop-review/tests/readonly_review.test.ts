@@ -24,7 +24,7 @@ const engine = (on: On, rows: { toolUses: Use[] }[], replies: unknown[], options
   })
   on('classic.Stop', () => options.below?.shift() ?? {})
   on('settings.read', () => ({ value: options.settings ?? { advisorModel: 'claude-opus-5-5' } }))
-  // The format checks' working-tree snapshot never changes.
+  // `sh` answers `same`, so no marker is made and no change shows through git.
   // `,task hook evidence` returns the ledger when the options hold a card, else fails as with no card.
   on('process.run', ($, e) => {
     options.argvs?.push([...e.argv])
@@ -235,9 +235,16 @@ test('an empty wake after a pause also continues the turn', async ($, on) => {
 })
 
 test('still sends the format checks back when the review fails', async ($, on) => {
-  engine(on, turn, [concern('a — b — c')], { messages: new Error('transcript unreadable') })
+  engine(on, turn, [new Error('model unavailable')])
   await run($, 'yeah I think so')
   expect((await $.classic.Stop(stop('Done. Want me to push?'))).block).toMatch(/^The final message ends with a question/)
+})
+
+test('makes no review call when the transcript is unreadable', async ($, on) => {
+  const sent = engine(on, turn, [concern('a — b — c')], { messages: new Error('transcript unreadable') })
+  await run($, 'yeah I think so')
+  expect((await $.classic.Stop(stop('Done. Want me to push?'))).block).toBeUndefined()
+  expect(sent).toEqual([])
 })
 
 test('makes no call for a turn without tools or a question', async ($, on) => {
@@ -335,7 +342,7 @@ test('takes the request from the typed prompt and starts the turn at its first c
     assistant('Shall I review it?'),
     user('review the diff'),
     user('[Image: source: /tmp/1.png]'),
-    // A call `tool.call` never saw, such as one a managed hook denied, does not move the turn's start.
+    // A call already in the transcript at turn.start is not one of this turn's own calls; the turn still opens at its typed prompt.
     assistant('', [use('Bash', { command: 'unseen' })]),
     toolResult(),
     assistant('', [diff, skillCall]),

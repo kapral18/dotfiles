@@ -263,7 +263,6 @@ TEST_RULES: tuple[TestRule, ...] = (
     TestRule(prefixes=("home/dot_config/fish/completions/readonly_,task.fish",), tests=("tests/test_task.py",)),
     TestRule(
         prefixes=(
-            ".claude/skills/dotfiles-guard/",
             "home/dot_claude/exact_mods/",
             "home/dot_claude/settings.json",
         ),
@@ -405,6 +404,15 @@ EXTRA_TESTS: tuple[ExtraTest, ...] = (
             "home/exact_lib/exact_shared/task_context.ts",
             "home/dot_pi/agent/exact_extensions/intent-guard.ts.tmpl",
             "home/dot_omp/private_agent/extensions/intent-guard.ts.tmpl",
+        ),
+    ),
+    ExtraTest(
+        name="claude-guards",
+        argv=("bun", "test", "scripts/tests/claude_guards.test.ts"),
+        prefixes=(
+            "scripts/tests/claude_guards.test.ts",
+            "home/dot_claude/exact_guards/",
+            ".claude/hooks/",
         ),
     ),
     ExtraTest(

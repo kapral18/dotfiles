@@ -25,6 +25,20 @@ def text_blocks(content) -> str:
     return "\n".join(b["text"] for b in content or [] if b.get("type") == "text")
 
 
+def result_text(row: dict, block: dict, tool: str) -> str:
+    text = text_blocks(block.get("content"))
+    result = row.get("toolUseResult")
+    if text or not row.get("isVirtual") or not isinstance(result, dict):
+        return text
+    # A call that Code Mode code made: the block is empty and the row holds the result.
+    if tool == "Bash":
+        return "\n".join(
+            part for part in (result.get("stdout"), result.get("stderr")) if isinstance(part, str) and part
+        )
+    file = result.get("file")
+    return file.get("content", "") if tool == "Read" and isinstance(file, dict) else ""
+
+
 def blocks(row: dict) -> list[dict]:
     content = row.get("message", {}).get("content")
     return content if isinstance(content, list) else []
@@ -119,7 +133,9 @@ def observations(session: str) -> list[dict]:
                     "id": row["uuid"],
                     "kind": "tool",
                     "time": stamp,
-                    "text": text_blocks(block.get("content")),
+                    # Code Mode writes a script's calls when the script ends: when an inner call ran is unknown.
+                    "start": 0.0 if row.get("isVirtual") else stamp,
+                    "text": result_text(row, block, call["name"]),
                     "tool": call["name"],
                     "is_error": bool(block.get("is_error")),
                 }
@@ -132,7 +148,10 @@ def match_quote(records: list[dict], text: str, kind: str, before: float, after:
         (
             r
             for r in reversed(records)
-            if r["kind"] == kind and after < r["time"] <= before and normalized(text) in normalized(r["text"])
+            if r["kind"] == kind
+            and (not after or after < r.get("start", r["time"]))
+            and r["time"] <= before
+            and normalized(text) in normalized(r["text"])
         ),
         None,
     )
@@ -163,7 +182,7 @@ def verify(claim: dict, records: list[dict]) -> dict:
             if found and found["id"] == source.get("id"):
                 return {
                     "verified": True,
-                    "time": found["time"],
+                    "time": found["start"],
                     "tool": found["tool"],
                     "is_error": found["is_error"],
                 }
@@ -215,7 +234,10 @@ def add_claim(card: dict, args, records: list[dict]) -> dict:
             raise ValueError("quote must not be empty")
         found = match_quote(records, args.quote, "tool", time.time())
         if found is None:
-            raise ValueError("quote not found in this session's tool results; use a file claim or --unknown")
+            raise ValueError(
+                "quote not found in this session's tool results (a running Code Mode script's output is recorded when it ends); "
+                "use a file claim or --unknown"
+            )
         source = {"kind": "quote", "text": args.quote, "id": found["id"]}
     else:
         if not args.unknown.strip():
@@ -231,8 +253,9 @@ def set_stance(card: dict, args, records: list[dict]) -> dict:
     after = previous["created"] if previous and previous["value"] != args.value else 0
     if args.because:
         claim, evidence = verified_claim(card, args.because, records)
-        if evidence["time"] <= after:
-            raise ValueError("changing a stance needs evidence produced after the previous stance")
+        if after and evidence["time"] <= after:
+            inner = "" if evidence["time"] else ": output of a call made inside Code Mode code never counts"
+            raise ValueError(f"changing a stance needs evidence produced after the previous stance{inner}")
         reason = {"claim": claim["id"]}
     else:
         if not args.user.strip():

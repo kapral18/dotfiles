@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$HOME\" && \"$HOME/.local/share/mise/shims/bun\" \"$CLAUDE_PROJECT_DIR/.claude/hooks/dotfiles-guard.ts\"",
+            "timeout": 10,
+            "onFailure": "continue"
+          }
+        ]
+      }
+    ]
+  }
+}

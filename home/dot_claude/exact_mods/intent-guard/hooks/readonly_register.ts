@@ -1,7 +1,7 @@
 import type { EngineInterface, PromptOrigin, Register } from 'claude-code'
 
 // The shared core: `,task hook <event>` reads JSON and answers JSON, the same for every harness (~/AGENTS.md §3 step 0).
-type Answer = { context?: string; deny?: string; note?: string; instructions?: string; block?: string }
+type Answer = { context?: string; note?: string; instructions?: string; block?: string }
 
 // A failed or missing `,task` answers nothing, so the session goes on unguarded rather than stuck.
 const task = async ($: EngineInterface, event: string, input: Record<string, unknown>): Promise<Answer> => {
@@ -41,36 +41,6 @@ export const register: Register = on => {
     if (e.command !== undefined || e.isMeta === true || !isTyped(e.origin)) return next(e)
     const { context } = await task($, 'prompt', { text: e.text, origin: 'human' })
     return next(context ? { ...e, context: [...(e.context ?? []), context] } : e)
-  }).catch(($, e, next) => next(e))
-
-  // Edits are checked before they run: the first one without a card is refused once, and one outside `Scope:` gets a note.
-  on('tool.call', { tool: ['Edit', 'Write', 'NotebookEdit'] }, async ($, e, next) => {
-    if (e.agentId !== undefined) return next(e)
-    const path = 'notebook_path' in e ? e.notebook_path : e.file_path
-    const input = { tool: e.tool, paths: [path], write: true, call_id: e.tool_use_id }
-    const { deny } = await task($, 'tool', { ...input, phase: 'before' })
-    if (deny) return { deny }
-    const ran = await next(e)
-    const { note } = await task($, 'tool', { ...input, phase: 'after' })
-    if (ran.deny !== undefined) return ran
-    return note ? { ...ran, context: [...(ran.context ?? []), note] } : ran
-  }).catch(($, e, next) => next(e))
-
-  // Every other main-loop call counts toward the zoom-out.
-  on('tool.call', async ($, e, next) => {
-    if (e.agentId !== undefined || e.tool === 'Edit' || e.tool === 'Write' || e.tool === 'NotebookEdit') return next(e)
-    if (e.tool === 'Bash') await task($, 'tool', { tool: e.tool, phase: 'before', call_id: e.tool_use_id })
-    const ran = await next(e)
-    if (ran.deny !== undefined) return ran
-    const backgroundId = e.tool === 'Bash' && ran.result && typeof ran.result === 'object' && 'backgroundTaskId' in ran.result ? ran.result.backgroundTaskId : undefined
-    const untilStop = e.tool === 'Bash' && ran.result && typeof ran.result === 'object' && 'backgroundEndsWithFinalResponse' in ran.result && ran.result.backgroundEndsWithFinalResponse === true
-    const { note } = await task($, 'tool', { tool: e.tool, phase: 'after', call_id: e.tool_use_id, background: Boolean(backgroundId), background_id: backgroundId, until_stop: Boolean(untilStop) })
-    // GetTask can consume the completion notification, so its terminal result also settles the snapshot.
-    const completed = e.tool === 'GetTask' && ran.result && typeof ran.result === 'object' && 'status' in ran.result && ran.result.status !== 'working'
-      ? await task($, 'tool', { tool: 'Bash', phase: 'complete', call_id: e.tool_use_id, background_id: e.taskId })
-      : {}
-    const notes = [note, completed.note].filter((text): text is string => Boolean(text))
-    return notes.length ? { ...ran, context: [...(ran.context ?? []), ...notes] } : ran
   }).catch(($, e, next) => next(e))
 
   on('session.compact', async ($, e, next) => {

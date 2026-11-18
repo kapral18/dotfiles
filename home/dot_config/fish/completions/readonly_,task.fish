@@ -59,7 +59,7 @@ complete -c ,task -n '__task_command_at 2 pref; and not __task_command_at 3 add 
 complete -c ,task -n '__task_command_at 2 pref; and __task_command_at 3 add' -l global -d 'Apply in every repo'
 complete -c ,task -n '__task_command_at 2 steering' -l days -x -d 'Days to report'
 complete -c ,task -n '__task_command_at 2 steering' -l recent -x -d 'Recent entries to print'
-complete -c ,task -n '__task_command_at 2 hook; and not __task_command_at 3 prompt tool compact stop evidence checkpoint user codex sentback' -a 'prompt tool compact stop evidence checkpoint user codex sentback'
+complete -c ,task -n '__task_command_at 2 hook; and not __task_command_at 3 prompt tool compact stop evidence checkpoint user codex claude sentback' -a 'prompt tool compact stop evidence checkpoint user codex claude sentback'
 complete -c ,task -n '__task_command_at 2 hook' -l harness -x -d 'Harness name'
 complete -c ,task -n '__task_command_at 2 hook' -l input -x -d 'JSON input'
 complete -c ,task -n '__task_command_at 2 hook' -l input-file -r -d 'File holding JSON input'
