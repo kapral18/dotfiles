@@ -124,6 +124,10 @@ app_cask "steam", "Steam.app"
 # https://www.battle.net/
 app_cask "battle-net", "Battle.net.app"
 
+# Game addon and mod manager
+# https://www.curseforge.com/
+app_cask "curseforge", "CurseForge.app"
+
 # Cloud gaming client
 # https://www.nvidia.com/en-us/geforce-now/
 app_cask "nvidia-geforce-now", "GeForceNOW.app"
